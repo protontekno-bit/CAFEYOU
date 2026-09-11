@@ -7,6 +7,7 @@ import {
   QrCodeIcon,
   SettingsIcon,
   HistoryIcon,
+  TicketIcon,
 } from '../icons/Icons';
 
 interface HeaderProps {
@@ -22,6 +23,8 @@ interface HeaderProps {
   onOpenFirebaseConfig?: () => void;
   onOpenQrShare?: () => void;
   onOpenHistory?: () => void;
+  onOpenVouchers?: () => void;
+  onOpenTableQr?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,6 +39,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenFirebaseConfig,
   onOpenQrShare,
   onOpenHistory,
+  onOpenVouchers,
+  onOpenTableQr,
 }) => {
   return (
     <header className="bg-slate-800/90 backdrop-blur-md p-3 sm:p-4 shadow-lg flex flex-wrap justify-between items-center sticky top-0 z-20 border-b border-slate-700/60 gap-3">
@@ -70,6 +75,28 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <SparklesIcon className="w-4 h-4" />
             <span className="hidden sm:inline">Katalog</span> Populer
+          </button>
+        )}
+
+        {onOpenVouchers && (
+          <button
+            onClick={onOpenVouchers}
+            className="px-3 py-1.5 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 hover:from-blue-500/30 hover:to-indigo-500/30 text-blue-300 border border-blue-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+            title="Manajemen Voucher & Keamanan Meja Pelanggan"
+          >
+            <TicketIcon className="w-4 h-4 text-blue-400" />
+            <span>Voucher</span>
+          </button>
+        )}
+
+        {onOpenTableQr && (
+          <button
+            onClick={onOpenTableQr}
+            className="px-3 py-1.5 bg-slate-700/70 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-600/70 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+            title="Cetak atau Tampilkan QR Code Meja Pelanggan"
+          >
+            <span>🪑</span>
+            <span className="hidden sm:inline">QR</span> Meja
           </button>
         )}
 

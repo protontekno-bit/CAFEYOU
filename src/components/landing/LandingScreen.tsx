@@ -1,6 +1,6 @@
 import React from 'react';
 import { RoleCard } from './RoleCard';
-import { SplitIcon } from '../icons/Icons';
+import { SplitIcon, TicketIcon } from '../icons/Icons';
 import { AppRole } from '../../types';
 
 interface LandingScreenProps {
@@ -15,23 +15,26 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-200">
-      <div className="max-w-3xl w-full">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-slate-200 selection:bg-blue-500 selection:text-white">
+      <div className="max-w-4xl w-full py-8">
         {/* Header Hero */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-4 tracking-tight">
-            Sistem Karaoke Kafe
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-xs font-bold uppercase tracking-wider mb-3">
+            <span>🎤 CAFEYOU KARAOKE SYSTEM</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400 mb-3 tracking-tight">
+            Sistem Karaoke Kafe Dual Screen
           </h1>
-          <p className="text-slate-400 text-lg">
-            Pilih peran perangkat ini dalam jaringan operasional.
+          <p className="text-slate-400 text-base max-w-xl mx-auto leading-relaxed">
+            Pilih peran perangkat ini dalam ekosistem karaoke kafe Anda.
           </p>
         </div>
 
-        {/* Pilihan Peran Utama */}
-        <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-6">
+        {/* Pilihan Peran Utama (3 Kartu) */}
+        <div className="grid md:grid-cols-3 gap-5 max-w-4xl mx-auto mb-6">
           <RoleCard
             title="Dasbor Operator"
-            description="Kelola antrean lagu, kontrol volume, dan putar lagu untuk pelanggan dari layar laptop kasir."
+            description="Kelola antrean lagu, kontrol volume, dan cetak voucher dari layar laptop kasir."
             themeColor="blue"
             onClick={() => setRole('operator')}
             icon={
@@ -47,8 +50,8 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
           />
 
           <RoleCard
-            title="Layar Proyektor"
-            description="Buka layar ini dan geser (drag) ke proyektor. Layar bersih dari antarmuka, hanya video."
+            title="Layar Proyektor / TV"
+            description="Layar bersih khusus tayangan video YouTube, running text, dan reaksi penonton."
             themeColor="emerald"
             onClick={handleOpenPlayerInNewTab}
             icon={
@@ -62,16 +65,24 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
               </svg>
             }
           />
+
+          <RoleCard
+            title="Portal Pelanggan"
+            description="Scan QR meja untuk pilih lagu dari HP, cek antrean, dan kirim reaksi live ke TV."
+            themeColor="purple"
+            onClick={() => setRole('guest')}
+            icon={<TicketIcon className="w-8 h-8 text-purple-400" />}
+          />
         </div>
 
         {/* Simulator Split Screen */}
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <button
             onClick={() => setRole('split')}
-            className="w-full relative bg-slate-800 p-4 rounded-xl border border-green-500/50 hover:bg-slate-700 transition-all flex items-center justify-center gap-3 text-green-400 font-medium hover:border-green-400 shadow-lg shadow-green-500/5"
+            className="w-full relative bg-slate-900/80 p-3.5 rounded-2xl border border-cyan-500/40 hover:bg-slate-850 transition-all flex items-center justify-center gap-2.5 text-cyan-300 font-semibold hover:border-cyan-400 shadow-lg shadow-cyan-500/5 text-xs sm:text-sm"
           >
-            <SplitIcon className="w-5 h-5" />
-            <span>Uji Coba Simulator Split-Screen</span>
+            <SplitIcon className="w-4 h-4" />
+            <span>Mode Uji Coba: Simulator Split-Screen Operator & Proyektor 1 Layar</span>
           </button>
         </div>
       </div>

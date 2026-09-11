@@ -3,16 +3,25 @@ import { BackIcon, FullscreenIcon } from '../icons/Icons';
 import { PlayerPlaceholder } from './PlayerPlaceholder';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { useYouTubePlayer } from '../../hooks/useYouTubePlayer';
-import { AppRole } from '../../types';
+import { AppRole, LiveReactionEvent } from '../../types';
 
 interface PlayerScreenProps {
   setRole?: (role: AppRole) => void;
+}
+
+interface FloatingReaction {
+  id: string;
+  emoji: string;
+  tableNumber: string;
+  leftPercent: number;
 }
 
 export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerWrapperRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
+  const lastProcessedReactionRef = useRef<string | null>(null);
 
   const { state, currentSong, nextSongs, nextSong } = useKaraoke();
 
@@ -28,6 +37,30 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
   });
 
   const nextSongItem = nextSongs[0] || null;
+
+  // Tangkap liveReaction dari state sinkronisasi
+  useEffect(() => {
+    const rx: LiveReactionEvent | null | undefined = state?.liveReaction;
+    if (rx && rx.id && rx.id !== lastProcessedReactionRef.current) {
+      lastProcessedReactionRef.current = rx.id;
+
+      // Buat posisi acak di bagian bawah layar (antara 20% - 80% lebar layar)
+      const leftPercent = 20 + Math.random() * 60;
+      const newReaction: FloatingReaction = {
+        id: rx.id,
+        emoji: rx.emoji,
+        tableNumber: rx.tableNumber || 'Pelanggan',
+        leftPercent,
+      };
+
+      setFloatingReactions((prev) => [...prev.slice(-15), newReaction]);
+
+      // Hapus setelah animasi selesai (3.5 detik)
+      setTimeout(() => {
+        setFloatingReactions((prev) => prev.filter((item) => item.id !== newReaction.id));
+      }, 3500);
+    }
+  }, [state?.liveReaction]);
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
@@ -137,6 +170,27 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
           </div>
         </div>
       )}
+
+      {/* OVERLAY: Floating Live Crowd Reactions (Animasi Gelembung Emoji Naik dari Bawah) */}
+      <div className="absolute inset-0 pointer-events-none z-35 overflow-hidden">
+        {floatingReactions.map((rx) => (
+          <div
+            key={rx.id}
+            style={{
+              left: `${rx.leftPercent}%`,
+              bottom: '15%',
+            }}
+            className="absolute flex flex-col items-center animate-floatUp"
+          >
+            <div className="text-5xl sm:text-6xl filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] transform hover:scale-125 transition-transform">
+              {rx.emoji}
+            </div>
+            <div className="px-2.5 py-0.5 mt-1 bg-slate-950/80 backdrop-blur-md border border-blue-500/30 rounded-full text-[10px] font-bold text-blue-300 shadow-lg">
+              {rx.tableNumber}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* OVERLAY: Running Text Banner (Pengumuman Kafe) */}
       {state?.runningText && (

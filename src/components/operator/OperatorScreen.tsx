@@ -10,6 +10,8 @@ import { RunningTextModal } from './RunningTextModal';
 import { FirebaseConfigModal } from './FirebaseConfigModal';
 import { QrShareModal } from './QrShareModal';
 import { HistoryModal } from './HistoryModal';
+import { VoucherManagerModal } from './VoucherManagerModal';
+import { TableQrGeneratorModal } from './TableQrGeneratorModal';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { AppRole, PopularPresetSong } from '../../types';
 
@@ -25,19 +27,23 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     nextSongs,
     songLibrary,
     history,
+    vouchers,
+    dailyPin,
     addSong,
     removeSong,
     moveToTop,
     moveSongUp,
     moveSongDown,
     skipSong,
-    nextSong,
     clearHistory,
     togglePlayPause,
     setVolume,
     toggleMute,
     setRunningText,
     triggerSoundEffect,
+    createVoucher,
+    revokeVoucher,
+    setDailyPin,
   } = useKaraoke();
 
   const [isSoundBoardOpen, setIsSoundBoardOpen] = useState(false);
@@ -46,6 +52,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isFirebaseOpen, setIsFirebaseOpen] = useState(false);
   const [isQrShareOpen, setIsQrShareOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isVoucherOpen, setIsVoucherOpen] = useState(false);
+  const [isTableQrOpen, setIsTableQrOpen] = useState(false);
 
   const handleOpenProjector = () => {
     const currentUrl = window.location.href.split('#')[0];
@@ -75,6 +83,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         onOpenFirebaseConfig={() => setIsFirebaseOpen(true)}
         onOpenQrShare={() => setIsQrShareOpen(true)}
         onOpenHistory={() => setIsHistoryOpen(true)}
+        onOpenVouchers={() => setIsVoucherOpen(true)}
+        onOpenTableQr={() => setIsTableQrOpen(true)}
       />
 
       <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -158,6 +168,22 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           addSong(videoId, rawUrl, 'Diputar Ulang', title);
         }}
         onClearHistory={clearHistory}
+      />
+
+      <VoucherManagerModal
+        isOpen={isVoucherOpen}
+        vouchers={vouchers}
+        dailyPin={dailyPin}
+        onClose={() => setIsVoucherOpen(false)}
+        onCreateVoucher={createVoucher}
+        onRevokeVoucher={revokeVoucher}
+        onSetDailyPin={setDailyPin}
+      />
+
+      <TableQrGeneratorModal
+        isOpen={isTableQrOpen}
+        onClose={() => setIsTableQrOpen(false)}
+        onOpenVoucherManager={() => setIsVoucherOpen(true)}
       />
     </div>
   );

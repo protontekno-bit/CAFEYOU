@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { OperatorScreen } from './components/operator/OperatorScreen';
 import { PlayerScreen } from './components/player/PlayerScreen';
 import { SplitScreen } from './components/split/SplitScreen';
 import { LandingScreen } from './components/landing/LandingScreen';
+import { GuestScreen } from './components/guest/GuestScreen';
 import { AppRole } from './types';
 
 export default function App() {
   const [role, setRole] = useState<AppRole>(() => {
     // Membaca status dari Hash URL saat aplikasi pertama kali dimuat
     const hash = window.location.hash;
-    if (hash === '#operator') return 'operator';
-    if (hash === '#player') return 'player';
-    if (hash === '#split') return 'split';
+    if (hash.startsWith('#operator')) return 'operator';
+    if (hash.startsWith('#player')) return 'player';
+    if (hash.startsWith('#split')) return 'split';
+    if (hash.startsWith('#guest')) return 'guest';
     return 'landing';
   });
 
@@ -19,9 +21,10 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      if (hash === '#operator') setRole('operator');
-      else if (hash === '#player') setRole('player');
-      else if (hash === '#split') setRole('split');
+      if (hash.startsWith('#operator')) setRole('operator');
+      else if (hash.startsWith('#player')) setRole('player');
+      else if (hash.startsWith('#split')) setRole('split');
+      else if (hash.startsWith('#guest')) setRole('guest');
       else setRole('landing');
     };
 
@@ -34,7 +37,9 @@ export default function App() {
     if (role === 'landing') {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     } else {
-      window.location.hash = role;
+      if (!window.location.hash.startsWith(`#${role}`)) {
+        window.location.hash = role;
+      }
     }
   }, [role]);
 
@@ -45,6 +50,8 @@ export default function App() {
       return <PlayerScreen setRole={setRole} />;
     case 'split':
       return <SplitScreen setRole={setRole} />;
+    case 'guest':
+      return <GuestScreen setRole={setRole} />;
     default:
       return <LandingScreen setRole={setRole} />;
   }

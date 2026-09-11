@@ -1,6 +1,14 @@
 import { useSyncState } from './useSyncState';
 import { STORAGE_KEY, DEFAULT_KARAOKE_STATE } from '../constants/karaoke';
-import { Song, KaraokeState, SoundEffectType, SongHistoryItem, SavedLibrarySong } from '../types';
+import {
+  Song,
+  KaraokeState,
+  SoundEffectType,
+  SongHistoryItem,
+  SavedLibrarySong,
+  Voucher,
+  LiveReactionEvent,
+} from '../types';
 import { fetchYouTubeInfo, getYouTubeThumbnail } from '../utils/youtube';
 import { playSoundEffect } from '../utils/soundfx';
 
@@ -14,7 +22,8 @@ export function useKaraoke() {
     videoId: string,
     rawUrl: string,
     requester?: string,
-    customTitle?: string
+    customTitle?: string,
+    options?: { tableNumber?: string; source?: 'guest' | 'operator'; voucherCode?: string }
   ) => {
     const songId = Date.now().toString();
     const finalTitle = customTitle || 'Memuat data lagu...';
@@ -22,14 +31,16 @@ export function useKaraoke() {
     const newSong: Song = {
       id: songId,
       videoId,
-      requester: requester?.trim() || 'Hamba Allah',
+      requester: requester?.trim() || options?.tableNumber || 'Hamba Allah',
+      tableNumber: options?.tableNumber,
+      source: options?.source || 'operator',
       title: finalTitle,
       url: rawUrl,
       thumbnail: getYouTubeThumbnail(videoId, 'hqdefault'),
       addedAt: Date.now(),
     };
 
-    // Tambahkan ke antrean dan simpan ke songLibrary
+    // Tambahkan ke antrean, simpan ke songLibrary, dan kurangi kuota voucher jika dari guest
     updateAppState((prev) => {
       const currentQueue = Array.isArray(prev?.queue) ? prev.queue : [];
       const currentLibrary = prev?.songLibrary && typeof prev.songLibrary === 'object' ? prev.songLibrary : {};
@@ -47,10 +58,23 @@ export function useKaraoke() {
         },
       };
 
+      // Jika ada voucherCode, kurangi kuota
+      const currentVouchers = prev?.vouchers && typeof prev.vouchers === 'object' ? { ...prev.vouchers } : {};
+      if (options?.voucherCode && currentVouchers[options.voucherCode]) {
+        const v = currentVouchers[options.voucherCode];
+        const newUsed = v.quotaUsed + 1;
+        currentVouchers[options.voucherCode] = {
+          ...v,
+          quotaUsed: newUsed,
+          status: newUsed >= v.quotaTotal ? 'exhausted' : 'active',
+        };
+      }
+
       return {
         ...prev,
         queue: [...currentQueue, newSong],
         songLibrary: updatedLibrary,
+        vouchers: currentVouchers,
       };
     });
 
@@ -170,9 +194,13 @@ export function useKaraoke() {
   };
 
   // Helper internal untuk mencatat lagu selesai ke history & update library
-  const recordFinishedSong = (song: Song | undefined, state: KaraokeState): { history: SongHistoryItem[]; songLibrary: Record<string, SavedLibrarySong> } => {
+  const recordFinishedSong = (
+    song: Song | undefined,
+    state: KaraokeState
+  ): { history: SongHistoryItem[]; songLibrary: Record<string, SavedLibrarySong> } => {
     const existingHistory = Array.isArray(state?.history) ? state.history : [];
-    const currentLibrary = state?.songLibrary && typeof state.songLibrary === 'object' ? state.songLibrary : {};
+    const currentLibrary =
+      state?.songLibrary && typeof state.songLibrary === 'object' ? state.songLibrary : {};
 
     if (!song) return { history: existingHistory, songLibrary: currentLibrary };
 
@@ -180,6 +208,7 @@ export function useKaraoke() {
       id: `${song.id}-${Date.now()}`,
       videoId: song.videoId,
       requester: song.requester,
+      tableNumber: song.tableNumber,
       title: song.title,
       url: song.url,
       playedAt: Date.now(),
@@ -285,11 +314,118 @@ export function useKaraoke() {
     }));
   };
 
+  // --- VOUCHER & SECURITY MANAGEMENT ---
+
+  const createVoucher = (tableNumber: string, quota: number = 3): Voucher => {
+    // Generate 4-digit random PIN
+    const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const newVoucher: Voucher = {
+      code: randomCode,
+      tableNumber: tableNumber.trim() || 'Meja Umum',
+      quotaTotal: quota,
+      quotaUsed: 0,
+      createdAt: Date.now(),
+      status: 'active',
+    };
+
+    updateAppState((prev) => {
+      const currentVouchers =
+        prev?.vouchers && typeof prev.vouchers === 'object' ? { ...prev.vouchers } : {};
+      return {
+        ...prev,
+        vouchers: {
+          ...currentVouchers,
+          [randomCode]: newVoucher,
+        },
+      };
+    });
+
+    return newVoucher;
+  };
+
+  const revokeVoucher = (code: string) => {
+    updateAppState((prev) => {
+      const currentVouchers =
+        prev?.vouchers && typeof prev.vouchers === 'object' ? { ...prev.vouchers } : {};
+      delete currentVouchers[code];
+      return {
+        ...prev,
+        vouchers: currentVouchers,
+      };
+    });
+  };
+
+  const setDailyPin = (enabled: boolean, code: string) => {
+    updateAppState((prev) => ({
+      ...prev,
+      dailyPin: {
+        enabled,
+        code: code.trim(),
+      },
+    }));
+  };
+
+  const validateVoucher = (
+    code: string
+  ): { valid: boolean; voucher?: Voucher; isDailyPin?: boolean; message?: string } => {
+    const trimmed = code.trim();
+
+    // 1. Cek Master Daily PIN
+    if (appState?.dailyPin?.enabled && appState.dailyPin.code === trimmed) {
+      return {
+        valid: true,
+        isDailyPin: true,
+        voucher: {
+          code: trimmed,
+          tableNumber: 'Master PIN',
+          quotaTotal: 999,
+          quotaUsed: 0,
+          createdAt: Date.now(),
+          status: 'active',
+        },
+      };
+    }
+
+    // 2. Cek Voucher Spesifik
+    const currentVouchers =
+      appState?.vouchers && typeof appState.vouchers === 'object' ? appState.vouchers : {};
+    const v = currentVouchers[trimmed];
+
+    if (!v) {
+      return { valid: false, message: 'Kode voucher tidak ditemukan atau salah.' };
+    }
+
+    if (v.status === 'exhausted' || v.quotaUsed >= v.quotaTotal) {
+      return { valid: false, message: 'Kuota lagu untuk voucher ini sudah habis.' };
+    }
+
+    return { valid: true, voucher: v };
+  };
+
+  const sendLiveReaction = (emoji: string, tableNumber: string) => {
+    const event: LiveReactionEvent = {
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      emoji,
+      tableNumber,
+      timestamp: Date.now(),
+    };
+
+    updateAppState((prev) => ({
+      ...prev,
+      liveReaction: event,
+    }));
+  };
+
   const safeQueue = Array.isArray(appState?.queue) ? appState.queue : [];
   const currentSong = safeQueue[0] || null;
   const nextSongs = safeQueue.slice(1);
-  const songLibrary = appState?.songLibrary && typeof appState.songLibrary === 'object' ? appState.songLibrary : {};
+  const songLibrary =
+    appState?.songLibrary && typeof appState.songLibrary === 'object' ? appState.songLibrary : {};
   const history = Array.isArray(appState?.history) ? appState.history : [];
+  const vouchers =
+    appState?.vouchers && typeof appState.vouchers === 'object' ? appState.vouchers : {};
+  const dailyPin = appState?.dailyPin || { enabled: false, code: '1234' };
+  const liveReaction = appState?.liveReaction || null;
 
   return {
     state: {
@@ -297,6 +433,9 @@ export function useKaraoke() {
       queue: safeQueue,
       history,
       songLibrary,
+      vouchers,
+      dailyPin,
+      liveReaction,
     },
     updateState: updateAppState,
     isCloudConnected,
@@ -304,6 +443,9 @@ export function useKaraoke() {
     nextSongs,
     songLibrary,
     history,
+    vouchers,
+    dailyPin,
+    liveReaction,
     addSong,
     removeSong,
     moveToTop,
@@ -317,5 +459,10 @@ export function useKaraoke() {
     toggleMute,
     setRunningText,
     triggerSoundEffect,
+    createVoucher,
+    revokeVoucher,
+    setDailyPin,
+    validateVoucher,
+    sendLiveReaction,
   };
 }

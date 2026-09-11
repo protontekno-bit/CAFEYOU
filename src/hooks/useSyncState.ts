@@ -23,6 +23,18 @@ function sanitizeState<T>(val: any, fallback: T): T {
         ? val.songLibrary
         : (fallback as any).songLibrary || {};
   }
+  if ('vouchers' in (fallback as any)) {
+    merged.vouchers =
+      val.vouchers && typeof val.vouchers === 'object'
+        ? val.vouchers
+        : (fallback as any).vouchers || {};
+  }
+  if ('dailyPin' in (fallback as any)) {
+    merged.dailyPin =
+      val.dailyPin && typeof val.dailyPin === 'object'
+        ? val.dailyPin
+        : (fallback as any).dailyPin || { enabled: false, code: '1234' };
+  }
   return merged as T;
 }
 

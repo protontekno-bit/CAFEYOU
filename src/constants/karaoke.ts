@@ -28,6 +28,12 @@ export const DEFAULT_KARAOKE_STATE: KaraokeState = {
   soundEffect: null,
   history: [],
   songLibrary: INITIAL_SONG_LIBRARY,
+  vouchers: {},
+  dailyPin: {
+    enabled: false,
+    code: '1234',
+  },
+  liveReaction: null,
 };
 
 export const QUICK_TABLES = [

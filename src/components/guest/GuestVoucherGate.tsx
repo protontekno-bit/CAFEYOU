@@ -87,7 +87,7 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
       )}
 
       {/* 3D Neumorphism Circle Container */}
-      <div className="relative w-[380px] h-[380px] max-w-[92vw] max-h-[92vw] rounded-full bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 border border-slate-700/60 shadow-[20px_20px_45px_rgba(0,0,0,0.85),-14px_-14px_30px_rgba(51,65,85,0.3)] flex flex-col items-center justify-center p-7 text-center transition-all z-10">
+      <div className="relative w-[440px] h-[440px] max-w-[92vw] max-h-[92vw] rounded-full bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 border border-slate-700/60 shadow-[22px_22px_50px_rgba(0,0,0,0.85),-18px_-18px_44px_rgba(51,65,85,0.3)] flex flex-col items-center justify-center p-8 text-center transition-all z-10">
         {isSuccess ? (
           /* Success Animation */
           <div className="flex flex-col items-center justify-center space-y-3 animate-fadeIn">
@@ -99,7 +99,7 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
           </div>
         ) : (
           /* Voucher Form Content */
-          <form onSubmit={handleSubmit} className="w-[82%] flex flex-col gap-2.5 z-10">
+          <form onSubmit={handleSubmit} className="w-[76%] max-w-[290px] flex flex-col gap-3 z-10 -mt-1">
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-purple-500/15 border border-purple-500/30 rounded-full text-purple-300 text-[10px] font-extrabold uppercase tracking-wider mb-1">
                 <span>📍 {tableNumber || 'Meja Kafe'}</span>
@@ -112,7 +112,7 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
               </div>
             </div>
 
-            <div className="relative w-full my-1">
+            <div className="relative w-full">
               <input
                 type="text"
                 maxLength={6}
@@ -123,7 +123,7 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
                 }}
                 placeholder="PIN Voucher (4 Digit)"
                 autoFocus
-                className="w-full bg-slate-950 border border-slate-800 rounded-full py-2.5 px-4 text-center text-xl font-mono font-extrabold tracking-widest text-white placeholder:text-slate-600 placeholder:text-xs placeholder:font-sans placeholder:tracking-normal shadow-inner outline-none focus:border-purple-500 transition-all"
+                className="w-full bg-slate-950 border border-slate-800 rounded-full py-2.5 px-4 text-center text-lg font-mono font-extrabold tracking-widest text-white placeholder:text-slate-600 placeholder:text-xs placeholder:font-sans placeholder:tracking-normal shadow-inner outline-none focus:border-purple-500 transition-all"
               />
             </div>
 
@@ -136,10 +136,10 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || !pin.trim()}
-              className="w-full py-2.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white font-extrabold text-xs rounded-full shadow-lg shadow-purple-500/25 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              className="w-full max-w-[240px] mx-auto mt-1 py-2.5 px-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white font-extrabold text-xs rounded-full shadow-lg shadow-purple-500/25 transition-all active:scale-95 flex items-center justify-center gap-1.5"
             >
               <TicketIcon className="w-4 h-4" />
-              <span>{isSubmitting ? 'Memeriksa...' : 'Buka Katalog & Pilih Lagu'}</span>
+              <span>{isSubmitting ? 'Memeriksa...' : 'Buka Katalog Lagu'}</span>
             </button>
           </form>
         )}
@@ -152,7 +152,7 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
           <span>Proteksi Anti-Sabotase Meja</span>
         </div>
         <p className="text-[11px] text-slate-500">
-          Minta 4-digit Kode Voucher / PIN pada pelayan atau kasir kafe untuk memesan lagu karaoke dari meja ini.
+          Minta 4-digit Kode Voucher / PIN pada kasir kafe untuk memesan lagu karaoke dari meja ini.
         </p>
       </div>
     </div>

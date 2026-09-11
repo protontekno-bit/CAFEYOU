@@ -368,12 +368,14 @@
                 return;
             }
 
-            // Simpan status login di sessionStorage
+            // Simpan status login di sessionStorage dan localStorage untuk sinkronisasi antar tab
             try {
-                sessionStorage.setItem('cafeyou_operator_auth', JSON.stringify({
+                const authPayload = JSON.stringify({
                     username: usernameInput,
                     loggedAt: Date.now()
-                }));
+                });
+                sessionStorage.setItem('cafeyou_operator_auth', authPayload);
+                localStorage.setItem('cafeyou_operator_auth', authPayload);
             } catch (e) {
                 console.warn(e);
             }
@@ -383,8 +385,9 @@
             
             // Redirect otomatis ke Dasbor Operator CAFEYOU
             setTimeout(() => {
-                window.location.href = 'index.html#operator';
-            }, 1200);
+                const url = window.location.href.split('login_karaoke_cafeyou.html')[0];
+                window.location.href = url + 'index.html#operator';
+            }, 1000);
         }
 
         function showError(msg) {

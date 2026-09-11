@@ -8,6 +8,7 @@ import {
   SettingsIcon,
   HistoryIcon,
   TicketIcon,
+  LockIcon,
 } from '../icons/Icons';
 
 interface HeaderProps {
@@ -25,6 +26,7 @@ interface HeaderProps {
   onOpenHistory?: () => void;
   onOpenVouchers?: () => void;
   onOpenTableQr?: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -41,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenHistory,
   onOpenVouchers,
   onOpenTableQr,
+  onLogout,
 }) => {
   return (
     <header className="bg-slate-800/90 backdrop-blur-md p-3 sm:p-4 shadow-lg flex flex-wrap justify-between items-center sticky top-0 z-20 border-b border-slate-700/60 gap-3">
@@ -178,6 +181,18 @@ export const Header: React.FC<HeaderProps> = ({
             />
             <span>{isCloudConnected ? '🔥 Firebase Cloud' : '💻 Sinkron Lokal'}</span>
             <SettingsIcon className="w-3.5 h-3.5 opacity-70" />
+          </button>
+        )}
+
+        {/* Tombol Kunci / Keluar Operator */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="p-2 bg-red-500/15 hover:bg-red-500/30 text-red-400 hover:text-red-200 border border-red-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+            title="Kunci Dasbor / Logout Operator"
+          >
+            <LockIcon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Kunci</span>
           </button>
         )}
       </div>

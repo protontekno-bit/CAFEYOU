@@ -12,6 +12,7 @@ import { QrShareModal } from './QrShareModal';
 import { HistoryModal } from './HistoryModal';
 import { VoucherManagerModal } from './VoucherManagerModal';
 import { TableQrGeneratorModal } from './TableQrGeneratorModal';
+import { OperatorLoginView } from './OperatorLoginView';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { AppRole, PopularPresetSong } from '../../types';
 
@@ -20,6 +21,18 @@ interface OperatorScreenProps {
 }
 
 export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
+  // Cek autentikasi sesi operator
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    try {
+      return !!(
+        sessionStorage.getItem('cafeyou_operator_auth') ||
+        localStorage.getItem('cafeyou_operator_auth')
+      );
+    } catch {
+      return false;
+    }
+  });
+
   const {
     state,
     isCloudConnected,
@@ -55,6 +68,16 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isVoucherOpen, setIsVoucherOpen] = useState(false);
   const [isTableQrOpen, setIsTableQrOpen] = useState(false);
 
+  // Jika belum login, tampilkan OperatorLoginView Neumorphism
+  if (!isLoggedIn) {
+    return (
+      <OperatorLoginView
+        onLoginSuccess={() => setIsLoggedIn(true)}
+        onBack={setRole ? () => setRole('landing') : undefined}
+      />
+    );
+  }
+
   const handleOpenProjector = () => {
     const currentUrl = window.location.href.split('#')[0];
     window.open(currentUrl + '#player', '_blank');
@@ -67,6 +90,16 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
       'Pilihan Kafe',
       `${song.title} - ${song.artist}`
     );
+  };
+
+  const handleLogout = () => {
+    try {
+      sessionStorage.removeItem('cafeyou_operator_auth');
+      localStorage.removeItem('cafeyou_operator_auth');
+    } catch {
+      // ignore
+    }
+    setIsLoggedIn(false);
   };
 
   return (
@@ -85,6 +118,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         onOpenHistory={() => setIsHistoryOpen(true)}
         onOpenVouchers={() => setIsVoucherOpen(true)}
         onOpenTableQr={() => setIsTableQrOpen(true)}
+        onLogout={handleLogout}
       />
 
       <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">

@@ -28,6 +28,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     addSong,
     validateVoucher,
     sendLiveReaction,
+    fairRotationEnabled,
   } = useKaraoke();
 
   // Ambil nomor meja dari props atau URL hash/search query
@@ -285,6 +286,16 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-lg mx-auto w-full p-4 space-y-4">
+        {/* Banner Smart Fair Rotation */}
+        {fairRotationEnabled && (
+          <div className="p-2.5 bg-purple-500/15 border border-purple-500/30 rounded-2xl flex items-center gap-2.5 text-xs text-purple-300 animate-fadeIn">
+            <span className="text-base shrink-0">⚖️</span>
+            <span className="text-[11px] leading-relaxed">
+              <strong>Sistem Antrean Adil Aktif:</strong> Lagu setiap meja akan diputar bergantian secara merata.
+            </span>
+          </div>
+        )}
+
         {/* Banner Notifikasi Berhasil */}
         {successAddMsg && (
           <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-2xl flex items-center gap-2 text-xs font-semibold text-emerald-300 animate-fadeIn">

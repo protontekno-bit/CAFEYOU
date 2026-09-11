@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { fetchYouTubeInfo, getYouTubeThumbnail } from '../utils/youtube';
 import { playSoundEffect } from '../utils/soundfx';
+import { rebalanceFairQueue } from '../utils/queue';
 
 export function useKaraoke() {
   const [appState, updateAppState, isCloudConnected] = useSyncState<KaraokeState>(
@@ -70,9 +71,15 @@ export function useKaraoke() {
         };
       }
 
+      // Susun antrean dengan aturan Fair Rotation jika aktif
+      const rawNewQueue = [...currentQueue, newSong];
+      const updatedQueue = prev?.fairRotationEnabled
+        ? rebalanceFairQueue(rawNewQueue)
+        : rawNewQueue;
+
       return {
         ...prev,
-        queue: [...currentQueue, newSong],
+        queue: updatedQueue,
         songLibrary: updatedLibrary,
         vouchers: currentVouchers,
       };
@@ -416,6 +423,31 @@ export function useKaraoke() {
     }));
   };
 
+  // --- SMART FAIR ROTATION (ANTI-MONOPOLI ANTREAN) ---
+
+  const toggleFairRotation = (enabled?: boolean) => {
+    updateAppState((prev) => {
+      const newEnabled =
+        enabled !== undefined ? enabled : !prev?.fairRotationEnabled;
+      const currentQueue = Array.isArray(prev?.queue) ? prev.queue : [];
+      return {
+        ...prev,
+        fairRotationEnabled: newEnabled,
+        queue: newEnabled ? rebalanceFairQueue(currentQueue) : currentQueue,
+      };
+    });
+  };
+
+  const rebalanceQueueFairly = () => {
+    updateAppState((prev) => {
+      const currentQueue = Array.isArray(prev?.queue) ? prev.queue : [];
+      return {
+        ...prev,
+        queue: rebalanceFairQueue(currentQueue),
+      };
+    });
+  };
+
   const safeQueue = Array.isArray(appState?.queue) ? appState.queue : [];
   const currentSong = safeQueue[0] || null;
   const nextSongs = safeQueue.slice(1);
@@ -426,6 +458,7 @@ export function useKaraoke() {
     appState?.vouchers && typeof appState.vouchers === 'object' ? appState.vouchers : {};
   const dailyPin = appState?.dailyPin || { enabled: false, code: '1234' };
   const liveReaction = appState?.liveReaction || null;
+  const fairRotationEnabled = !!appState?.fairRotationEnabled;
 
   return {
     state: {
@@ -436,6 +469,7 @@ export function useKaraoke() {
       vouchers,
       dailyPin,
       liveReaction,
+      fairRotationEnabled,
     },
     updateState: updateAppState,
     isCloudConnected,
@@ -446,6 +480,7 @@ export function useKaraoke() {
     vouchers,
     dailyPin,
     liveReaction,
+    fairRotationEnabled,
     addSong,
     removeSong,
     moveToTop,
@@ -464,5 +499,7 @@ export function useKaraoke() {
     setDailyPin,
     validateVoucher,
     sendLiveReaction,
+    toggleFairRotation,
+    rebalanceQueueFairly,
   };
 }

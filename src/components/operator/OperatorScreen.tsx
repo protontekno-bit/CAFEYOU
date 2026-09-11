@@ -57,6 +57,9 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     createVoucher,
     revokeVoucher,
     setDailyPin,
+    fairRotationEnabled,
+    toggleFairRotation,
+    rebalanceQueueFairly,
   } = useKaraoke();
 
   const [isSoundBoardOpen, setIsSoundBoardOpen] = useState(false);
@@ -152,11 +155,14 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
 
           <QueueList
             queue={nextSongs}
+            fairRotationEnabled={fairRotationEnabled}
             onRemoveSong={removeSong}
             onMoveToTop={moveToTop}
             onMoveUp={moveSongUp}
             onMoveDown={moveSongDown}
             onOpenPopularModal={() => setIsPopularOpen(true)}
+            onToggleFairRotation={toggleFairRotation}
+            onRebalanceFairly={rebalanceQueueFairly}
           />
         </div>
       </main>

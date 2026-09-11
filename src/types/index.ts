@@ -77,6 +77,7 @@ export interface KaraokeState {
   vouchers?: Record<string, Voucher>;
   dailyPin?: DailyPinConfig;
   liveReaction?: LiveReactionEvent | null;
+  fairRotationEnabled?: boolean;
 }
 
 export interface SyncMessage<T> {

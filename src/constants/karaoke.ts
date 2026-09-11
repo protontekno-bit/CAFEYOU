@@ -34,6 +34,7 @@ export const DEFAULT_KARAOKE_STATE: KaraokeState = {
     code: '1234',
   },
   liveReaction: null,
+  fairRotationEnabled: false,
 };
 
 export const QUICK_TABLES = [

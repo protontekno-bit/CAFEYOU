@@ -35,6 +35,12 @@ function sanitizeState<T>(val: any, fallback: T): T {
         ? val.dailyPin
         : (fallback as any).dailyPin || { enabled: false, code: '1234' };
   }
+  if ('fairRotationEnabled' in (fallback as any)) {
+    merged.fairRotationEnabled =
+      typeof val.fairRotationEnabled === 'boolean'
+        ? val.fairRotationEnabled
+        : (fallback as any).fairRotationEnabled || false;
+  }
   return merged as T;
 }
 

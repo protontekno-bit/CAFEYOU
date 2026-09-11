@@ -13,6 +13,7 @@ export * from './src/config/firebase';
 export * from './src/constants/karaoke';
 export * from './src/utils/youtube';
 export * from './src/utils/soundfx';
+export * from './src/utils/queue';
 export * from './src/hooks/useSyncState';
 export * from './src/hooks/useKaraoke';
 export * from './src/hooks/useYouTubePlayer';

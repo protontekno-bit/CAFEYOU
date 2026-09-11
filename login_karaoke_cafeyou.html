@@ -16,13 +16,13 @@
     <style>
         :root {
             /* Neumorphism Dark Theme Palette for CAFEYOU */
-            --bg-color: #0f172a;
-            --circle-bg: #1e293b;
+            --bg-color: #0b0f19;
+            --circle-bg: #151d30;
             --text-color: #e2e8f0;
             --accent-color: #3b82f6; 
             --accent-pink: #ec4899;
-            --shadow-light: #334155;
-            --shadow-dark: #020617;
+            --shadow-light: #24324f;
+            --shadow-dark: #04060b;
         }
 
         body {
@@ -41,16 +41,16 @@
 
         /* 3D Neumorphism Circle Container */
         .login-circle {
-            width: 380px;
-            height: 380px;
-            max-width: 90vw;
-            max-height: 90vw;
+            width: 420px;
+            height: 420px;
+            max-width: 94vw;
+            max-height: 94vw;
             border-radius: 50%;
-            background: linear-gradient(145deg, #1e293b, #0f172a);
+            background: linear-gradient(145deg, #182238, #0d1424);
             box-shadow: 
-                16px 16px 32px var(--shadow-dark),
-                -12px -12px 28px rgba(51, 65, 85, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+                20px 20px 48px var(--shadow-dark),
+                -16px -16px 40px rgba(45, 62, 95, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.07);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -61,17 +61,17 @@
         }
 
         .form-content {
-            width: 80%;
+            width: 82%;
             text-align: center;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.15rem;
             z-index: 10;
             transition: all 0.3s ease;
         }
 
         h2 {
-            font-size: 1.35rem;
+            font-size: 1.4rem;
             font-weight: 800;
             color: #ffffff;
             margin: 0;
@@ -83,74 +83,82 @@
             background: linear-gradient(to right, #60a5fa, #a78bfa, #34d399);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            font-size: 1.05rem;
+            font-size: 1.1rem;
             font-weight: 800;
             margin-top: -2px;
             letter-spacing: 0.5px;
         }
 
-        .input-group {
-            position: relative;
+        /* Input Container dengan Flexbox Rapi (Mencegah Ikon Menimpa Teks) */
+        .input-box {
+            display: flex;
+            align-items: center;
             width: 100%;
+            background-color: #080d1a;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 9999px;
+            padding: 3px 18px;
+            box-shadow: 
+                inset 5px 5px 12px #02050d,
+                inset -3px -3px 8px rgba(45, 62, 95, 0.3);
+            transition: all 0.25s ease;
         }
 
-        .input-group i {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
+        .input-box:focus-within {
+            border-color: #3b82f6;
+            box-shadow: 
+                inset 5px 5px 12px #02050d,
+                inset -3px -3px 8px rgba(59, 130, 246, 0.3),
+                0 0 16px rgba(59, 130, 246, 0.35);
+        }
+
+        .input-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 0.95rem;
+            padding-right: 12px;
+            transition: color 0.25s ease;
+            flex-shrink: 0;
+        }
+
+        .input-box:focus-within .input-icon {
+            color: #60a5fa;
+        }
+
+        .input-box input {
+            flex: 1;
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            padding: 11px 0;
+            font-size: 0.9rem;
+            color: #f8fafc;
+            box-shadow: none !important;
+        }
+
+        .input-box input::placeholder {
             color: #64748b;
             font-size: 0.85rem;
-            transition: color 0.3s ease;
-        }
-
-        input {
-            width: 100%;
-            padding: 10px 16px 10px 40px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            outline: none;
-            background-color: #0b1120;
-            border-radius: 25px;
-            font-size: 0.875rem;
-            color: #f8fafc;
-            box-shadow: 
-                inset 4px 4px 8px #050811,
-                inset -3px -3px 6px rgba(51, 65, 85, 0.25);
-            transition: all 0.3s ease;
-        }
-
-        input::placeholder {
-            color: #64748b;
-            font-size: 0.8rem;
-        }
-
-        input:focus {
-            box-shadow: 
-                inset 5px 5px 10px #020617,
-                inset -3px -3px 6px rgba(59, 130, 246, 0.3),
-                0 0 12px rgba(59, 130, 246, 0.3);
-            border-color: rgba(59, 130, 246, 0.5);
-        }
-
-        input:focus + i {
-            color: #60a5fa;
         }
 
         .btn-submit {
             width: 100%;
-            padding: 11px 20px;
+            padding: 12px 20px;
             border: none;
             outline: none;
-            border-radius: 25px;
+            border-radius: 9999px;
             background: linear-gradient(135deg, #2563eb, #4f46e5);
             color: #ffffff;
             font-size: 0.95rem;
             font-weight: 700;
             cursor: pointer;
             box-shadow: 
-                0 4px 14px rgba(37, 99, 235, 0.4),
+                0 6px 18px rgba(37, 99, 235, 0.4),
                 4px 4px 10px var(--shadow-dark),
-                -3px -3px 8px rgba(51, 65, 85, 0.2);
+                -3px -3px 8px rgba(45, 62, 95, 0.2);
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
@@ -161,7 +169,7 @@
         .btn-submit:hover {
             background: linear-gradient(135deg, #3b82f6, #6366f1);
             transform: translateY(-1px);
-            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5);
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.55);
         }
 
         .btn-submit:active {
@@ -185,30 +193,30 @@
             pointer-events: none;
             transition: all 0.4s ease;
             transform: scale(0.85);
-            padding: 20px;
+            padding: 24px;
             text-align: center;
         }
 
         .success-msg h2 {
-            margin-top: 14px;
+            margin-top: 16px;
             color: #34d399;
-            font-size: 1.25rem;
+            font-size: 1.35rem;
         }
 
         .check-circle {
-            width: 58px;
-            height: 58px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
             background: linear-gradient(145deg, #064e3b, #022c22);
             box-shadow: 
-                4px 4px 12px var(--shadow-dark),
-                -3px -3px 8px rgba(16, 185, 129, 0.3);
-            border: 1px solid rgba(52, 211, 153, 0.3);
+                6px 6px 16px var(--shadow-dark),
+                -4px -4px 10px rgba(16, 185, 129, 0.35);
+            border: 1px solid rgba(52, 211, 153, 0.4);
             display: flex;
             justify-content: center;
             align-items: center;
             color: #34d399;
-            font-size: 26px;
+            font-size: 28px;
         }
 
         /* Class untuk animasi sukses */
@@ -245,7 +253,7 @@
 
         /* Navigasi Cepat di Bawah */
         .quick-nav {
-            margin-top: 2rem;
+            margin-top: 2.25rem;
             display: flex;
             gap: 0.75rem;
             z-index: 20;
@@ -254,23 +262,23 @@
         }
 
         .quick-btn {
-            padding: 8px 16px;
-            background: rgba(30, 41, 59, 0.8);
+            padding: 8px 18px;
+            background: rgba(24, 34, 56, 0.85);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            font-size: 0.75rem;
+            border-radius: 14px;
+            font-size: 0.78rem;
             font-weight: 600;
             color: #cbd5e1;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
             transition: all 0.2s ease;
             backdrop-filter: blur(8px);
             text-decoration: none;
         }
 
         .quick-btn:hover {
-            background: rgba(51, 65, 85, 0.9);
+            background: rgba(36, 50, 79, 0.95);
             color: #ffffff;
             border-color: rgba(59, 130, 246, 0.4);
             transform: translateY(-2px);
@@ -294,28 +302,48 @@
                 <i class="fas fa-check"></i>
             </div>
             <h2>Akses Diberikan!</h2>
-            <p class="text-xs text-slate-400 mt-1 font-medium">Membuka Dasbor Operator...</p>
+            <p class="text-xs text-slate-400 mt-1.5 font-medium">Membuka Dasbor Operator...</p>
         </div>
 
         <!-- Form Login -->
         <div class="form-content" id="formContent">
             <div>
-                <div class="text-[11px] font-extrabold text-blue-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1.5">
-                    <i class="fas fa-shield-alt"></i>
+                <div class="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1.5">
+                    <i class="fas fa-shield-alt text-xs"></i>
                     <span>OPERATOR SYSTEM</span>
                 </div>
                 <h2>SIGN IN</h2>
                 <div class="brand-name">Karaoke CAFEYOU</div>
             </div>
             
-            <div class="input-group">
-                <input type="text" id="username" placeholder="Username (misal: admin / kasir)" value="admin" required autocomplete="username">
-                <i class="fas fa-user"></i>
+            <!-- Kolom Username Rapi dengan Ikon Terpisah -->
+            <div class="input-box">
+                <span class="input-icon">
+                    <i class="fas fa-user"></i>
+                </span>
+                <input 
+                    type="text" 
+                    id="username" 
+                    placeholder="Username" 
+                    value="admin" 
+                    required 
+                    autocomplete="username"
+                >
             </div>
             
-            <div class="input-group">
-                <input type="password" id="password" placeholder="Password / PIN (misal: 1234)" value="1234" required autocomplete="current-password">
-                <i class="fas fa-lock"></i>
+            <!-- Kolom Password / PIN Rapi dengan Ikon Terpisah -->
+            <div class="input-box">
+                <span class="input-icon">
+                    <i class="fas fa-lock"></i>
+                </span>
+                <input 
+                    type="password" 
+                    id="password" 
+                    placeholder="Password / PIN" 
+                    value="1234" 
+                    required 
+                    autocomplete="current-password"
+                >
             </div>
             
             <button class="btn-submit" onclick="handleLogin()">

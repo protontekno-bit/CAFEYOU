@@ -41,8 +41,9 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
     const authData = { username: u, loggedAt: Date.now() };
     try {
       sessionStorage.setItem('cafeyou_operator_auth', JSON.stringify(authData));
+      localStorage.setItem('cafeyou_operator_auth', JSON.stringify(authData));
     } catch (err) {
-      console.warn('SessionStorage error:', err);
+      console.warn('Storage error:', err);
     }
 
     setTimeout(() => {
@@ -80,7 +81,7 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
       )}
 
       {/* 3D Neumorphism Circle Login Card */}
-      <div className="relative w-[380px] h-[380px] max-w-[90vw] max-h-[90vw] rounded-full bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 border border-slate-700/60 shadow-[20px_20px_45px_rgba(0,0,0,0.85),-14px_-14px_30px_rgba(51,65,85,0.3)] flex flex-col items-center justify-center p-8 text-center transition-all z-10">
+      <div className="relative w-[420px] h-[420px] max-w-[94vw] max-h-[94vw] rounded-full bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 border border-slate-700/60 shadow-[20px_20px_48px_rgba(0,0,0,0.85),-16px_-16px_40px_rgba(51,65,85,0.3)] flex flex-col items-center justify-center p-8 text-center transition-all z-10">
         {isSuccess ? (
           /* Success Screen */
           <div className="flex flex-col items-center justify-center space-y-3 animate-fadeIn">
@@ -92,9 +93,9 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
           </div>
         ) : (
           /* Form Content */
-          <form onSubmit={handleLogin} className="w-[82%] flex flex-col gap-3 z-10">
+          <form onSubmit={handleLogin} className="w-[84%] flex flex-col gap-3.5 z-10">
             <div>
-              <div className="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider flex items-center justify-center gap-1 mb-0.5">
+              <div className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest flex items-center justify-center gap-1.5 mb-0.5">
                 <LockIcon className="w-3.5 h-3.5 text-blue-400" />
                 <span>OPERATOR SYSTEM</span>
               </div>
@@ -104,7 +105,9 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
               </div>
             </div>
 
-            <div className="relative w-full">
+            {/* Clean Input Username Box */}
+            <div className="flex items-center w-full bg-slate-950/90 border border-slate-800 rounded-full px-4 py-2.5 shadow-inner focus-within:border-blue-500 transition-all">
+              <span className="text-slate-500 text-xs mr-2.5">👤</span>
               <input
                 type="text"
                 value={username}
@@ -112,12 +115,14 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
                   setUsername(e.target.value);
                   if (errorMsg) setErrorMsg(null);
                 }}
-                placeholder="Username (admin / kasir)"
-                className="w-full bg-slate-950 border border-slate-800 rounded-full px-4 py-2 text-xs text-white placeholder:text-slate-500 shadow-inner outline-none focus:border-blue-500 transition-all font-medium text-center"
+                placeholder="Username"
+                className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder:text-slate-600 font-medium"
               />
             </div>
 
-            <div className="relative w-full">
+            {/* Clean Input Password Box */}
+            <div className="flex items-center w-full bg-slate-950/90 border border-slate-800 rounded-full px-4 py-2.5 shadow-inner focus-within:border-blue-500 transition-all">
+              <span className="text-slate-500 text-xs mr-2.5">🔒</span>
               <input
                 type="password"
                 value={password}
@@ -125,8 +130,8 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
                   setPassword(e.target.value);
                   if (errorMsg) setErrorMsg(null);
                 }}
-                placeholder="Password / PIN (1234)"
-                className="w-full bg-slate-950 border border-slate-800 rounded-full px-4 py-2 text-xs text-white placeholder:text-slate-500 shadow-inner outline-none focus:border-blue-500 transition-all font-medium text-center"
+                placeholder="Password / PIN"
+                className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder:text-slate-600 font-medium"
               />
             </div>
 
@@ -138,7 +143,7 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-full shadow-lg shadow-blue-500/25 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-full shadow-lg shadow-blue-500/25 transition-all active:scale-95 flex items-center justify-center gap-1.5"
             >
               <span>Masuk ke Dasbor</span>
               <span>→</span>
@@ -149,7 +154,7 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
 
       {/* Info helper */}
       <div className="mt-6 text-center text-xs text-slate-500 space-y-1">
-        <div>Default Login: Username <strong>admin</strong> | Password <strong>1234</strong></div>
+        <div>Default: Username <strong>admin</strong> | Password <strong>1234</strong></div>
       </div>
     </div>
   );

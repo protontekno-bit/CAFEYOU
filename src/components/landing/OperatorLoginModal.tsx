@@ -91,7 +91,9 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
               </div>
             </div>
 
-            <div className="relative w-full">
+            {/* Clean Input Username Box */}
+            <div className="flex items-center w-full bg-slate-950/90 border border-slate-800 rounded-full px-4 py-2.5 shadow-inner focus-within:border-blue-500 transition-all">
+              <span className="text-slate-500 text-xs mr-2.5">👤</span>
               <input
                 type="text"
                 value={username}
@@ -100,11 +102,13 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
                   if (errorMsg) setErrorMsg(null);
                 }}
                 placeholder="Username"
-                className="w-full bg-slate-950/90 border border-slate-800 rounded-full px-4 py-2 text-xs text-white placeholder:text-slate-500 shadow-inner outline-none focus:border-blue-500 transition-all font-medium"
+                className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder:text-slate-600 font-medium"
               />
             </div>
 
-            <div className="relative w-full">
+            {/* Clean Input Password Box */}
+            <div className="flex items-center w-full bg-slate-950/90 border border-slate-800 rounded-full px-4 py-2.5 shadow-inner focus-within:border-blue-500 transition-all">
+              <span className="text-slate-500 text-xs mr-2.5">🔒</span>
               <input
                 type="password"
                 value={password}
@@ -113,7 +117,7 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
                   if (errorMsg) setErrorMsg(null);
                 }}
                 placeholder="Password / PIN"
-                className="w-full bg-slate-950/90 border border-slate-800 rounded-full px-4 py-2 text-xs text-white placeholder:text-slate-500 shadow-inner outline-none focus:border-blue-500 transition-all font-medium"
+                className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder:text-slate-600 font-medium"
               />
             </div>
 

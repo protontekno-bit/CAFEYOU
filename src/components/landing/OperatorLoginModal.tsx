@@ -133,6 +133,15 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
             >
               Masuk ke Dasbor
             </button>
+
+            <a
+              href="https://wa.me/6282256657700?text=Halo%20AuraCore%20Support,%20saya%20membutuhkan%20bantuan%20mengenai%20Login%20Operator%20CAFEYOU%20Karaoke"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold inline-flex items-center justify-center gap-1 -mt-0.5 hover:underline"
+            >
+              <span>💬 Butuh Bantuan? WA: 082256657700</span>
+            </a>
           </form>
         )}
       </div>

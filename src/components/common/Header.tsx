@@ -26,6 +26,7 @@ interface HeaderProps {
   onOpenHistory?: () => void;
   onOpenVouchers?: () => void;
   onOpenTableQr?: () => void;
+  onOpenDeveloperHelp?: () => void;
   onLogout?: () => void;
 }
 
@@ -43,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenHistory,
   onOpenVouchers,
   onOpenTableQr,
+  onOpenDeveloperHelp,
   onLogout,
 }) => {
   return (
@@ -181,6 +183,18 @@ export const Header: React.FC<HeaderProps> = ({
             />
             <span>{isCloudConnected ? '🔥 Firebase Cloud' : '💻 Sinkron Lokal'}</span>
             <SettingsIcon className="w-3.5 h-3.5 opacity-70" />
+          </button>
+        )}
+
+        {/* Tombol Bantuan Developer Support AuraCore */}
+        {onOpenDeveloperHelp && (
+          <button
+            onClick={onOpenDeveloperHelp}
+            className="px-3 py-1.5 bg-gradient-to-r from-emerald-500/15 to-cyan-500/15 hover:from-emerald-500/25 hover:to-cyan-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+            title="Bantuan Teknis & WhatsApp Support AuraCore Labs"
+          >
+            <span>💬</span>
+            <span className="hidden xl:inline">WA Support</span>
           </button>
         )}
 

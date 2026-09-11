@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LockIcon, CheckIcon, BackIcon } from '../icons/Icons';
+import { DeveloperFooter } from '../common/DeveloperFooter';
 
 interface OperatorLoginViewProps {
   onLoginSuccess: (user: { username: string }) => void;
@@ -153,8 +154,9 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
       </div>
 
       {/* Info helper */}
-      <div className="mt-6 text-center text-xs text-slate-500 space-y-1">
+      <div className="mt-6 text-center text-xs text-slate-500 space-y-2 z-10">
         <div>Default: Username <strong>admin</strong> | Password <strong>1234</strong></div>
+        <DeveloperFooter compact className="pt-2" />
       </div>
     </div>
   );

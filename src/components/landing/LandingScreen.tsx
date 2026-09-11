@@ -4,6 +4,8 @@ import { OperatorLoginModal } from './OperatorLoginModal';
 import { SplitIcon, TicketIcon, LockIcon } from '../icons/Icons';
 import { AppRole } from '../../types';
 
+import { DeveloperFooter } from '../common/DeveloperFooter';
+
 interface LandingScreenProps {
   setRole: (role: AppRole) => void;
 }
@@ -32,8 +34,8 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-slate-200 selection:bg-blue-500 selection:text-white">
-      <div className="max-w-4xl w-full py-8">
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-between items-center p-4 font-sans text-slate-200 selection:bg-blue-500 selection:text-white">
+      <div className="max-w-4xl w-full py-6 my-auto">
         {/* Header Hero */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-xs font-bold uppercase tracking-wider mb-3">
@@ -113,6 +115,9 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
           </div>
         </div>
       </div>
+
+      {/* Developer Footer Brand & WA Support */}
+      <DeveloperFooter className="w-full" />
 
       {/* Operator Login Modal */}
       <OperatorLoginModal

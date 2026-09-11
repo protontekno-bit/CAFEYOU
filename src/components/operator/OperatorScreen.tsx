@@ -13,6 +13,8 @@ import { HistoryModal } from './HistoryModal';
 import { VoucherManagerModal } from './VoucherManagerModal';
 import { TableQrGeneratorModal } from './TableQrGeneratorModal';
 import { OperatorLoginView } from './OperatorLoginView';
+import { DeveloperHelpModal } from '../common/DeveloperHelpModal';
+import { DeveloperFooter } from '../common/DeveloperFooter';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { AppRole, PopularPresetSong } from '../../types';
 
@@ -70,6 +72,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isVoucherOpen, setIsVoucherOpen] = useState(false);
   const [isTableQrOpen, setIsTableQrOpen] = useState(false);
+  const [isDeveloperHelpOpen, setIsDeveloperHelpOpen] = useState(false);
 
   // Jika belum login, tampilkan OperatorLoginView Neumorphism
   if (!isLoggedIn) {
@@ -106,25 +109,27 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
-      <Header
-        title="Dasbor Operator Kafe"
-        onBack={setRole ? () => setRole('landing') : undefined}
-        isCloudConnected={isCloudConnected}
-        historyCount={history.length}
-        onOpenSoundBoard={() => setIsSoundBoardOpen(true)}
-        onOpenPopularSongs={() => setIsPopularOpen(true)}
-        onOpenRunningText={() => setIsRunningTextOpen(true)}
-        onOpenProjectorTab={handleOpenProjector}
-        onOpenFirebaseConfig={() => setIsFirebaseOpen(true)}
-        onOpenQrShare={() => setIsQrShareOpen(true)}
-        onOpenHistory={() => setIsHistoryOpen(true)}
-        onOpenVouchers={() => setIsVoucherOpen(true)}
-        onOpenTableQr={() => setIsTableQrOpen(true)}
-        onLogout={handleLogout}
-      />
+    <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between font-sans selection:bg-blue-500 selection:text-white">
+      <div>
+        <Header
+          title="Dasbor Operator Kafe"
+          onBack={setRole ? () => setRole('landing') : undefined}
+          isCloudConnected={isCloudConnected}
+          historyCount={history.length}
+          onOpenSoundBoard={() => setIsSoundBoardOpen(true)}
+          onOpenPopularSongs={() => setIsPopularOpen(true)}
+          onOpenRunningText={() => setIsRunningTextOpen(true)}
+          onOpenProjectorTab={handleOpenProjector}
+          onOpenFirebaseConfig={() => setIsFirebaseOpen(true)}
+          onOpenQrShare={() => setIsQrShareOpen(true)}
+          onOpenHistory={() => setIsHistoryOpen(true)}
+          onOpenVouchers={() => setIsVoucherOpen(true)}
+          onOpenTableQr={() => setIsTableQrOpen(true)}
+          onOpenDeveloperHelp={() => setIsDeveloperHelpOpen(true)}
+          onLogout={handleLogout}
+        />
 
-      <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <main className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Kolom Kiri: Dek Kendali & Tambah Lagu */}
         <div className="lg:col-span-5 space-y-6">
           <PlaybackControls
@@ -225,6 +230,16 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         onClose={() => setIsTableQrOpen(false)}
         onOpenVoucherManager={() => setIsVoucherOpen(true)}
       />
+
+      {/* Developer Help Modal & Footer */}
+      <DeveloperHelpModal
+        isOpen={isDeveloperHelpOpen}
+        onClose={() => setIsDeveloperHelpOpen(false)}
+      />
+
+      </div>
+
+      <DeveloperFooter className="px-4" />
     </div>
   );
 };

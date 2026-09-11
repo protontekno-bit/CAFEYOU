@@ -12,6 +12,7 @@ import {
   LockIcon,
   TicketIcon,
 } from '../icons/Icons';
+import { DeveloperFooter } from '../common/DeveloperFooter';
 
 interface GuestScreenProps {
   setRole?: (role: AppRole) => void;
@@ -558,6 +559,11 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
             </div>
           </div>
         )}
+
+        {/* Developer Footer Brand & WA Support */}
+        <div className="pt-6 pb-2">
+          <DeveloperFooter compact />
+        </div>
       </main>
 
       {/* Floating Bottom Bar: Live Crowd Reactions */}

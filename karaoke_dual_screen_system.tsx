@@ -35,9 +35,11 @@ export * from './src/components/operator/TableQrGeneratorModal';
 export * from './src/components/guest/GuestVoucherGate';
 export * from './src/components/guest/GuestScreen';
 export * from './src/components/player/PlayerScreen';
-export * from './src/components/player/PlayerPlaceholder';
 export * from './src/components/landing/LandingScreen';
 export * from './src/components/landing/RoleCard';
 export * from './src/components/split/SplitScreen';
+export * from './src/constants/developer';
+export * from './src/components/common/DeveloperFooter';
+export * from './src/components/common/DeveloperHelpModal';
 
 export default App;

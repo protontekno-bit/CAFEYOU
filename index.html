@@ -32,11 +32,28 @@
                 '75%': { opacity: '0.9', transform: 'translateY(-160px) scale(1)' },
                 '100%': { opacity: '0', transform: 'translateY(-260px) scale(0.8)' },
               },
+              glowPulse: {
+                '0%, 100%': { opacity: '0.6', transform: 'scale(1)' },
+                '50%': { opacity: '0.9', transform: 'scale(1.03)' },
+              },
+              waveBar: {
+                '0%, 100%': { height: '12%' },
+                '50%': { height: '88%' },
+              },
+              floatOrb: {
+                '0%, 100%': { transform: 'translate(0px, 0px) scale(1)' },
+                '33%': { transform: 'translate(30px, -40px) scale(1.1)' },
+                '66%': { transform: 'translate(-25px, 20px) scale(0.95)' },
+              },
             },
             animation: {
               marquee: 'marquee 25s linear infinite',
               fadeIn: 'fadeIn 0.2s ease-out forwards',
               floatUp: 'floatUp 3.2s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+              glowPulse: 'glowPulse 4s ease-in-out infinite',
+              floatOrb1: 'floatOrb 12s ease-in-out infinite',
+              floatOrb2: 'floatOrb 16s ease-in-out infinite reverse',
+              floatOrb3: 'floatOrb 14s ease-in-out infinite 2s',
             },
           },
         },

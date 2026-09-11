@@ -1,61 +1,43 @@
-# Walkthrough: Pengaturan Identitas Kafe (Cafe Settings) & Restrukturisasi Menu Operator Profesional
+# Walkthrough: Stage Screensaver Animation, Cafe Settings & Professional Operator Header
 
-Fitur **Pengaturan Identitas Kafe Dinamis (*Cafe & Venue Branding Settings*)** dan **Restrukturisasi Menu Operator Terpadu** telah berhasil diimplementasikan, divalidasi dengan build Vite/TypeScript yang bersih, serta di-push ke branch `main`.
-
----
-
-## 🚀 Fitur Baru yang Telah Dibangun
-
-### 1. 🏪 Pengaturan Identitas Kafe Dinamis (`CafeSettingsModal`)
-- **Kustomisasi Venue Bebas**: Kasir/operator atau owner kafe dapat mengganti nama kafe (default: `CAFEYOU`), tagline kafe (misal: `Coffee & Eatery`), pesan sambutan running text default, serta SSID & password Wi-Fi kafe.
-- **Live Branding Preview**: Dilengkapi kartu pratinjau langsung di dalam modal pengaturan untuk melihat bagaimana nama kafe akan tampil di hadapan pelanggan.
-- **Multi-Screen Sync**: Perubahan nama kafe langsung tersinkronisasi seketika ke:
-  - Header Dasbor Operator (Badge `📍 [Nama Kafe] ✎`)
-  - Layar HP Tamu (`[Nama Kafe] Portal`)
-  - Stiker QR Meja dan Lembar Cetak Barcode (`🎤 [Nama Kafe] KARAOKE`)
-  - Running text dan badge TV proyektor.
+Sistem karaoke **CAFEYOU** kini telah dilengkapi dengan **Animasi Panggung Cyber-Lounge Screensaver** saat layar proyektor dalam keadaan *standby* (tidak sedang memutar lagu), **Pengaturan Identitas Kafe Dinamis**, serta **Header Operator yang Terstruktur Rapi**.
 
 ---
 
-### 2. 🎛️ Restrukturisasi Header Operator (Professional Modular Clusters)
-Menu pada header operator yang sebelumnya terkesan banyak tombol kini telah dikelompokkan secara rapi dan profesional ke dalam 4 kluster fungsi:
-1. **🎵 Musik & FX**:
-   - `Katalog Populer` (Aksen amber)
-   - `Riwayat Lagu` (Aksen cyan + counter badge)
-   - `Sound FX` (Aksen purple)
-2. **🪑 Meja & Tamu**:
-   - `Voucher Keamanan` (Aksen blue)
-   - `QR Meja`
-3. **📺 Layar Proyektor**:
-   - `Running Text`
-   - `QR Share`
-   - `Proyektor ↗` (Aksen emerald cerah untuk monitor kedua)
-4. **⚙️ Sistem & Pengaturan**:
-   - `🏪 Pengaturan Kafe & Wi-Fi`
-   - `🔥 Status Firebase Cloud / Lokal`
-   - `💬 WA Support AuraCore Labs`
-   - `🔒 Kunci / Logout Kasir`
+## 🚀 Fitur Baru: Cyber-Lounge Stage Screensaver (Animasi Layar Proyektor)
+
+Saat antrean kosong dan proyektor tidak memutar video YouTube, layar TV tidak lagi gelap polos, melainkan otomatis beralih menjadi panggung visual interaktif nan estetik:
+
+### 1. 🌟 Hero Cafe Branding & Glowing Aura Animation
+- **Nama Kafe Berukuran Raksasa**: Menampilkan nama kafe aktif (misal: `CAFEYOU` atau nama kafe yang dikustomisasi) dengan tipografi multi-stop gradient bercahaya.
+- **Glowing Aura Pulse**: Efek lingkaran cahaya neon di belakang nama kafe yang berdenyut lembut mengikuti irama lounge.
+- **Tagline Venue**: Menampilkan deskripsi kafe seperti *"Coffee & Eatery • Karaoke Lounge"*.
+
+### 2. 🎵 Animated Audio Wave Frequency Equalizer
+- **24 Bar Gelombang Audio**: Batang frekuensi equalizer bergerak naik-turun secara ritmis dan dinamis di belakang judul brand.
+- **Floating Ambient Light Orbs**: Partikel cahaya neon biru, ungu, dan zamrud yang melayang perlahan di latar belakang menciptakan atmosfer panggung modern.
+
+### 3. 📱 Quick QR Barcode "Scan to Sing" Langsung di Layar TV
+- Tamu yang baru datang dapat langsung mengarahkan kamera smartphone ke layar proyektor dari kejauhan untuk membuka katalog lagu (`#guest`).
+- **Badge Info Wi-Fi**: Menampilkan nama Wi-Fi dan password kafe secara elegan.
+
+### 4. ⏰ Live Digital Clock & Kalender Real-Time
+- Di pojok kanan atas panggung, jam digital berdetik secara real-time dengan format waktu Indonesia lengkap dengan tanggal & hari (contoh: `19:54:02 WIB • Jumat, 11 September 2026`).
 
 ---
 
-## 🛠️ Berkas yang Dibuat & Diubah
+## 🛠️ Berkas yang Dibuat & Diperbarui
 
 | Berkas | Perubahan |
 | :--- | :--- |
-| `src/types/index.ts` | Interface `CafeSettings` dan field `cafeSettings?: CafeSettings` di `KaraokeState` |
-| `src/constants/karaoke.ts` | Objek `DEFAULT_CAFE_SETTINGS` dan inisialisasi awal |
-| `src/hooks/useSyncState.ts` | Proteksi sanitizeState untuk `cafeSettings` |
-| `src/hooks/useKaraoke.ts` | Handler `updateCafeSettings()` dan sinkronisasi otomatis |
-| `src/components/operator/CafeSettingsModal.tsx` | **[NEW]** Modal pengaturan identitas kafe + live preview + Wi-Fi settings |
-| `src/components/common/Header.tsx` | Redesain header dengan segmented button clusters dan badge nama venue |
-| `src/components/operator/OperatorScreen.tsx` | Integrasi `CafeSettingsModal`, wiring state ke Header dan QR Modal |
-| `src/components/guest/GuestScreen.tsx` | Menggunakan nama kafe dinamis dan info Wi-Fi pada portal tamu |
-| `src/components/player/PlayerScreen.tsx` | Menggunakan nama kafe dinamis pada running text proyektor |
-| `src/components/operator/TableQrGeneratorModal.tsx` | Menggunakan nama kafe dinamis pada stiker QR meja |
-| `karaoke_dual_screen_system.tsx` | Re-export `CafeSettingsModal` pada facade |
+| `index.html` | Keyframes animasi CSS `glowPulse`, `waveBar`, dan `floatOrb` |
+| `src/components/player/PlayerPlaceholder.tsx` | Screensaver panggung lengkap dengan jam digital, equalizer, brand aura, dan barcode TV |
+| `src/components/player/PlayerScreen.tsx` | Menghubungkan state identitas kafe ke screensaver panggung |
+| `src/components/operator/CafeSettingsModal.tsx` | Modal pengaturan identitas kafe dinamis |
+| `src/components/common/Header.tsx` | Redesain header modular dengan 4 kluster fungsi terpadu |
 
 ---
 
-## 🔍 Hasil Pengujian & Build
-- **TypeScript & Vite Build**: `npm run build` sukses 100% tanpa error (`dist/` dihasilkan).
-- **Semua Perubahan Sinkron**: Mendukung multi-tab, offline cache, dan real-time database cloud.
+## 🔍 Hasil Validasi & Deployment
+- **TypeScript & Vite Compilation**: Sukses 100% tanpa error (`dist/` dihasilkan).
+- **Git Push**: Telah di-commit dan di-push ke GitHub (`https://github.com/protontekno-bit/CAFEYOU.git`).

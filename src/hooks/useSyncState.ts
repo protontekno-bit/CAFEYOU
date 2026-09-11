@@ -1,0 +1,159 @@
+import { useState, useEffect, useRef } from 'react';
+import { BROADCAST_CHANNEL_NAME } from '../constants/karaoke';
+import { SyncMessage } from '../types';
+import { initFirebaseDatabase, ref, onValue, set } from '../config/firebase';
+
+/**
+ * Memastikan struktur state selalu aman dari nilai null/undefined (terutama dari Firebase RTDB)
+ */
+function sanitizeState<T>(val: any, fallback: T): T {
+  if (!val || typeof val !== 'object') {
+    return fallback;
+  }
+  const merged: any = { ...fallback, ...val };
+  if ('queue' in (fallback as any)) {
+    merged.queue = Array.isArray(val.queue) ? val.queue : [];
+  }
+  if ('history' in (fallback as any)) {
+    merged.history = Array.isArray(val.history) ? val.history : [];
+  }
+  if ('songLibrary' in (fallback as any)) {
+    merged.songLibrary =
+      val.songLibrary && typeof val.songLibrary === 'object'
+        ? val.songLibrary
+        : (fallback as any).songLibrary || {};
+  }
+  return merged as T;
+}
+
+/**
+ * Custom Hook Hybrid Real-time State Synchronization:
+ * 1. Menghubungkan ke Firebase Realtime Database (jika konfigurasi terpasang).
+ * 2. Menyinkronkan ke BroadcastChannel (untuk instan multi-tab di perangkat yang sama).
+ * 3. Menyimpan ke LocalStorage (sebagai offline cache & fallback anti-hilang saat reload).
+ */
+export function useSyncState<T>(
+  key: string,
+  initialState: T
+): [T, (valueOrFn: T | ((prev: T) => T)) => void, boolean] {
+  const [state, setState] = useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? sanitizeState<T>(JSON.parse(item), initialState) : initialState;
+    } catch (error) {
+      return initialState;
+    }
+  });
+
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
+  const channelRef = useRef<BroadcastChannel | null>(null);
+  const isSettingFromCloudRef = useRef<boolean>(false);
+
+  // 1. Inisialisasi Firebase Listener jika tersedia
+  useEffect(() => {
+    const db = initFirebaseDatabase();
+    if (!db) {
+      setIsCloudConnected(false);
+      return;
+    }
+
+    try {
+      const dbRef = ref(db, `cafeyou/${key}`);
+      setIsCloudConnected(true);
+
+      const unsubscribe = onValue(
+        dbRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const cloudVal = snapshot.val();
+            const safeVal = sanitizeState<T>(cloudVal, initialState);
+            isSettingFromCloudRef.current = true;
+            setState(safeVal);
+
+            // Simpan juga ke cache lokal
+            try {
+              window.localStorage.setItem(key, JSON.stringify(safeVal));
+            } catch (e) {}
+
+            setTimeout(() => {
+              isSettingFromCloudRef.current = false;
+            }, 50);
+          }
+        },
+        (error) => {
+          console.warn('Firebase onValue error, beralih ke sinkronisasi lokal:', error);
+          setIsCloudConnected(false);
+        }
+      );
+
+      return () => {
+        unsubscribe();
+      };
+    } catch (err) {
+      console.warn('Gagal memasang Firebase listener:', err);
+      setIsCloudConnected(false);
+    }
+  }, [key]);
+
+  // 2. BroadcastChannel Listener (untuk sinkronisasi multi-tab lokal)
+  useEffect(() => {
+    try {
+      const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+      channelRef.current = channel;
+
+      channel.onmessage = (event: MessageEvent<SyncMessage<T>>) => {
+        if (event.data && event.data.key === key) {
+          setState(sanitizeState<T>(event.data.value, initialState));
+        }
+      };
+
+      return () => {
+        channel.close();
+        channelRef.current = null;
+      };
+    } catch (error) {
+      console.warn('BroadcastChannel tidak didukung:', error);
+    }
+  }, [key]);
+
+  // 3. Fungsi Pembaruan State (Multi-target: Local State + LocalStorage + Broadcast + Firebase)
+  const updateState = (newValueOrFunction: T | ((prev: T) => T)) => {
+    setState((prevState) => {
+      const computed =
+        typeof newValueOrFunction === 'function'
+          ? (newValueOrFunction as (prev: T) => T)(prevState)
+          : newValueOrFunction;
+
+      const newValue = sanitizeState<T>(computed, initialState);
+
+      // Update LocalStorage
+      try {
+        window.localStorage.setItem(key, JSON.stringify(newValue));
+      } catch (error) {}
+
+      // Update BroadcastChannel (Lokal)
+      if (channelRef.current) {
+        try {
+          channelRef.current.postMessage({ key, value: newValue });
+        } catch (error) {}
+      }
+
+      // Update Firebase Cloud (Nirkabel)
+      if (!isSettingFromCloudRef.current) {
+        const db = initFirebaseDatabase();
+        if (db) {
+          try {
+            const dbRef = ref(db, `cafeyou/${key}`);
+            set(dbRef, newValue).catch((err) => {
+              console.warn('Gagal menulis ke Firebase Cloud:', err);
+            });
+          } catch (err) {}
+        }
+      }
+
+      return newValue;
+    });
+  };
+
+  return [state, updateState, isCloudConnected];
+}

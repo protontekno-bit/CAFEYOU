@@ -32,6 +32,7 @@ export * from './src/components/operator/QrShareModal';
 export * from './src/components/operator/HistoryModal';
 export * from './src/components/operator/VoucherManagerModal';
 export * from './src/components/operator/TableQrGeneratorModal';
+export * from './src/components/operator/CafeSettingsModal';
 export * from './src/components/guest/GuestVoucherGate';
 export * from './src/components/guest/GuestScreen';
 export * from './src/components/player/PlayerScreen';

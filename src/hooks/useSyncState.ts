@@ -41,6 +41,12 @@ function sanitizeState<T>(val: any, fallback: T): T {
         ? val.fairRotationEnabled
         : (fallback as any).fairRotationEnabled || false;
   }
+  if ('cafeSettings' in (fallback as any)) {
+    merged.cafeSettings =
+      val.cafeSettings && typeof val.cafeSettings === 'object'
+        ? { ...(fallback as any).cafeSettings, ...val.cafeSettings }
+        : (fallback as any).cafeSettings;
+  }
   return merged as T;
 }
 

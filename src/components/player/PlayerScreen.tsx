@@ -205,8 +205,8 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
                 {state.runningText}
               </span>
             </div>
-            <div className="text-[10px] text-blue-300 font-bold bg-blue-500/10 px-2 py-0.5 rounded shrink-0 border border-blue-500/20">
-              CAFEYOU
+            <div className="text-[10px] text-blue-300 font-bold bg-blue-500/10 px-2.5 py-0.5 rounded-full shrink-0 border border-blue-500/20">
+              {state?.cafeSettings?.name || 'CAFEYOU'}
             </div>
           </div>
         </div>

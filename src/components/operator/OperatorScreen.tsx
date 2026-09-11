@@ -12,6 +12,7 @@ import { QrShareModal } from './QrShareModal';
 import { HistoryModal } from './HistoryModal';
 import { VoucherManagerModal } from './VoucherManagerModal';
 import { TableQrGeneratorModal } from './TableQrGeneratorModal';
+import { CafeSettingsModal } from './CafeSettingsModal';
 import { OperatorLoginView } from './OperatorLoginView';
 import { DeveloperHelpModal } from '../common/DeveloperHelpModal';
 import { DeveloperFooter } from '../common/DeveloperFooter';
@@ -62,6 +63,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     fairRotationEnabled,
     toggleFairRotation,
     rebalanceQueueFairly,
+    cafeSettings,
+    updateCafeSettings,
   } = useKaraoke();
 
   const [isSoundBoardOpen, setIsSoundBoardOpen] = useState(false);
@@ -72,6 +75,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isVoucherOpen, setIsVoucherOpen] = useState(false);
   const [isTableQrOpen, setIsTableQrOpen] = useState(false);
+  const [isCafeSettingsOpen, setIsCafeSettingsOpen] = useState(false);
   const [isDeveloperHelpOpen, setIsDeveloperHelpOpen] = useState(false);
 
   // Jika belum login, tampilkan OperatorLoginView Neumorphism
@@ -113,6 +117,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
       <div>
         <Header
           title="Dasbor Operator Kafe"
+          cafeName={cafeSettings?.name}
           onBack={setRole ? () => setRole('landing') : undefined}
           isCloudConnected={isCloudConnected}
           historyCount={history.length}
@@ -125,6 +130,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onOpenHistory={() => setIsHistoryOpen(true)}
           onOpenVouchers={() => setIsVoucherOpen(true)}
           onOpenTableQr={() => setIsTableQrOpen(true)}
+          onOpenCafeSettings={() => setIsCafeSettingsOpen(true)}
           onOpenDeveloperHelp={() => setIsDeveloperHelpOpen(true)}
           onLogout={handleLogout}
         />
@@ -227,8 +233,16 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
 
       <TableQrGeneratorModal
         isOpen={isTableQrOpen}
+        cafeName={cafeSettings?.name}
         onClose={() => setIsTableQrOpen(false)}
         onOpenVoucherManager={() => setIsVoucherOpen(true)}
+      />
+
+      <CafeSettingsModal
+        isOpen={isCafeSettingsOpen}
+        settings={cafeSettings}
+        onClose={() => setIsCafeSettingsOpen(false)}
+        onSave={updateCafeSettings}
       />
 
       {/* Developer Help Modal & Footer */}

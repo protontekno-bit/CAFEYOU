@@ -1,8 +1,16 @@
-import { KaraokeState, SavedLibrarySong } from '../types';
+import { KaraokeState, SavedLibrarySong, CafeSettings } from '../types';
 import { POPULAR_KARAOKE_SONGS, getYouTubeThumbnail } from '../utils/youtube';
 
 export const STORAGE_KEY = 'karaoke_state_v2';
 export const BROADCAST_CHANNEL_NAME = 'karaoke_sync_channel';
+
+export const DEFAULT_CAFE_SETTINGS: CafeSettings = {
+  name: 'CAFEYOU',
+  tagline: 'Coffee & Eatery',
+  welcomeMessage: 'Selamat Datang di CAFEYOU Karaoke Lounge • Pesan Lagu Favorit Anda di Kasir!',
+  wifiName: 'CAFEYOU_Free_WiFi',
+  wifiPassword: 'karaokecafeyou',
+};
 
 // Inisialisasi library awal dari katalog lagu populer
 const INITIAL_SONG_LIBRARY: Record<string, SavedLibrarySong> = {};
@@ -35,6 +43,7 @@ export const DEFAULT_KARAOKE_STATE: KaraokeState = {
   },
   liveReaction: null,
   fairRotationEnabled: false,
+  cafeSettings: DEFAULT_CAFE_SETTINGS,
 };
 
 export const QUICK_TABLES = [

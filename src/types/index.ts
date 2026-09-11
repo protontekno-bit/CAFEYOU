@@ -64,6 +64,14 @@ export interface SoundEffectEvent {
   timestamp: number;
 }
 
+export interface CafeSettings {
+  name: string;
+  tagline?: string;
+  welcomeMessage?: string;
+  wifiName?: string;
+  wifiPassword?: string;
+}
+
 export interface KaraokeState {
   queue: Song[];
   playbackStatus: PlaybackStatus;
@@ -78,6 +86,7 @@ export interface KaraokeState {
   dailyPin?: DailyPinConfig;
   liveReaction?: LiveReactionEvent | null;
   fairRotationEnabled?: boolean;
+  cafeSettings?: CafeSettings;
 }
 
 export interface SyncMessage<T> {

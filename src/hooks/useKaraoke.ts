@@ -1,5 +1,5 @@
 import { useSyncState } from './useSyncState';
-import { STORAGE_KEY, DEFAULT_KARAOKE_STATE } from '../constants/karaoke';
+import { STORAGE_KEY, DEFAULT_KARAOKE_STATE, DEFAULT_CAFE_SETTINGS } from '../constants/karaoke';
 import {
   Song,
   KaraokeState,
@@ -8,6 +8,7 @@ import {
   SavedLibrarySong,
   Voucher,
   LiveReactionEvent,
+  CafeSettings,
 } from '../types';
 import { fetchYouTubeInfo, getYouTubeThumbnail } from '../utils/youtube';
 import { playSoundEffect } from '../utils/soundfx';
@@ -448,6 +449,25 @@ export function useKaraoke() {
     });
   };
 
+  const updateCafeSettings = (newSettings: Partial<CafeSettings>) => {
+    updateAppState((prev) => {
+      const current = prev?.cafeSettings || DEFAULT_CAFE_SETTINGS;
+      const merged: CafeSettings = {
+        ...current,
+        ...newSettings,
+      };
+      return {
+        ...prev,
+        cafeSettings: merged,
+        // Jika nama kafe berubah dan running text masih default, sinkronkan running text
+        runningText:
+          prev.runningText && (prev.runningText === current.welcomeMessage || prev.runningText.includes(current.name))
+            ? prev.runningText.replace(new RegExp(current.name, 'g'), merged.name)
+            : prev.runningText,
+      };
+    });
+  };
+
   const safeQueue = Array.isArray(appState?.queue) ? appState.queue : [];
   const currentSong = safeQueue[0] || null;
   const nextSongs = safeQueue.slice(1);
@@ -459,6 +479,7 @@ export function useKaraoke() {
   const dailyPin = appState?.dailyPin || { enabled: false, code: '1234' };
   const liveReaction = appState?.liveReaction || null;
   const fairRotationEnabled = !!appState?.fairRotationEnabled;
+  const cafeSettings = appState?.cafeSettings || DEFAULT_CAFE_SETTINGS;
 
   return {
     state: {
@@ -470,6 +491,7 @@ export function useKaraoke() {
       dailyPin,
       liveReaction,
       fairRotationEnabled,
+      cafeSettings,
     },
     updateState: updateAppState,
     isCloudConnected,
@@ -481,6 +503,7 @@ export function useKaraoke() {
     dailyPin,
     liveReaction,
     fairRotationEnabled,
+    cafeSettings,
     addSong,
     removeSong,
     moveToTop,
@@ -501,5 +524,6 @@ export function useKaraoke() {
     sendLiveReaction,
     toggleFairRotation,
     rebalanceQueueFairly,
+    updateCafeSettings,
   };
 }

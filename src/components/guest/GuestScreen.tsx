@@ -30,6 +30,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     validateVoucher,
     sendLiveReaction,
     fairRotationEnabled,
+    cafeSettings,
   } = useKaraoke();
 
   // Ambil nomor meja dari props atau URL hash/search query
@@ -253,10 +254,17 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         <div className="flex items-center gap-2">
           <span className="text-xl">🎤</span>
           <div>
-            <div className="font-extrabold text-sm bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-              CAFEYOU Portal
+            <div className="font-extrabold text-sm bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent truncate max-w-[170px] sm:max-w-xs">
+              {cafeSettings?.name || 'CAFEYOU'} Portal
             </div>
-            <div className="text-[10px] text-slate-400 font-semibold">{tableNumber}</div>
+            <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
+              <span>{tableNumber}</span>
+              {cafeSettings?.wifiName && (
+                <span className="text-[9px] text-cyan-400/80 font-normal">
+                  • Wi-Fi: {cafeSettings.wifiName}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

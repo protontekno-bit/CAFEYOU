@@ -4,12 +4,14 @@ import { PrinterIcon, TicketIcon } from '../icons/Icons';
 
 interface TableQrGeneratorModalProps {
   isOpen: boolean;
+  cafeName?: string;
   onClose: () => void;
   onOpenVoucherManager?: () => void;
 }
 
 export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
   isOpen,
+  cafeName = 'CAFEYOU',
   onClose,
   onOpenVoucherManager,
 }) => {
@@ -114,7 +116,7 @@ export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
 
               <div className="space-y-2.5 text-center sm:text-left flex-1">
                 <div className="inline-block px-3 py-1 bg-blue-500/20 text-blue-300 border border-blue-500/40 rounded-full text-xs font-extrabold tracking-wider uppercase">
-                  🎤 CAFEYOU KARAOKE
+                  🎤 {cafeName} KARAOKE
                 </div>
                 <h3 className="text-2xl font-black text-white">{selectedTable}</h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
@@ -177,7 +179,7 @@ export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
                     className="bg-white text-slate-950 p-3 rounded-xl border border-slate-300 flex flex-col items-center text-center space-y-1.5 shadow-sm"
                   >
                     <div className="text-[10px] font-extrabold uppercase text-blue-800 tracking-wider">
-                      🎤 CAFEYOU KARAOKE
+                      🎤 {cafeName} KARAOKE
                     </div>
                     <div className="font-extrabold text-sm text-slate-900">{table}</div>
                     <img src={qr} alt={table} className="w-24 h-24 object-contain rounded" />

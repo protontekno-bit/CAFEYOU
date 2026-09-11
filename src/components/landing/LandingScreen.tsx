@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RoleCard } from './RoleCard';
-import { SplitIcon, TicketIcon } from '../icons/Icons';
+import { OperatorLoginModal } from './OperatorLoginModal';
+import { SplitIcon, TicketIcon, LockIcon } from '../icons/Icons';
 import { AppRole } from '../../types';
 
 interface LandingScreenProps {
@@ -8,10 +9,26 @@ interface LandingScreenProps {
 }
 
 export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
   const handleOpenPlayerInNewTab = () => {
     // Membuka tab baru dengan menyisipkan hash #player untuk menghindari error 404
     const currentUrl = window.location.href.split('#')[0];
     window.open(currentUrl + '#player', '_blank');
+  };
+
+  const handleOperatorClick = () => {
+    // Periksa apakah kasir sudah login sebelumnya di sesi ini
+    try {
+      const savedAuth = sessionStorage.getItem('cafeyou_operator_auth');
+      if (savedAuth) {
+        setRole('operator');
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    setIsLoginModalOpen(true);
   };
 
   return (
@@ -36,7 +53,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
             title="Dasbor Operator"
             description="Kelola antrean lagu, kontrol volume, dan cetak voucher dari layar laptop kasir."
             themeColor="blue"
-            onClick={() => setRole('operator')}
+            onClick={handleOperatorClick}
             icon={
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -75,8 +92,8 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
           />
         </div>
 
-        {/* Simulator Split Screen */}
-        <div className="max-w-4xl mx-auto">
+        {/* Simulator & Standalone Login Links */}
+        <div className="max-w-4xl mx-auto space-y-3">
           <button
             onClick={() => setRole('split')}
             className="w-full relative bg-slate-900/80 p-3.5 rounded-2xl border border-cyan-500/40 hover:bg-slate-850 transition-all flex items-center justify-center gap-2.5 text-cyan-300 font-semibold hover:border-cyan-400 shadow-lg shadow-cyan-500/5 text-xs sm:text-sm"
@@ -84,8 +101,28 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
             <SplitIcon className="w-4 h-4" />
             <span>Mode Uji Coba: Simulator Split-Screen Operator & Proyektor 1 Layar</span>
           </button>
+
+          <div className="text-center pt-2">
+            <a
+              href="login_karaoke_cafeyou.html"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-400 transition-colors font-medium bg-slate-900/40 px-3 py-1.5 rounded-xl border border-slate-800"
+            >
+              <LockIcon className="w-3.5 h-3.5" />
+              <span>Halaman Login Standalone Neumorphism (login_karaoke_cafeyou.html) ↗</span>
+            </a>
+          </div>
         </div>
       </div>
+
+      {/* Operator Login Modal */}
+      <OperatorLoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onSuccess={() => {
+          setIsLoginModalOpen(false);
+          setRole('operator');
+        }}
+      />
     </div>
   );
 };

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Operator - Karaoke CAFEYOU</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            /* Neumorphism Dark Theme Palette for CAFEYOU */
+            --bg-color: #0f172a;
+            --circle-bg: #1e293b;
+            --text-color: #e2e8f0;
+            --accent-color: #3b82f6; 
+            --accent-pink: #ec4899;
+            --shadow-light: #334155;
+            --shadow-dark: #020617;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* 3D Neumorphism Circle Container */
+        .login-circle {
+            width: 380px;
+            height: 380px;
+            max-width: 90vw;
+            max-height: 90vw;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            box-shadow: 
+                16px 16px 32px var(--shadow-dark),
+                -12px -12px 28px rgba(51, 65, 85, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+        }
+
+        .form-content {
+            width: 80%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        h2 {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin: 0;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .brand-name {
+            background: linear-gradient(to right, #60a5fa, #a78bfa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.05rem;
+            font-weight: 800;
+            margin-top: -2px;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group {
+            position: relative;
+            width: 100%;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 0.85rem;
+            transition: color 0.3s ease;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 16px 10px 40px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            outline: none;
+            background-color: #0b1120;
+            border-radius: 25px;
+            font-size: 0.875rem;
+            color: #f8fafc;
+            box-shadow: 
+                inset 4px 4px 8px #050811,
+                inset -3px -3px 6px rgba(51, 65, 85, 0.25);
+            transition: all 0.3s ease;
+        }
+
+        input::placeholder {
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        input:focus {
+            box-shadow: 
+                inset 5px 5px 10px #020617,
+                inset -3px -3px 6px rgba(59, 130, 246, 0.3),
+                0 0 12px rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        input:focus + i {
+            color: #60a5fa;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 11px 20px;
+            border: none;
+            outline: none;
+            border-radius: 25px;
+            background: linear-gradient(135deg, #2563eb, #4f46e5);
+            color: #ffffff;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 
+                0 4px 14px rgba(37, 99, 235, 0.4),
+                4px 4px 10px var(--shadow-dark),
+                -3px -3px 8px rgba(51, 65, 85, 0.2);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5);
+        }
+
+        .btn-submit:active {
+            transform: translateY(1px);
+            box-shadow: 
+                inset 3px 3px 6px rgba(0, 0, 0, 0.4),
+                inset -2px -2px 4px rgba(255, 255, 255, 0.1);
+        }
+
+        .success-msg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s ease;
+            transform: scale(0.85);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .success-msg h2 {
+            margin-top: 14px;
+            color: #34d399;
+            font-size: 1.25rem;
+        }
+
+        .check-circle {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #064e3b, #022c22);
+            box-shadow: 
+                4px 4px 12px var(--shadow-dark),
+                -3px -3px 8px rgba(16, 185, 129, 0.3);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #34d399;
+            font-size: 26px;
+        }
+
+        /* Class untuk animasi sukses */
+        .login-success .form-content {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+        }
+
+        .login-success .success-msg {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        /* Floating Music Icons */
+        .note-icon {
+            position: absolute;
+            color: rgba(59, 130, 246, 0.12);
+            z-index: 1;
+            pointer-events: none;
+            animation: float 8s ease-in-out infinite;
+        }
+        
+        .note-1 { top: 12%; left: 15%; animation-delay: 0s; font-size: 3.5rem; color: rgba(236, 72, 153, 0.12); }
+        .note-2 { top: 68%; right: 12%; animation-delay: 2.5s; font-size: 3rem; color: rgba(59, 130, 246, 0.12); }
+        .note-3 { bottom: 12%; left: 18%; animation-delay: 4.5s; font-size: 2.5rem; color: rgba(52, 211, 153, 0.12); }
+        .note-4 { top: 25%; right: 20%; animation-delay: 1.5s; font-size: 2rem; color: rgba(245, 158, 11, 0.12); }
+        
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-25px) rotate(15deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        /* Navigasi Cepat di Bawah */
+        .quick-nav {
+            margin-top: 2rem;
+            display: flex;
+            gap: 0.75rem;
+            z-index: 20;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .quick-btn {
+            padding: 8px 16px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(8px);
+            text-decoration: none;
+        }
+
+        .quick-btn:hover {
+            background: rgba(51, 65, 85, 0.9);
+            color: #ffffff;
+            border-color: rgba(59, 130, 246, 0.4);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Dekorasi Latar Belakang Nada Musik -->
+    <i class="fas fa-music note-icon note-1"></i>
+    <i class="fas fa-microphone-alt note-icon note-2"></i>
+    <i class="fas fa-compact-disc note-icon note-3"></i>
+    <i class="fas fa-headphones-alt note-icon note-4"></i>
+
+    <!-- Container Utama Neumorphic Circle -->
+    <div class="login-circle" id="loginContainer">
+        
+        <!-- Pesan Sukses -->
+        <div class="success-msg" id="successMsg">
+            <div class="check-circle">
+                <i class="fas fa-check"></i>
+            </div>
+            <h2>Akses Diberikan!</h2>
+            <p class="text-xs text-slate-400 mt-1 font-medium">Membuka Dasbor Operator...</p>
+        </div>
+
+        <!-- Form Login -->
+        <div class="form-content" id="formContent">
+            <div>
+                <div class="text-[11px] font-extrabold text-blue-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1.5">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>OPERATOR SYSTEM</span>
+                </div>
+                <h2>SIGN IN</h2>
+                <div class="brand-name">Karaoke CAFEYOU</div>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="username" placeholder="Username (misal: admin / kasir)" value="admin" required autocomplete="username">
+                <i class="fas fa-user"></i>
+            </div>
+            
+            <div class="input-group">
+                <input type="password" id="password" placeholder="Password / PIN (misal: 1234)" value="1234" required autocomplete="current-password">
+                <i class="fas fa-lock"></i>
+            </div>
+            
+            <button class="btn-submit" onclick="handleLogin()">
+                <span>Masuk ke Dasbor</span>
+                <i class="fas fa-arrow-right text-xs"></i>
+            </button>
+            
+            <div id="errorText" class="text-[11px] text-red-400 font-semibold hidden -mt-2"></div>
+        </div>
+    </div>
+
+    <!-- Navigasi Cepat ke Peran Lain -->
+    <div class="quick-nav">
+        <a href="index.html" class="quick-btn">
+            <i class="fas fa-home text-blue-400"></i>
+            <span>Menu Utama</span>
+        </a>
+        <a href="index.html#player" target="_blank" class="quick-btn">
+            <i class="fas fa-tv text-emerald-400"></i>
+            <span>Layar Proyektor</span>
+        </a>
+        <a href="index.html#guest?table=Meja1" class="quick-btn">
+            <i class="fas fa-mobile-alt text-purple-400"></i>
+            <span>Portal Tamu (Meja 1)</span>
+        </a>
+    </div>
+
+    <script>
+        function handleLogin() {
+            const usernameInput = document.getElementById('username').value.trim();
+            const passwordInput = document.getElementById('password').value.trim();
+            const container = document.getElementById('loginContainer');
+            const errorText = document.getElementById('errorText');
+
+            // Validasi Input
+            if (usernameInput === '' || passwordInput === '') {
+                showError('Silakan isi Username dan Password.');
+                shakeContainer();
+                return;
+            }
+
+            // Validasi Kredensial Fleksibel untuk Kasir & Operator
+            const validUsers = ['admin', 'operator', 'kasir', 'cafeyou', 'owner'];
+            const isValidUser = validUsers.includes(usernameInput.toLowerCase()) || usernameInput.length >= 3;
+            const isValidPass = passwordInput === '1234' || passwordInput === 'cafeyou' || passwordInput === 'admin' || passwordInput.length >= 4;
+
+            if (!isValidUser || !isValidPass) {
+                showError('Username atau Password tidak cocok.');
+                shakeContainer();
+                return;
+            }
+
+            // Simpan status login di sessionStorage
+            try {
+                sessionStorage.setItem('cafeyou_operator_auth', JSON.stringify({
+                    username: usernameInput,
+                    loggedAt: Date.now()
+                }));
+            } catch (e) {
+                console.warn(e);
+            }
+
+            errorText.classList.add('hidden');
+            container.classList.add('login-success');
+            
+            // Redirect otomatis ke Dasbor Operator CAFEYOU
+            setTimeout(() => {
+                window.location.href = 'index.html#operator';
+            }, 1200);
+        }
+
+        function showError(msg) {
+            const errorText = document.getElementById('errorText');
+            errorText.innerText = msg;
+            errorText.classList.remove('hidden');
+        }
+
+        function shakeContainer() {
+            const container = document.getElementById('loginContainer');
+            container.style.transform = 'translateX(-10px)';
+            setTimeout(() => container.style.transform = 'translateX(10px)', 80);
+            setTimeout(() => container.style.transform = 'translateX(-10px)', 160);
+            setTimeout(() => container.style.transform = 'translateX(8px)', 240);
+            setTimeout(() => container.style.transform = 'translateX(0)', 320);
+        }
+
+        // Enter key support
+        document.getElementById('password').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+        document.getElementById('username').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                document.getElementById('password').focus();
+            }
+        });
+    </script>
+</body>
+</html>

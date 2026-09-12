@@ -5,6 +5,7 @@ import { useWakeLock } from '../../hooks/useWakeLock';
 import { ReceiptPrintView } from '../operator/ReceiptPrintView';
 import { DeveloperFooter } from '../common/DeveloperFooter';
 import { PosMenuManager } from './PosMenuManager';
+import { PosSettingsModal } from './PosSettingsModal';
 
 interface PosScreenProps {
   setRole?: (role: AppRole) => void;
@@ -34,6 +35,8 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     clearFinishedOrders,
     isCloudConnected,
     triggerSoundEffect,
+    updateCafeSettings,
+    updateRolePasswords,
   } = useKaraoke();
 
   // 1. Status Autentikasi Kasir / Staff Security Gate
@@ -44,8 +47,11 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
       return false;
     }
   });
-  const [authPin, setAuthPin] = useState('');
-  const [authError, setAuthError] = useState('');
+  const [authPin, setAuthPin] = useState<string>('');
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Modal Pengaturan Kasir (PB1, Service Charge, Ganti PIN)
+  const [isPosSettingsOpen, setIsPosSettingsOpen] = useState(false);
 
   // 2. Tab Aktif & Jam Digital
   const [activeTab, setActiveTab] = useState<PosTab>('billing');
@@ -432,6 +438,16 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
             title={isSoundAlertEnabled ? 'Suara Bel Pesanan Aktif' : 'Suara Bel Dibisukan'}
           >
             {isSoundAlertEnabled ? '🔔' : '🔕'}
+          </button>
+
+          {/* Pengaturan Kasir (PB1, Service, PIN) */}
+          <button
+            onClick={() => setIsPosSettingsOpen(true)}
+            className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 hover:border-amber-500/60 rounded-xl text-xs font-bold text-amber-300 hover:text-amber-200 transition-all flex items-center gap-1.5 shadow-sm"
+            title="Buka Pengaturan Pajak PB1 & PIN Kasir"
+          >
+            <span>⚙️</span>
+            <span className="hidden sm:inline">Pengaturan Kasir</span>
           </button>
 
           {/* Navigasi Cepat ke Dasbor Karaoke */}
@@ -1392,6 +1408,15 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         order={printOrder}
         groupedOrders={printGroupedOrders}
         cafeSettings={cafeSettings}
+      />
+
+      {/* 7. MODAL PENGATURAN KASIR (PB1, SERVICE, PIN KASIR) */}
+      <PosSettingsModal
+        isOpen={isPosSettingsOpen}
+        onClose={() => setIsPosSettingsOpen(false)}
+        cafeSettings={cafeSettings}
+        onUpdateCafeSettings={updateCafeSettings}
+        onUpdatePosPassword={(newPin) => updateRolePasswords(undefined, newPin)}
       />
 
       <DeveloperFooter className="px-4 mt-auto" />

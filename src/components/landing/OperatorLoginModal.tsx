@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LockIcon, CheckIcon } from '../icons/Icons';
+import { loadOperatorCredentials, verifyPassword } from '../../utils/credentials';
 
 interface OperatorLoginModalProps {
   isOpen: boolean;
@@ -7,20 +8,33 @@ interface OperatorLoginModalProps {
   onSuccess: () => void;
 }
 
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 30;
+
 export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
 }) => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('1234');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const isLocked = lockoutUntil !== null && Date.now() < lockoutUntil;
+  const lockoutRemaining = isLocked
+    ? Math.ceil((lockoutUntil! - Date.now()) / 1000)
+    : 0;
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked || isLoading) return;
+
     const u = username.trim();
     const p = password.trim();
 
@@ -29,31 +43,49 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
       return;
     }
 
-    // Validasi kredensial operator
-    const validUsers = ['admin', 'operator', 'kasir', 'cafeyou', 'owner'];
-    const isValid = (validUsers.includes(u.toLowerCase()) || u.length >= 3) && (p === '1234' || p === 'admin' || p === 'cafeyou' || p.length >= 4);
-
-    if (!isValid) {
-      setErrorMsg('Username atau Password operator tidak cocok.');
-      return;
-    }
-
-    setIsSuccess(true);
+    setIsLoading(true);
     setErrorMsg(null);
 
     try {
-      sessionStorage.setItem(
-        'cafeyou_operator_auth',
-        JSON.stringify({ username: u, loggedAt: Date.now() })
-      );
-    } catch {
-      // ignore
-    }
+      const creds = await loadOperatorCredentials();
+      const isValid = verifyPassword(p, creds.passwordHash);
 
-    setTimeout(() => {
-      setIsSuccess(false);
-      onSuccess();
-    }, 1000);
+      if (!isValid) {
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+
+        if (newAttempts >= MAX_ATTEMPTS) {
+          setLockoutUntil(Date.now() + LOCKOUT_SECONDS * 1000);
+          setErrorMsg(`Terlalu banyak percobaan. Coba lagi dalam ${LOCKOUT_SECONDS} detik.`);
+        } else {
+          setErrorMsg(
+            `Password salah. ${MAX_ATTEMPTS - newAttempts} percobaan tersisa.`
+          );
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      setIsSuccess(true);
+      setErrorMsg(null);
+      setFailedAttempts(0);
+
+      try {
+        sessionStorage.setItem(
+          'cafeyou_operator_auth',
+          JSON.stringify({ username: u, loggedAt: Date.now() })
+        );
+      } catch {}
+
+      setTimeout(() => {
+        setIsSuccess(false);
+        onSuccess();
+      }, 1000);
+    } catch {
+      setErrorMsg('Terjadi kesalahan, silakan coba lagi.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -69,7 +101,6 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
         </button>
 
         {isSuccess ? (
-          /* Success Animation */
           <div className="flex flex-col items-center justify-center space-y-3 animate-fadeIn">
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-2xl shadow-lg shadow-emerald-500/20">
               <CheckIcon className="w-8 h-8 text-emerald-400" />
@@ -78,7 +109,6 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
             <p className="text-xs text-slate-400">Membuka Dasbor Operator...</p>
           </div>
         ) : (
-          /* Login Form */
           <form onSubmit={handleLogin} className="w-4/5 flex flex-col gap-2.5 z-10">
             <div>
               <div className="text-[10px] font-black text-blue-400 uppercase tracking-wider flex items-center justify-center gap-1 mb-0.5">
@@ -91,47 +121,44 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
               </div>
             </div>
 
-            {/* Clean Input Username Box */}
             <div className="flex items-center w-full bg-slate-950/90 border border-slate-800 rounded-full px-4 py-2.5 shadow-inner focus-within:border-blue-500 transition-all">
               <span className="text-slate-500 text-xs mr-2.5">👤</span>
               <input
                 type="text"
                 value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value);
-                  if (errorMsg) setErrorMsg(null);
-                }}
+                onChange={(e) => { setUsername(e.target.value); if (errorMsg) setErrorMsg(null); }}
                 placeholder="Username"
-                className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder:text-slate-600 font-medium"
+                disabled={isLocked || isLoading}
+                autoComplete="username"
+                className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder:text-slate-600 font-medium disabled:opacity-50"
               />
             </div>
 
-            {/* Clean Input Password Box */}
             <div className="flex items-center w-full bg-slate-950/90 border border-slate-800 rounded-full px-4 py-2.5 shadow-inner focus-within:border-blue-500 transition-all">
               <span className="text-slate-500 text-xs mr-2.5">🔒</span>
               <input
                 type="password"
                 value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errorMsg) setErrorMsg(null);
-                }}
-                placeholder="Password / PIN"
-                className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder:text-slate-600 font-medium"
+                onChange={(e) => { setPassword(e.target.value); if (errorMsg) setErrorMsg(null); }}
+                placeholder="Password"
+                disabled={isLocked || isLoading}
+                autoComplete="current-password"
+                className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder:text-slate-600 font-medium disabled:opacity-50"
               />
             </div>
 
             {errorMsg && (
-              <div className="text-[10px] text-red-400 font-semibold bg-red-500/10 border border-red-500/30 py-1 px-2 rounded-lg -my-1">
-                {errorMsg}
+              <div className={`text-[10px] font-semibold py-1 px-2 rounded-lg -my-1 text-center ${isLocked ? 'bg-red-900/40 border border-red-700/50 text-red-300' : 'bg-red-500/10 border border-red-500/30 text-red-400'}`}>
+                {isLocked ? `🔒 Terkunci ${lockoutRemaining}s` : errorMsg}
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-full shadow-lg shadow-blue-500/25 transition-all active:scale-95"
+              disabled={isLocked || isLoading}
+              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-full shadow-lg shadow-blue-500/25 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Masuk ke Dasbor
+              {isLoading ? 'Memverifikasi...' : isLocked ? `🔒 Terkunci (${lockoutRemaining}s)` : 'Masuk ke Dasbor'}
             </button>
 
             <a

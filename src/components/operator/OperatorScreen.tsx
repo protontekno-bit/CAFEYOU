@@ -14,6 +14,7 @@ import { VoucherManagerModal } from './VoucherManagerModal';
 import { TableQrGeneratorModal } from './TableQrGeneratorModal';
 import { CafeSettingsModal } from './CafeSettingsModal';
 import { SongLibraryManagerModal } from './SongLibraryManagerModal';
+import { ChangePasswordModal } from './ChangePasswordModal';
 import { OperatorLoginView } from './OperatorLoginView';
 import { DeveloperHelpModal } from '../common/DeveloperHelpModal';
 import { DeveloperFooter } from '../common/DeveloperFooter';
@@ -85,6 +86,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isCafeSettingsOpen, setIsCafeSettingsOpen] = useState(false);
   const [isDeveloperHelpOpen, setIsDeveloperHelpOpen] = useState(false);
   const [isLibraryManagerOpen, setIsLibraryManagerOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Notifikasi Pesanan Meja Baru
   const [newOrderAlert, setNewOrderAlert] = useState<{
@@ -172,6 +174,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onOpenCafeSettings={() => setIsCafeSettingsOpen(true)}
           onOpenDeveloperHelp={() => setIsDeveloperHelpOpen(true)}
           onOpenLibraryManager={() => setIsLibraryManagerOpen(true)}
+          onChangePassword={() => setIsChangePasswordOpen(true)}
           onLogout={handleLogout}
         />
 
@@ -309,6 +312,12 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         settings={cafeSettings}
         onClose={() => setIsCafeSettingsOpen(false)}
         onSave={updateCafeSettings}
+      />
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        onSuccess={handleLogout}
       />
 
       <SongLibraryManagerModal

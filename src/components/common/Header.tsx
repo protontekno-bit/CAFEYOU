@@ -30,6 +30,7 @@ interface HeaderProps {
   onOpenCafeSettings?: () => void;
   onOpenDeveloperHelp?: () => void;
   onOpenLibraryManager?: () => void;
+  onChangePassword?: () => void;
   onLogout?: () => void;
 }
 
@@ -51,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCafeSettings,
   onOpenDeveloperHelp,
   onOpenLibraryManager,
+  onChangePassword,
   onLogout,
 }) => {
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false);
@@ -257,6 +259,17 @@ export const Header: React.FC<HeaderProps> = ({
               title="Bantuan Teknis & WhatsApp Support AuraCore Labs"
             >
               <span>💬</span>
+            </button>
+          )}
+
+          {/* Tombol Ganti Password */}
+          {onChangePassword && (
+            <button
+              onClick={onChangePassword}
+              className="p-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition-all shadow-sm"
+              title="Ganti Password Login Operator"
+            >
+              🔑
             </button>
           )}
 

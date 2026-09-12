@@ -21,8 +21,8 @@ POPULAR_KARAOKE_SONGS.forEach((song) => {
     artist: song.artist,
     thumbnail: getYouTubeThumbnail(song.videoId, 'hqdefault'),
     url: `https://www.youtube.com/watch?v=${song.videoId}`,
-    playCount: 1,
-    lastPlayedAt: Date.now(),
+    playCount: 0,
+    lastPlayedAt: 0,
   };
 });
 

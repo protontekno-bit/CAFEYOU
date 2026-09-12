@@ -44,7 +44,7 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
         artist: song.artist,
         thumbnail: getYouTubeThumbnail(song.videoId, 'hqdefault'),
         url: `https://www.youtube.com/watch?v=${song.videoId}`,
-        playCount: 1,
+        playCount: 0,
         lastPlayedAt: 0,
       });
     });

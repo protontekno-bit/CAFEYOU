@@ -1,4 +1,4 @@
-import { PopularPresetSong } from '../types';
+import { PopularPresetSong, YouTubeSearchResult } from '../types';
 
 /**
  * Mengekstrak YouTube Video ID (11 karakter) dari berbagai format URL YouTube
@@ -176,3 +176,84 @@ export const loadYouTubeIframeAPI = (onReady: () => void): void => {
     onReady();
   };
 };
+
+/**
+ * Helper untuk decode entitas HTML pada judul YouTube
+ */
+export const decodeHtmlEntities = (text: string): string => {
+  if (!text) return '';
+  try {
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    return doc.body.textContent || text;
+  } catch {
+    return text;
+  }
+};
+
+/**
+ * Melakukan pencarian video YouTube langsung via YouTube Data API v3
+ */
+export const searchYouTubeVideos = async (
+  query: string,
+  apiKey: string,
+  maxResults: number = 8
+): Promise<{ success: boolean; results: YouTubeSearchResult[]; error?: string }> => {
+  const trimmedQuery = query?.trim();
+  const trimmedKey = apiKey?.trim();
+
+  if (!trimmedQuery) {
+    return { success: true, results: [] };
+  }
+
+  if (!trimmedKey) {
+    return { success: false, results: [], error: 'API Key YouTube belum dikonfigurasi di Pengaturan Kafe.' };
+  }
+
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=${maxResults}&q=${encodeURIComponent(
+      trimmedQuery
+    )}&key=${encodeURIComponent(trimmedKey)}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!res.ok) {
+      const errMsg =
+        data?.error?.message ||
+        (res.status === 403
+          ? 'Kuota YouTube API habis atau API Key tidak valid.'
+          : 'Gagal menghubungi server YouTube.');
+      return { success: false, results: [], error: errMsg };
+    }
+
+    const items = Array.isArray(data?.items) ? data.items : [];
+    const results: YouTubeSearchResult[] = items
+      .filter((item: any) => item?.id?.videoId)
+      .map((item: any) => {
+        const videoId = item.id.videoId;
+        const snippet = item.snippet || {};
+        const title = decodeHtmlEntities(snippet.title || `Video (${videoId})`);
+        const channelTitle = decodeHtmlEntities(snippet.channelTitle || '');
+        const thumbnail =
+          snippet.thumbnails?.medium?.url ||
+          snippet.thumbnails?.default?.url ||
+          getYouTubeThumbnail(videoId, 'hqdefault');
+
+        return {
+          videoId,
+          title,
+          channelTitle,
+          thumbnail,
+        };
+      });
+
+    return { success: true, results };
+  } catch (err: any) {
+    return {
+      success: false,
+      results: [],
+      error: err?.message || 'Terjadi gangguan jaringan saat mencari di YouTube.',
+    };
+  }
+};
+

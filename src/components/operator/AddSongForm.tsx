@@ -4,10 +4,11 @@ import {
   extractYouTubeID,
   getYouTubeThumbnail,
   fetchYouTubeInfo,
+  searchYouTubeVideos,
   POPULAR_KARAOKE_SONGS,
 } from '../../utils/youtube';
 import { QUICK_TABLES } from '../../constants/karaoke';
-import { SavedLibrarySong, SongHistoryItem } from '../../types';
+import { SavedLibrarySong, SongHistoryItem, YouTubeSearchResult } from '../../types';
 
 interface AddSongFormProps {
   onAddSong: (videoId: string, rawUrl: string, requester: string, customTitle?: string) => void;
@@ -15,6 +16,7 @@ interface AddSongFormProps {
   songLibrary?: Record<string, SavedLibrarySong>;
   history?: SongHistoryItem[];
   tables?: string[];
+  youtubeApiKey?: string;
 }
 
 export const AddSongForm: React.FC<AddSongFormProps> = ({
@@ -23,6 +25,7 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
   songLibrary = {},
   history = [],
   tables,
+  youtubeApiKey,
 }) => {
   const activeTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
   const [activeTab, setActiveTab] = useState<'search' | 'url'>('search');
@@ -34,6 +37,11 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
   const [detectedVideoId, setDetectedVideoId] = useState<string | null>(null);
+
+  // Live YouTube Search State
+  const [ytResults, setYtResults] = useState<YouTubeSearchResult[]>([]);
+  const [isSearchingYt, setIsSearchingYt] = useState(false);
+  const [ytSearchError, setYtSearchError] = useState<string | null>(null);
 
   // Menggabungkan seluruh sumber data (Catalog Preset + History Pemutaran + Song Library)
   const allSavedSongs = useMemo(() => {
@@ -304,11 +312,106 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
                 </div>
               ))
             ) : (
-              <div className="py-6 text-center text-slate-500 text-xs bg-slate-900/40 rounded-xl border border-slate-700/40 space-y-1">
-                <p>Tidak ada lagu yang cocok dengan <em>"{searchInput}"</em>.</p>
-                <p className="text-[11px] text-slate-400">
-                  Buka tab <strong>"+ Link YouTube"</strong> untuk memasukkan lagu baru.
-                </p>
+              <div className="py-5 px-3 text-center text-slate-400 text-xs bg-slate-900/40 rounded-xl border border-slate-700/40 space-y-2.5">
+                <p>Tidak ada lagu di database kafe untuk <em>"{searchInput}"</em>.</p>
+                {youtubeApiKey ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!searchInput.trim()) return;
+                      setIsSearchingYt(true);
+                      setYtSearchError(null);
+                      try {
+                        const target = searchInput.toLowerCase().includes('karaoke')
+                          ? searchInput.trim()
+                          : `${searchInput.trim()} karaoke`;
+                        const res = await searchYouTubeVideos(target, youtubeApiKey, 6);
+                        if (res.success) {
+                          setYtResults(res.results);
+                        } else {
+                          setYtSearchError(res.error || 'Gagal mencari di YouTube');
+                        }
+                      } catch (err: any) {
+                        setYtSearchError(err?.message || 'Gangguan jaringan');
+                      } finally {
+                        setIsSearchingYt(false);
+                      }
+                    }}
+                    disabled={isSearchingYt}
+                    className="px-3 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-red-600/30 transition-all flex items-center justify-center gap-1.5 mx-auto"
+                  >
+                    <span>🔴</span>
+                    <span>{isSearchingYt ? 'Mencari di YouTube...' : `Cari "${searchInput}" di YouTube`}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const q = searchInput.toLowerCase().includes('karaoke') ? searchInput : `${searchInput} karaoke`;
+                      window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank');
+                    }}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-purple-300 font-semibold text-xs rounded-xl border border-purple-500/30 transition-all inline-flex items-center gap-1 mx-auto"
+                  >
+                    <span>Cari di YouTube ↗</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Hasil Pencarian YouTube Langsung (Jika ada) */}
+            {ytResults.length > 0 && (
+              <div className="pt-2 border-t border-slate-700/60 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] text-red-400 font-bold px-1">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span>Hasil YouTube Live:</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setYtResults([])}
+                    className="text-[10px] text-slate-500 hover:text-slate-300"
+                  >
+                    Tutup ✕
+                  </button>
+                </div>
+                {ytResults.map((video) => (
+                  <div
+                    key={video.videoId}
+                    className="flex items-center justify-between p-2.5 bg-slate-900/90 hover:bg-slate-850 rounded-xl border border-red-500/30 transition-all group"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={video.thumbnail}
+                        alt="Thumbnail"
+                        className="w-12 h-8 object-cover rounded bg-slate-800 border border-slate-700 shrink-0"
+                        loading="lazy"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-100 truncate" title={video.title}>
+                          {video.title}
+                        </p>
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {video.channelTitle || 'YouTube'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const requester = nameInput.trim() || 'Kasir';
+                        const url = `https://www.youtube.com/watch?v=${video.videoId}`;
+                        onAddSong(video.videoId, url, requester, video.title);
+                        setSearchInput('');
+                        setNameInput('');
+                        setYtResults([]);
+                      }}
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-all shrink-0 ml-2 shadow-sm active:scale-95"
+                    >
+                      + Antrekan
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

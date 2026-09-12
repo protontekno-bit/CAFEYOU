@@ -70,6 +70,14 @@ export interface CafeSettings {
   welcomeMessage?: string;
   wifiName?: string;
   wifiPassword?: string;
+  youtubeApiKey?: string;
+}
+
+export interface YouTubeSearchResult {
+  videoId: string;
+  title: string;
+  channelTitle?: string;
+  thumbnail: string;
 }
 
 export interface KaraokeState {

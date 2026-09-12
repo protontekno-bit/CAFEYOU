@@ -231,6 +231,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
             songLibrary={songLibrary}
             history={history}
             tables={tables}
+            youtubeApiKey={cafeSettings?.youtubeApiKey}
           />
         </div>
 

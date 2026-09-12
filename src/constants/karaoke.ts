@@ -10,6 +10,7 @@ export const DEFAULT_CAFE_SETTINGS: CafeSettings = {
   welcomeMessage: 'Selamat Datang di CAFEYOU Karaoke Lounge • Pesan Lagu Favorit Anda di Kasir!',
   wifiName: 'CAFEYOU_Free_WiFi',
   wifiPassword: 'karaokecafeyou',
+  youtubeApiKey: '',
 };
 
 // Inisialisasi library awal dari katalog lagu populer

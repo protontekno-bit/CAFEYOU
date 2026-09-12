@@ -283,6 +283,26 @@ export function useKaraoke() {
     }));
   };
 
+  // ─── Song Library Manager (Khusus Operator) ────────────────────────────────
+  const deleteFromLibrary = (videoId: string) => {
+    updateAppState((prev) => {
+      const currentLibrary =
+        prev?.songLibrary && typeof prev.songLibrary === 'object' ? { ...prev.songLibrary } : {};
+      delete currentLibrary[videoId];
+      return {
+        ...prev,
+        songLibrary: currentLibrary,
+      };
+    });
+  };
+
+  const clearLibrary = () => {
+    updateAppState((prev) => ({
+      ...prev,
+      songLibrary: {},
+    }));
+  };
+
   const togglePlayPause = () => {
     updateAppState((prev) => ({
       ...prev,
@@ -586,5 +606,7 @@ export function useKaraoke() {
     toggleFairRotation,
     rebalanceQueueFairly,
     updateCafeSettings,
+    deleteFromLibrary,
+    clearLibrary,
   };
 }

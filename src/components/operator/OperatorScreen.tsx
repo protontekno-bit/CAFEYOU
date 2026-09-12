@@ -13,6 +13,7 @@ import { HistoryModal } from './HistoryModal';
 import { VoucherManagerModal } from './VoucherManagerModal';
 import { TableQrGeneratorModal } from './TableQrGeneratorModal';
 import { CafeSettingsModal } from './CafeSettingsModal';
+import { SongLibraryManagerModal } from './SongLibraryManagerModal';
 import { OperatorLoginView } from './OperatorLoginView';
 import { DeveloperHelpModal } from '../common/DeveloperHelpModal';
 import { DeveloperFooter } from '../common/DeveloperFooter';
@@ -69,6 +70,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     rebalanceQueueFairly,
     cafeSettings,
     updateCafeSettings,
+    deleteFromLibrary,
+    clearLibrary,
   } = useKaraoke();
 
   const [isSoundBoardOpen, setIsSoundBoardOpen] = useState(false);
@@ -81,6 +84,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isTableQrOpen, setIsTableQrOpen] = useState(false);
   const [isCafeSettingsOpen, setIsCafeSettingsOpen] = useState(false);
   const [isDeveloperHelpOpen, setIsDeveloperHelpOpen] = useState(false);
+  const [isLibraryManagerOpen, setIsLibraryManagerOpen] = useState(false);
 
   // Notifikasi Pesanan Meja Baru
   const [newOrderAlert, setNewOrderAlert] = useState<{
@@ -167,6 +171,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onOpenTableQr={() => setIsTableQrOpen(true)}
           onOpenCafeSettings={() => setIsCafeSettingsOpen(true)}
           onOpenDeveloperHelp={() => setIsDeveloperHelpOpen(true)}
+          onOpenLibraryManager={() => setIsLibraryManagerOpen(true)}
           onLogout={handleLogout}
         />
 
@@ -304,6 +309,15 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         settings={cafeSettings}
         onClose={() => setIsCafeSettingsOpen(false)}
         onSave={updateCafeSettings}
+      />
+
+      <SongLibraryManagerModal
+        isOpen={isLibraryManagerOpen}
+        songLibrary={songLibrary}
+        onClose={() => setIsLibraryManagerOpen(false)}
+        onDeleteSong={deleteFromLibrary}
+        onClearLibrary={clearLibrary}
+        onAddToQueue={(videoId, url, title) => addSong(videoId, url, 'Diputar Ulang', title)}
       />
 
       {/* Developer Help Modal & Footer */}

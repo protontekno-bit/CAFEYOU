@@ -29,6 +29,7 @@ interface HeaderProps {
   onOpenTableQr?: () => void;
   onOpenCafeSettings?: () => void;
   onOpenDeveloperHelp?: () => void;
+  onOpenLibraryManager?: () => void;
   onLogout?: () => void;
 }
 
@@ -49,6 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenTableQr,
   onOpenCafeSettings,
   onOpenDeveloperHelp,
+  onOpenLibraryManager,
   onLogout,
 }) => {
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false);
@@ -135,6 +137,17 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <span className="text-xs">🎛️</span>
               <span className="hidden lg:inline">FX</span>
+            </button>
+          )}
+
+          {onOpenLibraryManager && (
+            <button
+              onClick={onOpenLibraryManager}
+              className="px-2.5 py-1.5 hover:bg-violet-500/20 text-violet-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
+              title="Kelola Koleksi Lagu Kafe (Hapus / Tambah ke Antrean)"
+            >
+              <span className="text-xs">📚</span>
+              <span className="hidden lg:inline">Koleksi</span>
             </button>
           )}
         </div>

@@ -293,11 +293,13 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
       <HistoryModal
         isOpen={isHistoryOpen}
         history={history}
+        songLibrary={songLibrary}
         onClose={() => setIsHistoryOpen(false)}
         onRequeue={(videoId, rawUrl, title) => {
           addSong(videoId, rawUrl, 'Diputar Ulang', title);
         }}
         onClearHistory={clearHistory}
+        onSaveToLibrary={saveSongToLibrary}
       />
 
       <VoucherManagerModal

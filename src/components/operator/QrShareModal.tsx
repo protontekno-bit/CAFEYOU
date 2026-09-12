@@ -9,17 +9,46 @@ export const QrShareModal: React.FC<QrShareModalProps> = ({ isOpen, onClose }) =
   const [activeTab, setActiveTab] = useState<'player' | 'operator'>('player');
   const [copied, setCopied] = useState(false);
 
+  // Deteksi dan Override IP Wi-Fi Lokal
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  const [customLocalIp, setCustomLocalIp] = useState(() => {
+    try {
+      return (
+        localStorage.getItem('cafeyou_server_local_ip') ||
+        (isLocalhost ? '192.168.1.50:3000' : '')
+      );
+    } catch {
+      return '192.168.1.50:3000';
+    }
+  });
+
+  const [showIpEditor, setShowIpEditor] = useState(false);
+
   if (!isOpen) return null;
 
-  const currentOrigin =
+  let effectiveOrigin =
     typeof window !== 'undefined'
       ? window.location.href.split('#')[0]
-      : 'http://localhost:3000';
+      : 'http://localhost:3000/';
 
-  const targetUrl = `${currentOrigin}#${activeTab}`;
+  if (isLocalhost && customLocalIp.trim()) {
+    effectiveOrigin = `http://${customLocalIp.trim().replace(/^https?:\/\//, '').replace(/\/$/, '')}/`;
+  }
+
+  const targetUrl = `${effectiveOrigin}#${activeTab}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
     targetUrl
   )}&bgcolor=1e293b&color=ffffff&margin=10`;
+
+  const handleSaveIp = (ip: string) => {
+    setCustomLocalIp(ip);
+    try {
+      localStorage.setItem('cafeyou_server_local_ip', ip);
+    } catch {}
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(targetUrl);
@@ -72,6 +101,47 @@ export const QrShareModal: React.FC<QrShareModalProps> = ({ isOpen, onClose }) =
             💻 Dasbor Kasir (#operator)
           </button>
         </div>
+
+        {/* IP Wi-Fi Server Warning / Configurator */}
+        {isLocalhost && (
+          <div className="bg-amber-950/40 border border-amber-500/30 rounded-xl p-2.5 text-xs text-left space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-amber-300 font-semibold text-[11px] flex items-center gap-1.5">
+                <span>📶</span>
+                <span>IP Wi-Fi Server Lokal</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowIpEditor(!showIpEditor)}
+                className="text-[10px] px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded border border-amber-500/30 transition-colors"
+              >
+                {showIpEditor ? 'Tutup' : '⚙️ Ubah IP'}
+              </button>
+            </div>
+            {showIpEditor ? (
+              <div className="pt-1.5 border-t border-amber-500/20 flex gap-1.5">
+                <input
+                  type="text"
+                  value={customLocalIp}
+                  onChange={(e) => handleSaveIp(e.target.value)}
+                  placeholder="192.168.1.50:3000"
+                  className="flex-1 px-2.5 py-1 bg-slate-900 border border-amber-500/50 rounded-lg text-amber-200 font-mono text-xs focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowIpEditor(false)}
+                  className="px-2.5 py-1 bg-amber-600 text-slate-950 font-bold rounded-lg text-xs"
+                >
+                  OK
+                </button>
+              </div>
+            ) : (
+              <div className="text-[10px] font-mono text-amber-200/80 truncate">
+                Host aktif: {effectiveOrigin}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Display QR Code */}
         <div className="flex flex-col items-center justify-center p-4 bg-slate-900 rounded-2xl border border-slate-700/70 shadow-inner">

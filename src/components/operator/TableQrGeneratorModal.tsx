@@ -18,18 +18,50 @@ export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
   const [selectedTable, setSelectedTable] = useState('Meja 1');
   const [printMode, setPrintMode] = useState(false);
 
+  // Deteksi dan Override IP Wi-Fi Lokal untuk QR Code
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  const [customLocalIp, setCustomLocalIp] = useState(() => {
+    try {
+      return (
+        localStorage.getItem('cafeyou_server_local_ip') ||
+        (isLocalhost ? '192.168.1.50:3000' : '')
+      );
+    } catch {
+      return '192.168.1.50:3000';
+    }
+  });
+
+  const [showIpEditor, setShowIpEditor] = useState(false);
+
   if (!isOpen) return null;
 
-  const baseUrl = window.location.href.split('#')[0];
-  const getGuestUrl = (table: string) => `${baseUrl}#guest?table=${encodeURIComponent(table)}`;
+  // Hitung Base URL yang aman untuk di-scan HP tamu
+  let effectiveBaseUrl = window.location.href.split('#')[0];
+  if (isLocalhost && customLocalIp.trim()) {
+    effectiveBaseUrl = `http://${customLocalIp.trim().replace(/^https?:\/\//, '')}/`;
+  }
+
+  const getGuestUrl = (table: string) =>
+    `${effectiveBaseUrl}#guest?table=${encodeURIComponent(table)}`;
 
   const currentQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
     getGuestUrl(selectedTable)
   )}`;
 
+  const handleSaveIp = (ip: string) => {
+    setCustomLocalIp(ip);
+    try {
+      localStorage.setItem('cafeyou_server_local_ip', ip);
+    } catch {}
+  };
+
   const handlePrint = () => {
     window.print();
   };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
@@ -78,6 +110,47 @@ export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
             🖨️ Lembar Cetak Semua Meja
           </button>
         </div>
+
+        {/* IP Wi-Fi Server Warning / Configurator */}
+        {isLocalhost && (
+          <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-3 text-xs space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-amber-300 font-semibold">
+                <span>📶</span>
+                <span>Mode Server Wi-Fi Kafe (Localhost Terdeteksi)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowIpEditor(!showIpEditor)}
+                className="text-[11px] px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-lg border border-amber-500/30 transition-colors"
+              >
+                {showIpEditor ? 'Tutup Pengaturan IP' : '⚙️ Sesuaikan IP Laptop'}
+              </button>
+            </div>
+            <p className="text-slate-300 text-[11px] leading-relaxed">
+              QR code akan menggunakan IP Wi-Fi laptop ini (bukan <em>localhost</em>) agar HP tamu dapat membuka menu dari meja.
+            </p>
+            {showIpEditor && (
+              <div className="pt-2 border-t border-amber-500/20 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                <span className="text-slate-400 text-[11px] whitespace-nowrap">IP & Port Laptop:</span>
+                <input
+                  type="text"
+                  value={customLocalIp}
+                  onChange={(e) => handleSaveIp(e.target.value)}
+                  placeholder="Contoh: 192.168.1.15:3000"
+                  className="flex-1 px-3 py-1.5 bg-slate-900 border border-amber-500/50 rounded-lg text-amber-200 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowIpEditor(false)}
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-lg text-xs"
+                >
+                  Simpan
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {!printMode ? (
           /* Tampilan Per Meja */

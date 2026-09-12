@@ -23,8 +23,7 @@ export const SongLibraryManagerModal: React.FC<SongLibraryManagerModalProps> = (
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  if (!isOpen) return null;
-
+  // ✅ Semua hooks HARUS dipanggil SEBELUM early return (Rules of Hooks)
   const songs = useMemo(() => {
     const list = Object.values(songLibrary || {});
     const filtered = searchTerm.trim()
@@ -43,6 +42,8 @@ export const SongLibraryManagerModal: React.FC<SongLibraryManagerModalProps> = (
     (acc, s) => acc + (s.playCount || 0),
     0
   );
+
+  if (!isOpen) return null;
 
   const formatDate = (ts?: number) => {
     if (!ts) return '—';

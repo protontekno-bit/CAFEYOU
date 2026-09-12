@@ -7,7 +7,7 @@ import {
   ArrowDownIcon,
 } from '../icons/Icons';
 import { getYouTubeThumbnail } from '../../utils/youtube';
-import { calculateTableRound } from '../../utils/queue';
+import { calculateAllTableRounds } from '../../utils/queue';
 
 interface QueueListProps {
   queue?: Song[];
@@ -37,6 +37,11 @@ export const QueueList: React.FC<QueueListProps> = ({
 
   const guestCount = useMemo(() => {
     return safeQueue.filter((s) => s.source === 'guest' || s.tableNumber).length;
+  }, [safeQueue]);
+
+  // Prekalkulasi urutan giliran meja sekali jalan O(N) untuk seluruh antrean
+  const roundsMap = useMemo(() => {
+    return calculateAllTableRounds(safeQueue);
   }, [safeQueue]);
 
   const filteredQueue = useMemo(() => {
@@ -147,7 +152,7 @@ export const QueueList: React.FC<QueueListProps> = ({
       {filteredQueue.length > 0 ? (
         <div className="space-y-2.5 overflow-y-auto max-h-[500px] pr-1 custom-scrollbar">
           {filteredQueue.map((song, idx) => {
-            const round = calculateTableRound(song.id, safeQueue);
+            const round = roundsMap.get(song.id) || { roundNumber: 1, totalInQueue: 1 };
             const isGuest = song.source === 'guest' || song.tableNumber;
             return (
               <div

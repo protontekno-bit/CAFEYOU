@@ -1,10 +1,38 @@
-import { useState, useEffect } from 'react';
-import { OperatorScreen } from './components/operator/OperatorScreen';
-import { PlayerScreen } from './components/player/PlayerScreen';
-import { SplitScreen } from './components/split/SplitScreen';
-import { LandingScreen } from './components/landing/LandingScreen';
-import { GuestScreen } from './components/guest/GuestScreen';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AppRole } from './types';
+
+// Code-splitting & Lazy loading per layar peran
+const OperatorScreen = lazy(() =>
+  import('./components/operator/OperatorScreen').then((m) => ({ default: m.OperatorScreen }))
+);
+const PlayerScreen = lazy(() =>
+  import('./components/player/PlayerScreen').then((m) => ({ default: m.PlayerScreen }))
+);
+const SplitScreen = lazy(() =>
+  import('./components/split/SplitScreen').then((m) => ({ default: m.SplitScreen }))
+);
+const LandingScreen = lazy(() =>
+  import('./components/landing/LandingScreen').then((m) => ({ default: m.LandingScreen }))
+);
+const GuestScreen = lazy(() =>
+  import('./components/guest/GuestScreen').then((m) => ({ default: m.GuestScreen }))
+);
+
+// Fallback spinner elegan bertema gelap
+const ScreenFallback = () => (
+  <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-white select-none z-50 animate-fadeIn">
+    <div className="relative flex items-center justify-center mb-4">
+      <div className="w-14 h-14 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+      <div className="absolute text-xl">🎤</div>
+    </div>
+    <div className="text-sm font-extrabold tracking-wider uppercase text-blue-400">
+      CAFEYOU KARAOKE
+    </div>
+    <div className="text-xs text-slate-500 mt-1 font-medium animate-pulse">
+      Memuat modul sistem...
+    </div>
+  </div>
+);
 
 export default function App() {
   const [role, setRole] = useState<AppRole>(() => {
@@ -43,16 +71,20 @@ export default function App() {
     }
   }, [role]);
 
-  switch (role) {
-    case 'operator':
-      return <OperatorScreen setRole={setRole} />;
-    case 'player':
-      return <PlayerScreen setRole={setRole} />;
-    case 'split':
-      return <SplitScreen setRole={setRole} />;
-    case 'guest':
-      return <GuestScreen setRole={setRole} />;
-    default:
-      return <LandingScreen setRole={setRole} />;
-  }
+  const renderScreen = () => {
+    switch (role) {
+      case 'operator':
+        return <OperatorScreen setRole={setRole} />;
+      case 'player':
+        return <PlayerScreen setRole={setRole} />;
+      case 'split':
+        return <SplitScreen setRole={setRole} />;
+      case 'guest':
+        return <GuestScreen setRole={setRole} />;
+      default:
+        return <LandingScreen setRole={setRole} />;
+    }
+  };
+
+  return <Suspense fallback={<ScreenFallback />}>{renderScreen()}</Suspense>;
 }

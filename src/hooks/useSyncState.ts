@@ -81,8 +81,18 @@ export function useSyncState<T>(
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const isSettingFromCloudRef = useRef<boolean>(false);
+  const firebaseWriteTimerRef = useRef<any>(null);
   const stateRef = useRef<T>(state);
   stateRef.current = state;
+
+  // Cleanup pending debounce timer saat unmount
+  useEffect(() => {
+    return () => {
+      if (firebaseWriteTimerRef.current) {
+        clearTimeout(firebaseWriteTimerRef.current);
+      }
+    };
+  }, []);
 
   // 1. Inisialisasi Firebase Listener & Connection Status
   useEffect(() => {
@@ -179,17 +189,22 @@ export function useSyncState<T>(
         } catch (error) {}
       }
 
-      // Update Firebase Cloud (Nirkabel ke semua perangkat)
+      // Update Firebase Cloud (Nirkabel ke semua perangkat - Debounced 120ms)
       if (!isSettingFromCloudRef.current) {
-        const db = initFirebaseDatabase();
-        if (db) {
-          try {
-            const dbRef = ref(db, `cafeyou/${key}`);
-            set(dbRef, newValue).catch((err) => {
-              console.warn('Gagal menulis ke Firebase Cloud:', err);
-            });
-          } catch (err) {}
+        if (firebaseWriteTimerRef.current) {
+          clearTimeout(firebaseWriteTimerRef.current);
         }
+        firebaseWriteTimerRef.current = setTimeout(() => {
+          const db = initFirebaseDatabase();
+          if (db) {
+            try {
+              const dbRef = ref(db, `cafeyou/${key}`);
+              set(dbRef, newValue).catch((err) => {
+                console.warn('Gagal menulis ke Firebase Cloud:', err);
+              });
+            } catch (err) {}
+          }
+        }, 120);
       }
 
       return newValue;

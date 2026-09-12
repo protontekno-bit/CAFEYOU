@@ -48,6 +48,38 @@ export function rebalanceFairQueue(queue: Song[]): Song[] {
 }
 
 /**
+ * Menghitung urutan giliran putaran (round) semua lagu dalam antrean secara batch O(N).
+ * Menghindari loop kuadratik O(N^2) saat render daftar antrean yang panjang.
+ */
+export function calculateAllTableRounds(
+  queue: Song[]
+): Map<string, { roundNumber: number; totalInQueue: number }> {
+  const result = new Map<string, { roundNumber: number; totalInQueue: number }>();
+  if (!Array.isArray(queue) || queue.length === 0) return result;
+
+  // 1. Hitung total lagu per meja O(N)
+  const tableTotals = new Map<string, number>();
+  for (const song of queue) {
+    const key = song.tableNumber?.trim() || song.requester?.trim() || 'Umum';
+    tableTotals.set(key, (tableTotals.get(key) || 0) + 1);
+  }
+
+  // 2. Hitung urutan ke-N (roundNumber) per meja O(N)
+  const currentCounts = new Map<string, number>();
+  for (const song of queue) {
+    const key = song.tableNumber?.trim() || song.requester?.trim() || 'Umum';
+    const current = (currentCounts.get(key) || 0) + 1;
+    currentCounts.set(key, current);
+    result.set(song.id, {
+      roundNumber: current,
+      totalInQueue: tableTotals.get(key) || 1,
+    });
+  }
+
+  return result;
+}
+
+/**
  * Menghitung urutan giliran putaran (round) suatu lagu dalam antrean
  * Berguna untuk menampilkan badge: "Giliran #1", "Giliran #2"
  */

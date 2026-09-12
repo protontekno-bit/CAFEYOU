@@ -2,8 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { GuestVoucherGate } from './GuestVoucherGate';
 import { AppRole, Voucher } from '../../types';
-import { POPULAR_KARAOKE_SONGS } from '../../utils/youtube';
-import { extractYouTubeID, fetchYouTubeInfo, getYouTubeThumbnail } from '../../utils/youtube';
+import { POPULAR_KARAOKE_SONGS, extractYouTubeID, fetchYouTubeInfo, getYouTubeThumbnail } from '../../utils/youtube';
 import {
   SearchIcon,
   SparklesIcon,
@@ -34,7 +33,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     cafeSettings,
   } = useKaraoke();
 
-  // Ambil nomor meja dari props atau URL hash/search query
+  // 1. Ambil nomor meja dari props atau URL hash/search query
   const tableNumber = useMemo(() => {
     if (defaultTable) return defaultTable;
     try {
@@ -54,7 +53,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     return 'Meja 1';
   }, [defaultTable]);
 
-  // Status autentikasi voucher
+  // 2. Status autentikasi voucher (Per-Meja)
   const [activeVoucher, setActiveVoucher] = useState<Voucher | null>(() => {
     try {
       const saved = sessionStorage.getItem(`cafeyou_voucher_${tableNumber}`);
@@ -110,24 +109,22 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     } catch {}
   }, [activeVoucher, tableNumber, validateVoucher]);
 
-
-  const [activeTab, setActiveTab] = useState<'search' | 'url' | 'queue'>('search');
+  // 3. Tab State (2 Tab Bersih: 'catalog' & 'queue')
+  const [activeTab, setActiveTab] = useState<'catalog' | 'queue'>('catalog');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [requesterName, setRequesterName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // YouTube Link Form
-  const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [urlPreview, setUrlPreview] = useState<{
+  // Link YouTube Auto-Detection Preview
+  const [detectedYtVideo, setDetectedYtVideo] = useState<{
     videoId: string;
     title: string;
     thumbnail: string;
   } | null>(null);
-  const [isLoadingInfo, setIsLoadingInfo] = useState(false);
-  const [urlError, setUrlError] = useState<string | null>(null);
+  const [isLoadingYtPreview, setIsLoadingYtPreview] = useState(false);
 
-  // Reaction feedback animation
+  // Reaction feedback animation & toast
   const [lastSentReaction, setLastSentReaction] = useState<string | null>(null);
   const [successAddMsg, setSuccessAddMsg] = useState<string | null>(null);
 
@@ -146,15 +143,16 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
 
   // Daftar gabungan katalog lagu
   const catalogList = useMemo(() => {
-    const list: Array<{ videoId: string; title: string; artist?: string; thumbnail?: string }> =
+    const list: Array<{ videoId: string; title: string; artist?: string; thumbnail?: string; category?: string }> =
       [];
 
-    // 1. Library tersimpan
+    // 1. Library tersimpan kafe
     Object.values(songLibrary || {}).forEach((lib) => {
       list.push({
         videoId: lib.videoId,
         title: lib.title,
         thumbnail: lib.thumbnail,
+        category: 'Favorit Kafe',
       });
     });
 
@@ -165,6 +163,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           videoId: p.videoId,
           title: p.title,
           artist: p.artist,
+          category: p.category,
           thumbnail: getYouTubeThumbnail(p.videoId, 'hqdefault'),
         });
       }
@@ -173,17 +172,49 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     return list;
   }, [songLibrary]);
 
+  // Categories
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    POPULAR_KARAOKE_SONGS.forEach((s) => cats.add(s.category));
+    return ['Semua', ...Array.from(cats)];
+  }, []);
+
+  // Deteksi Otomatis Jika Input Pencarian adalah URL YouTube
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    const ytId = extractYouTubeID(trimmed);
+
+    if (ytId) {
+      setIsLoadingYtPreview(true);
+      fetchYouTubeInfo(ytId)
+        .then((info) => {
+          setDetectedYtVideo({
+            videoId: ytId,
+            title: info?.title || `Lagu YouTube (${ytId})`,
+            thumbnail: info?.thumbnail || getYouTubeThumbnail(ytId, 'hqdefault'),
+          });
+        })
+        .catch(() => {
+          setDetectedYtVideo({
+            videoId: ytId,
+            title: `Lagu YouTube (${ytId})`,
+            thumbnail: getYouTubeThumbnail(ytId, 'hqdefault'),
+          });
+        })
+        .finally(() => {
+          setIsLoadingYtPreview(false);
+        });
+    } else {
+      setDetectedYtVideo(null);
+      setIsLoadingYtPreview(false);
+    }
+  }, [searchQuery]);
+
   // Filter pencarian
   const filteredCatalog = useMemo(() => {
     if (!searchQuery.trim()) {
       if (selectedCategory === 'Semua') return catalogList;
-      const catSongs = POPULAR_KARAOKE_SONGS.filter((s) => s.category === selectedCategory);
-      return catSongs.map((c) => ({
-        videoId: c.videoId,
-        title: c.title,
-        artist: c.artist,
-        thumbnail: getYouTubeThumbnail(c.videoId, 'hqdefault'),
-      }));
+      return catalogList.filter((s) => s.category === selectedCategory);
     }
 
     const q = searchQuery.toLowerCase().trim();
@@ -193,51 +224,6 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         (s.artist && s.artist.toLowerCase().includes(q))
     );
   }, [catalogList, searchQuery, selectedCategory]);
-
-  // Categories
-  const categories = useMemo(() => {
-    const cats = new Set<string>();
-    POPULAR_KARAOKE_SONGS.forEach((s) => cats.add(s.category));
-    return ['Semua', ...Array.from(cats)];
-  }, []);
-
-  // Handle URL Change
-  useEffect(() => {
-    if (!youtubeUrl.trim()) {
-      setUrlPreview(null);
-      setUrlError(null);
-      return;
-    }
-
-    const id = extractYouTubeID(youtubeUrl);
-    if (!id) {
-      setUrlError('Link YouTube tidak valid.');
-      setUrlPreview(null);
-      return;
-    }
-
-    setUrlError(null);
-    setIsLoadingInfo(true);
-
-    fetchYouTubeInfo(id)
-      .then((info) => {
-        setUrlPreview({
-          videoId: id,
-          title: info?.title || `Lagu YouTube (${id})`,
-          thumbnail: info?.thumbnail || getYouTubeThumbnail(id, 'hqdefault'),
-        });
-      })
-      .catch(() => {
-        setUrlPreview({
-          videoId: id,
-          title: `Lagu YouTube (${id})`,
-          thumbnail: getYouTubeThumbnail(id, 'hqdefault'),
-        });
-      })
-      .finally(() => {
-        setIsLoadingInfo(false);
-      });
-  }, [youtubeUrl]);
 
   const handleAddSong = async (videoId: string, title: string, rawUrl?: string) => {
     if (isQuotaExhausted || isSubmitting) return;
@@ -253,12 +239,32 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         voucherCode: activeVoucher?.code,
       });
 
-      setSuccessAddMsg(`"${title}" berhasil dikirim ke antrean kafe! 🎤`);
+      setSuccessAddMsg(`"${title}" berhasil dimasukkan ke antrean kafe! 🎤`);
+      setSearchQuery('');
+      setDetectedYtVideo(null);
       setTimeout(() => setSuccessAddMsg(null), 3500);
     } catch (err) {
       console.warn('Gagal menambahkan lagu:', err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Fitur 1-Tap Paste dari Clipboard
+  const handleSmartPaste = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          setSearchQuery(text.trim());
+        }
+      } else {
+        const manual = prompt('Tempel link YouTube atau ketik judul lagu:');
+        if (manual) setSearchQuery(manual.trim());
+      }
+    } catch {
+      const manual = prompt('Tempel link YouTube atau ketik judul lagu:');
+      if (manual) setSearchQuery(manual.trim());
     }
   };
 
@@ -289,18 +295,22 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     );
   }
 
+  const totalQueueCount = nextSongs.length + (currentSong ? 1 : 0);
+
   return (
-    <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white pb-24">
+    <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-500 selection:text-white pb-28">
       {/* Top Navbar */}
-      <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 p-3 sticky top-0 z-30 shadow-lg flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🎤</span>
+      <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 p-3 sticky top-0 z-30 shadow-lg flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-lg shadow-md shadow-purple-500/20">
+            🎤
+          </div>
           <div>
-            <div className="font-extrabold text-sm bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent truncate max-w-[170px] sm:max-w-xs">
+            <div className="font-extrabold text-sm bg-gradient-to-r from-purple-400 via-pink-300 to-amber-300 bg-clip-text text-transparent truncate max-w-[170px] sm:max-w-xs">
               {cafeSettings?.name || 'CAFEYOU'} Portal
             </div>
             <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
-              <span>{tableNumber}</span>
+              <span className="text-purple-300 font-bold">{tableNumber}</span>
               <span className={`flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
                 isCloudConnected
                   ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30'
@@ -318,10 +328,10 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           </div>
         </div>
 
-        {/* Voucher Quota Pill */}
+        {/* Voucher Quota Pill & Lock */}
         <div className="flex items-center gap-2">
           <div
-            className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border ${
+            className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border shadow-sm ${
               isQuotaExhausted
                 ? 'bg-red-500/20 text-red-400 border-red-500/30'
                 : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
@@ -343,7 +353,6 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         </div>
       </header>
 
-
       {/* Main Content Area */}
       <main className="flex-1 max-w-lg mx-auto w-full p-4 space-y-4">
         {/* Banner Smart Fair Rotation */}
@@ -351,7 +360,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           <div className="p-2.5 bg-purple-500/15 border border-purple-500/30 rounded-2xl flex items-center gap-2.5 text-xs text-purple-300 animate-fadeIn">
             <span className="text-base shrink-0">⚖️</span>
             <span className="text-[11px] leading-relaxed">
-              <strong>Sistem Antrean Adil Aktif:</strong> Lagu setiap meja akan diputar bergantian secara merata.
+              <strong>Sistem Antrean Adil Aktif:</strong> Lagu setiap meja diputar bergantian secara merata.
             </span>
           </div>
         )}
@@ -377,80 +386,133 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           </div>
         )}
 
-        {/* Input Nama Peminta (Nickname) */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-3 shadow-sm flex items-center gap-3">
-          <span className="text-sm font-semibold text-slate-400 shrink-0">Nama Kamu:</span>
+        {/* Input Nama Penyanyi (Compact) */}
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-2.5 shadow-sm flex items-center gap-2.5">
+          <span className="text-xs font-bold text-slate-400 shrink-0">👤 Nama Kamu:</span>
           <input
             type="text"
             value={requesterName}
             onChange={(e) => setRequesterName(e.target.value)}
             placeholder={`Contoh: Rian (${tableNumber})`}
-            className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-slate-600 outline-none focus:border-blue-500 font-medium"
+            className="flex-1 bg-slate-950 border border-slate-700/70 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-slate-600 outline-none focus:border-purple-500 font-medium"
           />
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs font-bold">
+        {/* Tab Navigation (2 Tab Utama Saja) */}
+        <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs font-bold shadow-inner">
           <button
-            onClick={() => setActiveTab('search')}
-            className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'search'
-                ? 'bg-blue-600 text-white shadow-md'
+            onClick={() => setActiveTab('catalog')}
+            className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'catalog'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <SearchIcon className="w-3.5 h-3.5" />
-            <span>Katalog & Cari</span>
+            <span>🎵</span>
+            <span>Pilih Lagu</span>
           </button>
-          <button
-            onClick={() => setActiveTab('url')}
-            className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'url'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>🔗</span>
-            <span>Link YouTube</span>
-          </button>
+
           <button
             onClick={() => setActiveTab('queue')}
-            className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 ${
               activeTab === 'queue'
-                ? 'bg-blue-600 text-white shadow-md'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <span>📋</span>
-            <span>Antrean ({nextSongs.length + (currentSong ? 1 : 0)})</span>
+            <span>Antrean Kafe ({totalQueueCount})</span>
           </button>
         </div>
 
-        {/* TAB 1: Cari Lagu & Katalog */}
-        {activeTab === 'search' && (
-          <div className="space-y-3">
-            {/* Search Input */}
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari judul lagu atau nama penyanyi..."
-                className="w-full bg-slate-900 border border-slate-700 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-500"
-              />
-              <SearchIcon className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+        {/* TAB 1: PILIH LAGU (Universal Search + Categories + List) */}
+        {activeTab === 'catalog' && (
+          <div className="space-y-3.5">
+            {/* Universal Smart Search Box */}
+            <div className="relative flex items-center gap-1.5">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Ketik judul lagu / artis / tempel link..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-purple-500 shadow-sm"
+                />
+                <SearchIcon className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 text-xs p-0.5 rounded-full"
+                    title="Hapus pencarian"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Tombol Tempel Cepat (Smart Paste) */}
+              <button
+                type="button"
+                onClick={handleSmartPaste}
+                className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-purple-300 border border-purple-500/30 hover:border-purple-500/60 rounded-2xl text-xs font-bold transition-all shadow flex items-center gap-1 shrink-0"
+                title="Tempel link dari clipboard HP"
+              >
+                <span>📋</span>
+                <span className="hidden sm:inline">Tempel</span>
+              </button>
             </div>
 
-            {/* Category Pills (Hanya saat tidak sedang mengetik query) */}
+            {/* HASIL DETEKSI LINK YOUTUBE (Jika input adalah link YouTube) */}
+            {isLoadingYtPreview && (
+              <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-2xl text-xs text-purple-300 animate-pulse flex items-center gap-2">
+                <span>🔄</span>
+                <span>Mengambil info video YouTube...</span>
+              </div>
+            )}
+
+            {detectedYtVideo && !isLoadingYtPreview && (
+              <div className="p-3 bg-gradient-to-r from-purple-950/80 to-slate-900 border border-purple-500/40 rounded-2xl space-y-2.5 animate-fadeIn shadow-lg">
+                <div className="text-[10px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <SparklesIcon className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Video YouTube Terdeteksi:</span>
+                </div>
+
+                <div className="flex gap-3 items-center">
+                  <img
+                    src={detectedYtVideo.thumbnail}
+                    alt={detectedYtVideo.title}
+                    className="w-16 h-12 object-cover rounded-xl shrink-0 border border-purple-500/30"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-white line-clamp-2">
+                      {detectedYtVideo.title}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddSong(detectedYtVideo.videoId, detectedYtVideo.title, searchQuery)}
+                  disabled={isQuotaExhausted || isSubmitting}
+                  className="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <PlayIcon className="w-3.5 h-3.5" />
+                  <span>{isSubmitting ? 'Memasukkan...' : '+ Putar Video Ini Sekarang'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Category Pills (Hanya saat tidak sedang mengetik query pencarian) */}
             {!searchQuery && (
               <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-xs">
                 {categories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1 rounded-xl whitespace-nowrap text-[11px] font-semibold transition-all border ${
+                    className={`px-3 py-1.5 rounded-xl whitespace-nowrap text-[11px] font-bold transition-all border ${
                       selectedCategory === cat
-                        ? 'bg-blue-600/30 border-blue-500 text-blue-300 shadow-sm'
+                        ? 'bg-purple-600/30 border-purple-500 text-purple-200 shadow-sm scale-105'
                         : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -461,12 +523,12 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
             )}
 
             {/* Song Results List */}
-            <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1 custom-scrollbar">
+            <div className="space-y-2 max-h-[52vh] overflow-y-auto pr-1 custom-scrollbar">
               {filteredCatalog.length > 0 ? (
                 filteredCatalog.map((song) => (
                   <div
                     key={song.videoId}
-                    className="p-2.5 bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-2xl flex items-center justify-between gap-3 transition-all"
+                    className="p-2.5 bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-2xl flex items-center justify-between gap-3 transition-all shadow-sm"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <img
@@ -480,98 +542,48 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                         <div className="text-[11px] text-slate-400 truncate">
                           {song.artist || 'Karaoke Version'}
                         </div>
+                        {song.category && (
+                          <span className="inline-block mt-0.5 text-[9px] bg-slate-800 text-purple-300 border border-purple-500/20 px-1.5 py-0.2 rounded font-medium">
+                            {song.category}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     <button
-                      onClick={() => handleAddSong(song.videoId, song.title)}
-                      disabled={isQuotaExhausted}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl text-xs font-bold transition-all shrink-0 active:scale-95 shadow-md shadow-blue-500/20"
+                      onClick={() => handleAddSong(song.videoId, `${song.title} - ${song.artist || ''}`)}
+                      disabled={isQuotaExhausted || isSubmitting}
+                      className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl text-xs font-extrabold transition-all shrink-0 active:scale-95 shadow-md shadow-purple-500/20 flex items-center gap-1"
                     >
-                      + Putar
+                      <span>+ Putar</span>
                     </button>
                   </div>
                 ))
               ) : (
-                <div className="py-10 text-center text-slate-500 text-xs">
-                  Tidak ada lagu yang sesuai dengan kata kunci &quot;{searchQuery}&quot;.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: Masukkan Link YouTube */}
-        {activeTab === 'url' && (
-          <div className="space-y-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                Tempel (Paste) Link YouTube:
-              </label>
-              <input
-                type="text"
-                value={youtubeUrl}
-                onChange={(e) => setYoutubeUrl(e.target.value)}
-                placeholder="https://www.youtube.com/watch?v=..."
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 outline-none focus:border-blue-500 font-mono"
-              />
-              {urlError && <div className="text-[11px] text-red-400 mt-1">{urlError}</div>}
-              {isLoadingInfo && (
-                <div className="text-[11px] text-blue-400 mt-1 animate-pulse">
-                  Mengambil metadata lagu dari YouTube...
-                </div>
-              )}
-            </div>
-
-            {/* Video Preview Card */}
-            {urlPreview && (
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-700/60 space-y-3 animate-fadeIn">
-                <div className="flex gap-3">
-                  <img
-                    src={urlPreview.thumbnail}
-                    alt={urlPreview.title}
-                    className="w-20 h-14 object-cover rounded-lg shrink-0 border border-slate-800"
-                  />
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-white line-clamp-2">
-                      {urlPreview.title}
-                    </div>
-                    <div className="text-[10px] text-emerald-400 mt-1 font-semibold">
-                      ✓ Siap dimasukkan
-                    </div>
+                <div className="py-12 text-center text-slate-500 text-xs bg-slate-900/30 rounded-2xl border border-slate-800/60 p-4 space-y-2">
+                  <div>Lagu &quot;{searchQuery}&quot; tidak ada di daftar populer.</div>
+                  <div className="text-[11px] text-slate-400">
+                    💡 <strong>Tips:</strong> Buka YouTube, salin link lagu yang Anda inginkan, lalu klik tombol <strong>📋 Tempel</strong> di atas!
                   </div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleAddSong(urlPreview.videoId, urlPreview.title, youtubeUrl);
-                    setYoutubeUrl('');
-                    setUrlPreview(null);
-                  }}
-                  disabled={isQuotaExhausted}
-                  className="w-full py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-extrabold shadow-md shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                >
-                  <PlayIcon className="w-3.5 h-3.5" />
-                  <span>Tambahkan ke Antrean Lagu</span>
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
-        {/* TAB 3: Antrean Lagu Saat Ini */}
+        {/* TAB 2: ANTREAN KAFE SAAT INI */}
         {activeTab === 'queue' && (
-          <div className="space-y-3">
-            {/* Sedang Diputar (Now Playing) */}
+          <div className="space-y-3 animate-fadeIn">
+            {/* Sedang Diputar (Now Playing on Stage) */}
             {currentSong ? (
-              <div className="p-3.5 bg-gradient-to-br from-blue-950/80 to-slate-900 border border-blue-500/40 rounded-2xl flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-500/40 text-blue-300 flex items-center justify-center text-lg shrink-0">
+              <div className="p-3.5 bg-gradient-to-br from-purple-950/80 via-indigo-950/60 to-slate-900 border border-purple-500/40 rounded-2xl flex items-center gap-3 shadow-lg">
+                <div className="w-10 h-10 rounded-xl bg-purple-600/30 border border-purple-500/40 text-purple-300 flex items-center justify-center text-lg shrink-0">
                   🎤
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                    Sedang Diputar di Layar
+                  <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Sedang Diputar di Layar Kafe</span>
                   </div>
                   <div className="text-xs font-extrabold text-white truncate">
                     {currentSong.title}
@@ -582,15 +594,15 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                 </div>
               </div>
             ) : (
-              <div className="py-4 text-center text-xs text-slate-500 bg-slate-900/60 rounded-2xl border border-slate-800">
-                Belum ada lagu yang sedang diputar di layar kafe.
+              <div className="py-5 text-center text-xs text-slate-500 bg-slate-900/60 rounded-2xl border border-slate-800">
+                Belum ada lagu yang sedang diputar di layar panggung.
               </div>
             )}
 
             {/* Daftar Menunggu */}
             <div className="space-y-2">
-              <div className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                Daftar Antrean Berikutnya ({nextSongs.length})
+              <div className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                <span>Daftar Antrean Berikutnya ({nextSongs.length})</span>
               </div>
 
               {nextSongs.length > 0 ? (
@@ -604,23 +616,28 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-bold text-white truncate">{s.title}</div>
-                      <div className="text-[10px] text-slate-400 truncate">
-                        Pemesan: {s.requester}
+                      <div className="text-[10px] text-slate-400 truncate flex items-center gap-1.5">
+                        <span>Pemesan: {s.requester}</span>
+                        {s.tableNumber && (
+                          <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 rounded">
+                            {s.tableNumber}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="py-6 text-center text-xs text-slate-500 bg-slate-900/40 rounded-xl border border-slate-800">
-                  Antrean sedang kosong. Jadilah yang pertama bernyanyi!
+                <div className="py-8 text-center text-xs text-slate-500 bg-slate-900/40 rounded-xl border border-slate-800">
+                  Antrean sedang kosong. Jadilah yang pertama bernyanyi! 🎵
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Developer Footer Brand & WA Support */}
-        <div className="pt-6 pb-2">
+        {/* Developer Footer Brand */}
+        <div className="pt-4 pb-2">
           <DeveloperFooter compact />
         </div>
       </main>
@@ -642,7 +659,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
             <button
               key={r.emoji}
               onClick={() => handleReactionClick(r.emoji)}
-              className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 active:scale-125 border border-slate-700 hover:border-blue-500/50 rounded-2xl text-base sm:text-lg flex items-center gap-1 transition-all shadow-md active:bg-blue-600/30"
+              className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 active:scale-125 border border-slate-700 hover:border-purple-500/50 rounded-2xl text-base sm:text-lg flex items-center gap-1 transition-all shadow-md active:bg-purple-600/30"
               title={`Kirim ${r.label}`}
             >
               <span>{r.emoji}</span>
@@ -658,3 +675,4 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     </div>
   );
 };
+

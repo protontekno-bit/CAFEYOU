@@ -98,8 +98,9 @@ export interface PopularPresetSong {
   title: string;
   artist: string;
   videoId: string;
-  category: 'Pop Indo' | 'Dangdut' | 'Barat' | 'Nostalgia' | 'Rock';
+  category: string;
 }
+
 
 // Global declaration for YouTube Iframe API
 declare global {

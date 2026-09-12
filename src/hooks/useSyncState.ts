@@ -55,6 +55,12 @@ function sanitizeState<T>(val: any, fallback: T): T {
         ? Object.values(val.tables)
         : (fallback as any).tables || [];
   }
+  if ('autoSaveLibrary' in (fallback as any)) {
+    merged.autoSaveLibrary =
+      typeof val.autoSaveLibrary === 'boolean'
+        ? val.autoSaveLibrary
+        : (fallback as any).autoSaveLibrary ?? true;
+  }
   return merged as T;
 }
 

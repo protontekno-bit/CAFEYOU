@@ -52,6 +52,8 @@ interface SettingsCenterModalProps {
   songLibrary?: Record<string, SavedLibrarySong>;
   onDeleteFromLibrary?: (videoId: string) => void;
   onClearLibrary?: () => void;
+  autoSaveLibrary?: boolean;
+  onToggleAutoSaveLibrary?: (enabled: boolean) => void;
   // Cloud
   isCloudConnected?: boolean;
   onOpenFirebaseConfig?: () => void;
@@ -83,6 +85,8 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   songLibrary = {},
   onDeleteFromLibrary,
   onClearLibrary,
+  autoSaveLibrary = true,
+  onToggleAutoSaveLibrary,
   isCloudConnected = false,
   onPasswordChangedLogout,
 }) => {
@@ -1048,6 +1052,42 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                 <p className="text-xs text-slate-400 mt-1">
                   Kelola daftar lagu tersimpan ({Object.keys(songLibrary).length} judul lagu).
                 </p>
+              </div>
+
+              {/* Card Pengaturan Auto-Save vs Temporary Session */}
+              <div className="p-4 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-3 shadow-inner">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-bold text-white flex items-center gap-2">
+                      <span>💾 Mode Penyimpanan Lagu ke Database</span>
+                      <span
+                        className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${
+                          autoSaveLibrary
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : 'bg-amber-500/20 text-amber-300'
+                        }`}
+                      >
+                        {autoSaveLibrary ? 'Simpan Otomatis (Cloud & Lokal)' : 'Mode Sesi Bersih (Sementara)'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      {autoSaveLibrary
+                        ? 'Setiap lagu yang dipesan dan diputar otomatis disimpan permanen ke koleksi kafe dan Cloud.'
+                        : 'Lagu pesanan tamu hanya diputar di antrean hari ini saja (tidak disimpan permanen ke database kafe dan akan bersih saat browser dibersihkan).'}
+                    </p>
+                  </div>
+                  {onToggleAutoSaveLibrary && (
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={autoSaveLibrary}
+                        onChange={(e) => onToggleAutoSaveLibrary(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
+                    </label>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-2">

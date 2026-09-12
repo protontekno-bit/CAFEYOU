@@ -88,6 +88,7 @@ export interface KaraokeState {
   fairRotationEnabled?: boolean;
   cafeSettings?: CafeSettings;
   tables?: string[];
+  autoSaveLibrary?: boolean;
 }
 
 export interface SyncMessage<T> {

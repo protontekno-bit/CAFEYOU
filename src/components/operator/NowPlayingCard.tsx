@@ -4,9 +4,15 @@ import { getYouTubeThumbnail } from '../../utils/youtube';
 
 interface NowPlayingCardProps {
   currentSong: Song | null;
+  isSavedInLibrary?: boolean;
+  onSaveToLibrary?: (song: Song) => void;
 }
 
-export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ currentSong }) => {
+export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({
+  currentSong,
+  isSavedInLibrary = false,
+  onSaveToLibrary,
+}) => {
   return (
     <div className="bg-slate-800/95 rounded-2xl p-5 shadow-xl border border-slate-700/60">
       <div className="flex justify-between items-center mb-3">
@@ -51,6 +57,23 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({ currentSong }) =
                 <span>👤</span>
                 <span>Pemesan: {currentSong.requester}</span>
               </span>
+
+              {onSaveToLibrary && (
+                !isSavedInLibrary ? (
+                  <button
+                    type="button"
+                    onClick={() => onSaveToLibrary(currentSong)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 hover:border-amber-400 px-2.5 py-1 rounded-lg transition-all active:scale-95 shadow-sm"
+                    title="Simpan lagu ini secara permanen ke Database Koleksi Kafe"
+                  >
+                    <span>⭐ Simpan ke Koleksi</span>
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-lg border border-slate-700/60">
+                    <span>✓ Di Koleksi</span>
+                  </span>
+                )
+              )}
 
               <a
                 href={currentSong.url}

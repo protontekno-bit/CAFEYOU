@@ -78,6 +78,9 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     resetTables,
     deleteFromLibrary,
     clearLibrary,
+    autoSaveLibrary,
+    toggleAutoSaveLibrary,
+    saveSongToLibrary,
   } = useKaraoke();
 
   const [isSoundBoardOpen, setIsSoundBoardOpen] = useState(false);
@@ -233,7 +236,11 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
 
         {/* Kolom Kanan: Sedang Diputar & Daftar Antrean */}
         <div className="lg:col-span-7 space-y-6 flex flex-col">
-          <NowPlayingCard currentSong={currentSong} />
+          <NowPlayingCard
+            currentSong={currentSong}
+            isSavedInLibrary={Boolean(currentSong && songLibrary && songLibrary[currentSong.videoId])}
+            onSaveToLibrary={saveSongToLibrary}
+          />
 
           <QueueList
             queue={nextSongs}
@@ -363,6 +370,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         songLibrary={songLibrary}
         onDeleteFromLibrary={deleteFromLibrary}
         onClearLibrary={clearLibrary}
+        autoSaveLibrary={autoSaveLibrary}
+        onToggleAutoSaveLibrary={toggleAutoSaveLibrary}
         isCloudConnected={isCloudConnected}
         onOpenFirebaseConfig={() => setIsFirebaseOpen(true)}
         onPasswordChangedLogout={handleLogout}

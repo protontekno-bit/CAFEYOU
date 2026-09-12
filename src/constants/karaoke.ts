@@ -55,6 +55,7 @@ export const DEFAULT_KARAOKE_STATE: KaraokeState = {
     'VIP 2',
     'Bar Area',
   ],
+  autoSaveLibrary: true,
 };
 
 export const DEFAULT_TABLES = [

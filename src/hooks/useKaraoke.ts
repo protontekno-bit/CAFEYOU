@@ -50,17 +50,21 @@ export function useKaraoke() {
       const currentLibrary = prev?.songLibrary && typeof prev.songLibrary === 'object' ? prev.songLibrary : {};
       const existingLibSong = currentLibrary[videoId];
 
-      const updatedLibrary: Record<string, SavedLibrarySong> = {
-        ...currentLibrary,
-        [videoId]: {
-          videoId,
-          title: customTitle || existingLibSong?.title || finalTitle,
-          url: rawUrl,
-          thumbnail: getYouTubeThumbnail(videoId, 'hqdefault'),
-          playCount: (existingLibSong?.playCount || 0) + 1,
-          lastPlayedAt: Date.now(),
-        },
-      };
+      // Simpan ke songLibrary hanya jika autoSaveLibrary aktif atau lagu sudah terdaftar di library
+      const shouldSaveToLib = prev?.autoSaveLibrary !== false || !!existingLibSong;
+      const updatedLibrary: Record<string, SavedLibrarySong> = shouldSaveToLib
+        ? {
+            ...currentLibrary,
+            [videoId]: {
+              videoId,
+              title: customTitle || existingLibSong?.title || finalTitle,
+              url: rawUrl,
+              thumbnail: getYouTubeThumbnail(videoId, 'hqdefault'),
+              playCount: (existingLibSong?.playCount || 0) + 1,
+              lastPlayedAt: Date.now(),
+            },
+          }
+        : currentLibrary;
 
       // Jika ada voucherCode, kurangi kuota
       const currentVouchers = prev?.vouchers && typeof prev.vouchers === 'object' ? { ...prev.vouchers } : {};
@@ -97,6 +101,7 @@ export function useKaraoke() {
             const currentQueue = Array.isArray(prev?.queue) ? prev.queue : [];
             const currentLibrary = prev?.songLibrary && typeof prev.songLibrary === 'object' ? prev.songLibrary : {};
             const libSong = currentLibrary[videoId];
+            const shouldSaveToLib = prev?.autoSaveLibrary !== false || !!libSong;
 
             return {
               ...prev,
@@ -109,19 +114,21 @@ export function useKaraoke() {
                     }
                   : song
               ),
-              songLibrary: {
-                ...currentLibrary,
-                [videoId]: {
-                  ...(libSong || {
-                    videoId,
-                    url: rawUrl,
-                    playCount: 1,
-                    lastPlayedAt: Date.now(),
-                  }),
-                  title: info.title,
-                  thumbnail: info.thumbnail || getYouTubeThumbnail(videoId, 'hqdefault'),
-                },
-              },
+              songLibrary: shouldSaveToLib
+                ? {
+                    ...currentLibrary,
+                    [videoId]: {
+                      ...(libSong || {
+                        videoId,
+                        url: rawUrl,
+                        playCount: 1,
+                        lastPlayedAt: Date.now(),
+                      }),
+                      title: info.title,
+                      thumbnail: info.thumbnail || getYouTubeThumbnail(videoId, 'hqdefault'),
+                    },
+                  }
+                : currentLibrary,
             };
           });
         }
@@ -227,17 +234,20 @@ export function useKaraoke() {
 
     const newHistory = [historyItem, ...existingHistory].slice(0, 100);
     const existingLib = currentLibrary[song.videoId];
-    const updatedLibrary: Record<string, SavedLibrarySong> = {
-      ...currentLibrary,
-      [song.videoId]: {
-        videoId: song.videoId,
-        title: song.title,
-        url: song.url,
-        thumbnail: song.thumbnail || getYouTubeThumbnail(song.videoId, 'hqdefault'),
-        playCount: (existingLib?.playCount || 0) + 1,
-        lastPlayedAt: Date.now(),
-      },
-    };
+    const shouldSaveToLib = state?.autoSaveLibrary !== false || !!existingLib;
+    const updatedLibrary: Record<string, SavedLibrarySong> = shouldSaveToLib
+      ? {
+          ...currentLibrary,
+          [song.videoId]: {
+            videoId: song.videoId,
+            title: song.title,
+            url: song.url,
+            thumbnail: song.thumbnail || getYouTubeThumbnail(song.videoId, 'hqdefault'),
+            playCount: (existingLib?.playCount || 0) + 1,
+            lastPlayedAt: Date.now(),
+          },
+        }
+      : currentLibrary;
 
     return {
       history: newHistory,
@@ -582,6 +592,36 @@ export function useKaraoke() {
     }));
   };
 
+  const toggleAutoSaveLibrary = (enabled?: boolean) => {
+    updateAppState((prev) => ({
+      ...prev,
+      autoSaveLibrary: enabled !== undefined ? enabled : !(prev?.autoSaveLibrary ?? true),
+    }));
+  };
+
+  const saveSongToLibrary = (song: Song | SongHistoryItem) => {
+    if (!song || !song.videoId) return;
+    updateAppState((prev) => {
+      const currentLibrary =
+        prev?.songLibrary && typeof prev.songLibrary === 'object' ? prev.songLibrary : {};
+      const existing = currentLibrary[song.videoId];
+      return {
+        ...prev,
+        songLibrary: {
+          ...currentLibrary,
+          [song.videoId]: {
+            videoId: song.videoId,
+            title: song.title,
+            url: song.url,
+            thumbnail: song.thumbnail || getYouTubeThumbnail(song.videoId, 'hqdefault'),
+            playCount: existing ? (existing.playCount || 1) : 1,
+            lastPlayedAt: Date.now(),
+          },
+        },
+      };
+    });
+  };
+
   const safeQueue = Array.isArray(appState?.queue) ? appState.queue : [];
   const currentSong = safeQueue[0] || null;
   const nextSongs = safeQueue.slice(1);
@@ -595,6 +635,7 @@ export function useKaraoke() {
   const fairRotationEnabled = !!appState?.fairRotationEnabled;
   const cafeSettings = appState?.cafeSettings || DEFAULT_CAFE_SETTINGS;
   const tables = Array.isArray(appState?.tables) && appState.tables.length > 0 ? appState.tables : DEFAULT_TABLES;
+  const autoSaveLibrary = appState?.autoSaveLibrary !== false;
 
   return {
     state: {
@@ -608,6 +649,7 @@ export function useKaraoke() {
       fairRotationEnabled,
       cafeSettings,
       tables,
+      autoSaveLibrary,
     },
     updateState: updateAppState,
     isCloudConnected,
@@ -647,5 +689,8 @@ export function useKaraoke() {
     addTable,
     removeTable,
     resetTables,
+    autoSaveLibrary,
+    toggleAutoSaveLibrary,
+    saveSongToLibrary,
   };
 }

@@ -71,6 +71,9 @@ export interface CafeSettings {
   wifiName?: string;
   wifiPassword?: string;
   youtubeApiKey?: string;
+  taxPercentage?: number;
+  isTaxIncluded?: boolean;
+  servicePercentage?: number;
 }
 
 export interface YouTubeSearchResult {
@@ -92,6 +95,18 @@ export type MenuCategory =
   | 'Snack'
   | 'Paket';
 
+export interface MenuItemOption {
+  name: string;
+  extraPrice?: number;
+}
+
+export interface MenuItemOptionGroup {
+  title: string;
+  type?: 'single' | 'multiple';
+  required?: boolean;
+  options: MenuItemOption[];
+}
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -101,6 +116,9 @@ export interface MenuItem {
   image?: string;
   imageUrl?: string;
   isAvailable: boolean;
+  isBestSeller?: boolean;
+  isPromo?: boolean;
+  optionGroups?: MenuItemOptionGroup[];
 }
 
 export interface OrderItem {
@@ -113,6 +131,7 @@ export interface OrderItem {
   notes?: string;
   isVoided?: boolean;
   voidReason?: string;
+  selectedOptions?: string[];
 }
 
 export type OrderStatus =

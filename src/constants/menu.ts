@@ -10,6 +10,27 @@ export const DEFAULT_MENU_ITEMS: Record<string, MenuItem> = {
     description: 'Espresso blend pilihan, susu segar creamy, dan pemanis gula aren alami.',
     image: '☕',
     isAvailable: true,
+    isBestSeller: true,
+    optionGroups: [
+      {
+        title: 'Suhu',
+        type: 'single',
+        options: [{ name: 'Dingin (Ice)' }, { name: 'Panas (Hot)' }],
+      },
+      {
+        title: 'Level Gula',
+        type: 'single',
+        options: [{ name: 'Normal' }, { name: 'Less Sugar' }, { name: 'Tanpa Gula' }],
+      },
+      {
+        title: 'Topping Tambahan',
+        type: 'multiple',
+        options: [
+          { name: 'Extra Shot Espresso', extraPrice: 5000 },
+          { name: 'Krim Macchiato', extraPrice: 4000 },
+        ],
+      },
+    ],
   },
   'menu-2': {
     id: 'menu-2',
@@ -19,6 +40,18 @@ export const DEFAULT_MENU_ITEMS: Record<string, MenuItem> = {
     description: 'Espresso ganda diseduh dengan air panas atau dingin segar.',
     image: '☕',
     isAvailable: true,
+    optionGroups: [
+      {
+        title: 'Suhu',
+        type: 'single',
+        options: [{ name: 'Dingin (Ice)' }, { name: 'Panas (Hot)' }],
+      },
+      {
+        title: 'Pemanis',
+        type: 'single',
+        options: [{ name: 'Tanpa Gula' }, { name: 'Gula Cair Normal' }],
+      },
+    ],
   },
   'menu-3': {
     id: 'menu-3',
@@ -28,6 +61,14 @@ export const DEFAULT_MENU_ITEMS: Record<string, MenuItem> = {
     description: 'Kopi susu dengan sirup vanila dan lapisan saus karamel lezat.',
     image: '☕',
     isAvailable: true,
+    isBestSeller: true,
+    optionGroups: [
+      {
+        title: 'Suhu',
+        type: 'single',
+        options: [{ name: 'Dingin (Ice)' }, { name: 'Panas (Hot)' }],
+      },
+    ],
   },
   'menu-4': {
     id: 'menu-4',
@@ -37,6 +78,13 @@ export const DEFAULT_MENU_ITEMS: Record<string, MenuItem> = {
     description: 'Bubuk matcha murni berpadu dengan susu segar dingin.',
     image: '🍵',
     isAvailable: true,
+    optionGroups: [
+      {
+        title: 'Level Gula',
+        type: 'single',
+        options: [{ name: 'Normal' }, { name: 'Less Sugar' }],
+      },
+    ],
   },
   'menu-5': {
     id: 'menu-5',
@@ -49,96 +97,132 @@ export const DEFAULT_MENU_ITEMS: Record<string, MenuItem> = {
   },
   'menu-6': {
     id: 'menu-6',
-    name: 'Lemon Tea Ice',
+    name: 'Lemon Tea Segar',
     category: 'Minuman',
     price: 12000,
-    description: 'Teh segar dipadu perasan sari lemon asli.',
+    description: 'Seduhan teh segar dengan perasan lemon asli dan es batu melimpah.',
     image: '🍋',
     isAvailable: true,
-  },
-  'menu-7': {
-    id: 'menu-7',
-    name: 'Air Mineral Prima 600ml',
-    category: 'Minuman',
-    price: 5000,
-    description: 'Air mineral dingin atau suhu ruangan.',
-    image: '🍶',
-    isAvailable: true,
+    isPromo: true,
   },
 
   // Makanan Utama
-  'menu-8': {
-    id: 'menu-8',
+  'menu-7': {
+    id: 'menu-7',
     name: 'Nasi Goreng Spesial Kafe',
     category: 'Makanan',
     price: 25000,
-    description: 'Nasi goreng bumbu racik khas dengan suwiran ayam, sosis, telur mata sapi, dan kerupuk.',
+    description: 'Nasi goreng harum bumbu rempah dengan suwiran ayam, sosis, dan kerupuk.',
     image: '🍛',
     isAvailable: true,
+    isBestSeller: true,
+    optionGroups: [
+      {
+        title: 'Level Pedas',
+        type: 'single',
+        options: [{ name: 'Tidak Pedas' }, { name: 'Sedang' }, { name: 'Ekstra Pedas' }],
+      },
+      {
+        title: 'Tambahan',
+        type: 'multiple',
+        options: [
+          { name: 'Telur Ceplok / Dadar', extraPrice: 4000 },
+          { name: 'Sosis Ekstra', extraPrice: 4000 },
+        ],
+      },
+    ],
+  },
+  'menu-8': {
+    id: 'menu-8',
+    name: 'Mie Nyemek Telur Pedas',
+    category: 'Makanan',
+    price: 18000,
+    description: 'Mie goreng kuah kental gurih dengan orak-arik telur, sayur sawi, dan cabai rawit.',
+    image: '🍜',
+    isAvailable: true,
+    optionGroups: [
+      {
+        title: 'Level Pedas',
+        type: 'single',
+        options: [{ name: 'Sedang' }, { name: 'Pedas Nampol' }],
+      },
+    ],
   },
   'menu-9': {
     id: 'menu-9',
-    name: 'Mie Goreng Jawa Nyemek',
+    name: 'Ayam Geprek Sambal Bawang + Nasi',
     category: 'Makanan',
-    price: 22000,
-    description: 'Mie telur kuah kental gurih dengan sayuran segar, telur, dan irisan bakso.',
-    image: '🍜',
+    price: 23000,
+    description: 'Ayam krispi renyah digeprek dengan sambal bawang pedas gurih khas nusantara.',
+    image: '🍗',
     isAvailable: true,
   },
   'menu-10': {
     id: 'menu-10',
-    name: 'Ayam Geprek Sambal Bawang + Nasi',
+    name: 'Rice Bowl Daging Sapi Teriyaki',
     category: 'Makanan',
-    price: 24000,
-    description: 'Ayam krispi renyah digeprek dengan cabai rawit pedas mantap plus nasi putih.',
-    image: '🍗',
-    isAvailable: true,
-  },
-  'menu-11': {
-    id: 'menu-11',
-    name: 'Rice Bowl Chicken Teriyaki',
-    category: 'Makanan',
-    price: 26000,
-    description: 'Nasi pulen hangat dengan potongan ayam saus teriyaki manis gurih dan taburan wijen.',
-    image: '🍚',
+    price: 28000,
+    description: 'Irisan daging sapi empuk saus teriyaki manis gurih di atas nasi hangat.',
+    image: '🥩',
     isAvailable: true,
   },
 
-  // Snack & Camilan
-  'menu-12': {
-    id: 'menu-12',
-    name: 'French Fries Crispy',
+  // Camilan / Snack
+  'menu-11': {
+    id: 'menu-11',
+    name: 'Kentang Goreng Keju (French Fries)',
     category: 'Snack',
     price: 15000,
-    description: 'Kentang goreng renyah bumbu gurih disajikan dengan saus tomat dan cabai.',
+    description: 'Kentang stik renyah gurih ditaburi bumbu keju cheddar lezat.',
     image: '🍟',
+    isAvailable: true,
+    isBestSeller: true,
+    optionGroups: [
+      {
+        title: 'Pilihan Bumbu',
+        type: 'single',
+        options: [{ name: 'Keju Asin' }, { name: 'Barbeque' }, { name: 'Balado Pedas' }],
+      },
+    ],
+  },
+  'menu-12': {
+    id: 'menu-12',
+    name: 'Cireng Krispi Bumbu Rujak',
+    category: 'Snack',
+    price: 14000,
+    description: 'Cireng kenyal renyah isi 8 pcs disajikan dengan cocolan saus rujak pedas manis.',
+    image: '🥟',
     isAvailable: true,
   },
   'menu-13': {
     id: 'menu-13',
-    name: 'Cireng Krispi Bumbu Rujak',
+    name: 'Pisang Goreng Cokelat Keju',
     category: 'Snack',
-    price: 14000,
-    description: 'Cireng kenyal garing di luar dengan cocolan saus gula merah pedas manis gurih.',
-    image: '🥟',
+    price: 16000,
+    description: 'Pisang kepok manis digoreng krispi dengan limpahan susu kental, cokelat, dan parutan keju.',
+    image: '🍌',
     isAvailable: true,
+    isPromo: true,
   },
   'menu-14': {
     id: 'menu-14',
-    name: 'Pisang Bakar Cokelat Keju',
+    name: 'Roti Bakar Kaya Butter',
     category: 'Snack',
     price: 16000,
-    description: 'Pisang kepok manis dipanggang empuk dengan taburan keju parut dan krimer cokelat.',
-    image: '🍌',
+    description: 'Roti bakar empuk isi selai srikaya harum dan lelehan mentega premium.',
+    image: '🍞',
     isAvailable: true,
   },
+
+  // Paket Karaoke Combo
   'menu-15': {
     id: 'menu-15',
-    name: 'Karaoke Combo Platter (Best Seller)',
+    name: 'Paket Nongkrong 4 Orang',
     category: 'Paket',
-    price: 35000,
-    description: 'Porsi besar cocok untuk rame-rame: Kombinasi sosis panggang, nugget ayam, dan kentang goreng crispy.',
+    price: 65000,
+    description: 'Paket hemat: 1 Porsi Kentang Goreng + 1 Cireng Rujak + 4 Es Teh Manis.',
     image: '🍱',
     isAvailable: true,
+    isBestSeller: true,
   },
 };

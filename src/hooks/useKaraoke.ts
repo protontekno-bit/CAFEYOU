@@ -751,6 +751,44 @@ export function useKaraoke() {
     }));
   };
 
+  const toggleMenuItemAvailability = (id: string) => {
+    updateAppState((prev) => {
+      const currentMenu =
+        prev?.menuItems && typeof prev.menuItems === 'object' ? { ...prev.menuItems } : { ...DEFAULT_MENU_ITEMS };
+      const item = currentMenu[id];
+      if (!item) return prev;
+
+      currentMenu[id] = {
+        ...item,
+        isAvailable: !item.isAvailable,
+      };
+
+      return {
+        ...prev,
+        menuItems: currentMenu,
+      };
+    });
+  };
+
+  const quickUpdateMenuPrice = (id: string, newPrice: number) => {
+    updateAppState((prev) => {
+      const currentMenu =
+        prev?.menuItems && typeof prev.menuItems === 'object' ? { ...prev.menuItems } : { ...DEFAULT_MENU_ITEMS };
+      const item = currentMenu[id];
+      if (!item) return prev;
+
+      currentMenu[id] = {
+        ...item,
+        price: Math.max(0, newPrice),
+      };
+
+      return {
+        ...prev,
+        menuItems: currentMenu,
+      };
+    });
+  };
+
   const moveTableOrder = (orderId: string, newTableNumber: string) => {
     updateAppState((prev) => {
       const currentOrders =
@@ -917,6 +955,8 @@ export function useKaraoke() {
     updateMenuItem,
     deleteMenuItem,
     resetMenuToDefault,
+    toggleMenuItemAvailability,
+    quickUpdateMenuPrice,
     clearFinishedOrders,
   };
 }

@@ -164,8 +164,18 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
 
-  // 4. State POS F&B & Keranjang Pesanan Meja
-  const [cart, setCart] = useState<Record<string, { item: MenuItem; quantity: number; notes: string }>>({});
+  const [cart, setCart] = useState<
+    Record<
+      string,
+      {
+        item: MenuItem;
+        quantity: number;
+        notes: string;
+        selectedOptions?: string[];
+        unitPrice?: number;
+      }
+    >
+  >({});
   const [fnbCategory, setFnbCategory] = useState<MenuCategory | 'ALL'>('ALL');
   const [fnbSearch, setFnbSearch] = useState('');
   const [customerName, setCustomerName] = useState(() => {
@@ -179,8 +189,86 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderSuccessBanner, setOrderSuccessBanner] = useState<string | null>(null);
 
+  // Modal Pemilihan Varian (Hot/Ice, Gula, Topping)
+  const [configuringMenuItem, setConfiguringMenuItem] = useState<MenuItem | null>(null);
+  const [selectedSingleOptions, setSelectedSingleOptions] = useState<Record<string, string>>({});
+  const [selectedMultipleOptions, setSelectedMultipleOptions] = useState<Record<string, string[]>>({});
+
+  const handleOpenConfigureItem = (item: MenuItem) => {
+    setConfiguringMenuItem(item);
+    const initialSingles: Record<string, string> = {};
+    const initialMultiples: Record<string, string[]> = {};
+
+    item.optionGroups?.forEach((g) => {
+      if (g.type === 'multiple') {
+        initialMultiples[g.title] = [];
+      } else {
+        initialSingles[g.title] = g.options[0]?.name || '';
+      }
+    });
+
+    setSelectedSingleOptions(initialSingles);
+    setSelectedMultipleOptions(initialMultiples);
+  };
+
+  const handleConfirmOptionSelection = () => {
+    if (!configuringMenuItem) return;
+    let extraTotal = 0;
+    const chosenOptions: string[] = [];
+
+    configuringMenuItem.optionGroups?.forEach((g) => {
+      if (g.type === 'multiple') {
+        const selected = selectedMultipleOptions[g.title] || [];
+        selected.forEach((optName) => {
+          const found = g.options.find((o) => o.name === optName);
+          if (found) {
+            extraTotal += (found.extraPrice || 0);
+            chosenOptions.push(found.extraPrice ? `${found.name} (+Rp ${found.extraPrice.toLocaleString('id-ID')})` : found.name);
+          }
+        });
+      } else {
+        const chosenName = selectedSingleOptions[g.title] || g.options[0]?.name;
+        const found = g.options.find((o) => o.name === chosenName);
+        if (found) {
+          extraTotal += (found.extraPrice || 0);
+          chosenOptions.push(found.extraPrice ? `${found.name} (+Rp ${found.extraPrice.toLocaleString('id-ID')})` : found.name);
+        }
+      }
+    });
+
+    const unitPrice = configuringMenuItem.price + extraTotal;
+    const cartKey = chosenOptions.length > 0 ? `${configuringMenuItem.id}-${chosenOptions.join('_')}` : configuringMenuItem.id;
+
+    setCart((prev) => {
+      const existing = prev[cartKey];
+      if (existing) {
+        return {
+          ...prev,
+          [cartKey]: { ...existing, quantity: existing.quantity + 1 },
+        };
+      }
+      return {
+        ...prev,
+        [cartKey]: {
+          item: configuringMenuItem,
+          quantity: 1,
+          notes: '',
+          selectedOptions: chosenOptions,
+          unitPrice,
+        },
+      };
+    });
+
+    setConfiguringMenuItem(null);
+  };
+
   // Cart Handlers
   const addToCart = (item: MenuItem) => {
+    if (item.optionGroups && item.optionGroups.length > 0) {
+      handleOpenConfigureItem(item);
+      return;
+    }
+
     setCart((prev) => {
       const existing = prev[item.id];
       if (existing) {
@@ -191,39 +279,39 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
       }
       return {
         ...prev,
-        [item.id]: { item, quantity: 1, notes: '' },
+        [item.id]: { item, quantity: 1, notes: '', unitPrice: item.price },
       };
     });
   };
 
-  const removeFromCart = (itemId: string) => {
+  const removeFromCart = (cartKey: string) => {
     setCart((prev) => {
-      const existing = prev[itemId];
+      const existing = prev[cartKey];
       if (!existing) return prev;
       if (existing.quantity <= 1) {
         const next = { ...prev };
-        delete next[itemId];
+        delete next[cartKey];
         return next;
       }
       return {
         ...prev,
-        [itemId]: { ...existing, quantity: existing.quantity - 1 },
+        [cartKey]: { ...existing, quantity: existing.quantity - 1 },
       };
     });
   };
 
-  const updateCartNotes = (itemId: string, notes: string) => {
+  const updateCartNotes = (cartKey: string, notes: string) => {
     setCart((prev) => {
-      if (!prev[itemId]) return prev;
+      if (!prev[cartKey]) return prev;
       return {
         ...prev,
-        [itemId]: { ...prev[itemId], notes },
+        [cartKey]: { ...prev[cartKey], notes },
       };
     });
   };
 
   const cartItemsCount = Object.values(cart).reduce((sum, c) => sum + c.quantity, 0);
-  const cartTotalPrice = Object.values(cart).reduce((sum, c) => sum + (c.item.price * c.quantity), 0);
+  const cartTotalPrice = Object.values(cart).reduce((sum, c) => sum + ((c.unitPrice || c.item.price) * c.quantity), 0);
 
   // Table Orders filter for this table
   const myTableOrders = useMemo(() => {
@@ -263,9 +351,10 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
       const items: OrderItem[] = Object.values(cart).map((c) => ({
         menuItemId: c.item.id,
         name: c.item.name,
-        price: c.item.price,
+        price: c.unitPrice || c.item.price,
         quantity: c.quantity,
         notes: c.notes.trim() || undefined,
+        selectedOptions: c.selectedOptions && c.selectedOptions.length > 0 ? c.selectedOptions : undefined,
       }));
 
       await createTableOrder(tableNumber, cName, items);
@@ -1265,8 +1354,10 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                   return true;
                 })
                 .map((item) => {
-                  const cartItem = cart[item.id];
-                  const inCartQty = cartItem?.quantity || 0;
+                  const inCartQty = Object.values(cart)
+                    .filter((c) => c.item.id === item.id)
+                    .reduce((sum, c) => sum + c.quantity, 0);
+                  const hasOptions = Boolean(item.optionGroups && item.optionGroups.length > 0);
 
                   return (
                     <div
@@ -1284,7 +1375,19 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                           )}
                         </div>
                         <div className="min-w-0">
-                          <h4 className="text-xs font-bold text-white truncate">{item.name}</h4>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs font-bold text-white truncate">{item.name}</h4>
+                            {item.isBestSeller && (
+                              <span className="px-1.5 py-0.2 text-[9px] font-black rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                ⭐ Best Seller
+                              </span>
+                            )}
+                            {item.isPromo && (
+                              <span className="px-1.5 py-0.2 text-[9px] font-black rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                                🎉 Promo
+                              </span>
+                            )}
+                          </div>
                           {item.description && (
                             <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{item.description}</p>
                           )}
@@ -1300,6 +1403,14 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                           <span className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
                             Habis
                           </span>
+                        ) : hasOptions ? (
+                          <button
+                            onClick={() => handleOpenConfigureItem(item)}
+                            className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5 active:scale-95"
+                          >
+                            <span>+</span>
+                            <span>{inCartQty > 0 ? `Opsi (${inCartQty})` : 'Pilih Opsi'}</span>
+                          </button>
                         ) : inCartQty > 0 ? (
                           <div className="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-xl p-1">
                             <button
@@ -1454,15 +1565,26 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                           return (
                             <div
                               key={idx}
-                              className={`flex justify-between items-center text-xs ${
+                              className={`flex justify-between items-start text-xs ${
                                 it.isVoided ? 'line-through text-red-400 opacity-50' : 'text-slate-300'
                               }`}
                             >
-                              <span className="font-medium">
-                                {count}x {it.name}
-                                {it.notes && <span className="ml-1 text-amber-400/80 italic text-[10px]">({it.notes})</span>}
-                              </span>
-                              <span className="font-mono text-slate-400">
+                              <div>
+                                <div className="font-medium">
+                                  {count}x {it.name}
+                                </div>
+                                {it.selectedOptions && it.selectedOptions.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {it.selectedOptions.map((opt, oIdx) => (
+                                      <span key={oIdx} className="text-[9px] bg-amber-500/10 text-amber-300 border border-amber-500/20 px-1 py-0.2 rounded">
+                                        {opt}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {it.notes && <span className="block text-amber-400/80 italic text-[10px]">({it.notes})</span>}
+                              </div>
+                              <span className="font-mono text-slate-400 shrink-0 ml-2">
                                 Rp {(it.price * count).toLocaleString('id-ID')}
                               </span>
                             </div>
@@ -1609,44 +1731,61 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
 
             {/* List of items in cart */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-              {Object.values(cart).map(({ item, quantity, notes }) => (
-                <div key={item.id} className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h5 className="text-xs font-bold text-white">{item.name}</h5>
-                      <span className="text-[11px] text-amber-400 font-mono">
-                        Rp {item.price.toLocaleString('id-ID')}
-                      </span>
+              {Object.entries(cart).map(([cartKey, { item, quantity, notes, unitPrice, selectedOptions }]) => {
+                const effectivePrice = unitPrice || item.price;
+                return (
+                  <div key={cartKey} className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h5 className="text-xs font-bold text-white">{item.name}</h5>
+                        <div className="text-[11px] text-amber-400 font-mono mt-0.5">
+                          Rp {effectivePrice.toLocaleString('id-ID')}
+                        </div>
+                        {selectedOptions && selectedOptions.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {selectedOptions.map((opt, idx) => (
+                              <span key={idx} className="px-1.5 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] rounded font-medium">
+                                {opt}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stepper */}
+                      <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg p-1 shrink-0">
+                        <button
+                          onClick={() => removeFromCart(cartKey)}
+                          className="w-5 h-5 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center"
+                        >
+                          -
+                        </button>
+                        <span className="text-xs font-mono font-bold text-white px-1">{quantity}</span>
+                        <button
+                          onClick={() => {
+                            setCart((prev) => ({
+                              ...prev,
+                              [cartKey]: { ...prev[cartKey], quantity: prev[cartKey].quantity + 1 },
+                            }));
+                          }}
+                          className="w-5 h-5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Stepper */}
-                    <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg p-1">
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="w-5 h-5 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center"
-                      >
-                        -
-                      </button>
-                      <span className="text-xs font-mono font-bold text-white px-1">{quantity}</span>
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="w-5 h-5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center"
-                      >
-                        +
-                      </button>
-                    </div>
+                    {/* Notes input */}
+                    <input
+                      type="text"
+                      value={notes}
+                      onChange={(e) => updateCartNotes(cartKey, e.target.value)}
+                      placeholder="Catatan (misal: pedas sedang, es sedikit)"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-slate-700"
+                    />
                   </div>
-
-                  {/* Notes input */}
-                  <input
-                    type="text"
-                    value={notes}
-                    onChange={(e) => updateCartNotes(item.id, e.target.value)}
-                    placeholder="Catatan (misal: pedas sedang, es sedikit)"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-slate-700"
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Total & Submit Button */}
@@ -1721,6 +1860,15 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                   <div key={idx} className={`flex justify-between items-start ${it.isVoided ? 'line-through text-red-400 opacity-50' : 'text-slate-300'}`}>
                     <div>
                       <span className="font-semibold">{count}x {it.name}</span>
+                      {it.selectedOptions && it.selectedOptions.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {it.selectedOptions.map((opt, oIdx) => (
+                            <span key={oIdx} className="text-[9px] bg-amber-500/10 text-amber-300 border border-amber-500/20 px-1 py-0.2 rounded">
+                              {opt}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {it.notes && <span className="block text-[10px] text-amber-400/90 italic">({it.notes})</span>}
                     </div>
                     <span className="font-mono text-slate-400">
@@ -1772,6 +1920,161 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                 className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all"
               >
                 Tutup ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Opsi Menu (Modifiers / Addons) */}
+      {configuringMenuItem && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom duration-200">
+            {/* Header */}
+            <div className="flex justify-between items-start pb-4 border-b border-slate-800">
+              <div className="flex gap-3 items-center">
+                <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl overflow-hidden shrink-0">
+                  {configuringMenuItem.imageUrl && configuringMenuItem.imageUrl.startsWith('http') ? (
+                    <img src={configuringMenuItem.imageUrl} alt={configuringMenuItem.name} className="w-full h-full object-cover" />
+                  ) : (
+                    configuringMenuItem.imageUrl || '🍽️'
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="text-sm font-black text-white">{configuringMenuItem.name}</h3>
+                    {configuringMenuItem.isBestSeller && (
+                      <span className="px-1.5 py-0.2 text-[9px] font-black rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        ⭐ Best Seller
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs font-bold text-amber-400 mt-0.5">
+                    Dasar: Rp {configuringMenuItem.price.toLocaleString('id-ID')}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setConfiguringMenuItem(null)}
+                className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Option Groups List */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1 custom-scrollbar">
+              {configuringMenuItem.optionGroups?.map((group) => {
+                const isMulti = group.type === 'multiple';
+                const currentSingle = selectedSingleOptions[group.title];
+                const currentMulti = selectedMultipleOptions[group.title] || [];
+
+                return (
+                  <div key={group.title} className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-2.5">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-extrabold text-white">{group.title}</span>
+                        {group.required && (
+                          <span className="text-[10px] text-rose-400 font-bold bg-rose-500/10 px-1.5 py-0.2 rounded border border-rose-500/20">
+                            Wajib
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        {isMulti ? 'Bisa pilih lebih dari satu' : 'Pilih salah satu'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {group.options.map((opt) => {
+                        const isSelected = isMulti
+                          ? currentMulti.includes(opt.name)
+                          : currentSingle === opt.name;
+
+                        return (
+                          <button
+                            key={opt.name}
+                            type="button"
+                            onClick={() => {
+                              if (isMulti) {
+                                setSelectedMultipleOptions((prev) => {
+                                  const list = prev[group.title] || [];
+                                  const nextList = list.includes(opt.name)
+                                    ? list.filter((n) => n !== opt.name)
+                                    : [...list, opt.name];
+                                  return { ...prev, [group.title]: nextList };
+                                });
+                              } else {
+                                setSelectedSingleOptions((prev) => ({
+                                  ...prev,
+                                  [group.title]: opt.name,
+                                }));
+                              }
+                            }}
+                            className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-xs transition-all ${
+                              isSelected
+                                ? 'bg-amber-500/15 border-amber-500/50 text-white font-bold'
+                                : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span
+                                className={`w-4 h-4 rounded-${isMulti ? 'md' : 'full'} border flex items-center justify-center text-[10px] ${
+                                  isSelected
+                                    ? 'bg-amber-500 border-amber-500 text-slate-950 font-black'
+                                    : 'border-slate-700 bg-slate-950'
+                                }`}
+                              >
+                                {isSelected ? (isMulti ? '✓' : '•') : ''}
+                              </span>
+                              <span>{opt.name}</span>
+                            </div>
+                            {opt.extraPrice && opt.extraPrice > 0 ? (
+                              <span className="font-mono text-amber-400 font-bold text-[11px]">
+                                +Rp {opt.extraPrice.toLocaleString('id-ID')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-500">Gratis</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer with calculated price & Add to Cart button */}
+            <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Total Porsi</span>
+                <span className="text-base font-black text-amber-400">
+                  Rp {(() => {
+                    let total = configuringMenuItem.price;
+                    configuringMenuItem.optionGroups?.forEach((g) => {
+                      if (g.type === 'multiple') {
+                        const selected = selectedMultipleOptions[g.title] || [];
+                        selected.forEach((name) => {
+                          const o = g.options.find((x) => x.name === name);
+                          if (o?.extraPrice) total += o.extraPrice;
+                        });
+                      } else {
+                        const name = selectedSingleOptions[g.title];
+                        const o = g.options.find((x) => x.name === name);
+                        if (o?.extraPrice) total += o.extraPrice;
+                      }
+                    });
+                    return total.toLocaleString('id-ID');
+                  })()}
+                </span>
+              </div>
+              <button
+                onClick={handleConfirmOptionSelection}
+                className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-500/20 text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95"
+              >
+                <span>🛒</span>
+                <span>Tambahkan ke Pesanan</span>
               </button>
             </div>
           </div>

@@ -4,12 +4,13 @@ import { useKaraoke } from '../../hooks/useKaraoke';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { ReceiptPrintView } from '../operator/ReceiptPrintView';
 import { DeveloperFooter } from '../common/DeveloperFooter';
+import { PosMenuManager } from './PosMenuManager';
 
 interface PosScreenProps {
   setRole?: (role: AppRole) => void;
 }
 
-type PosTab = 'kitchen' | 'billing' | 'reports';
+type PosTab = 'kitchen' | 'billing' | 'reports' | 'menu';
 
 export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
   // Mencegah layar tablet kasir redup/mati sendiri saat beroperasi
@@ -17,12 +18,19 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
 
   const {
     tableOrders,
+    menuItems,
     cafeSettings,
     tables,
     updateTableOrderStatus,
     moveTableOrder,
     voidOrderItem,
     confirmTableOrder,
+    addMenuItem,
+    updateMenuItem,
+    deleteMenuItem,
+    resetMenuToDefault,
+    toggleMenuItemAvailability,
+    quickUpdateMenuPrice,
     clearFinishedOrders,
     isCloudConnected,
     triggerSoundEffect,
@@ -396,6 +404,18 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
             <span>📊</span>
             <span>Rekap Shift & Omzet</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('menu')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+              activeTab === 'menu'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md shadow-amber-500/20'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🍽️</span>
+            <span>Katalog & Atur Menu</span>
+          </button>
         </div>
 
         {/* Tombol Kontrol Kanan */}
@@ -565,17 +585,28 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
                                           it.isVoided ? 'line-through opacity-40 text-red-400' : 'text-slate-300'
                                         }`}
                                       >
-                                        <div className="flex items-center gap-1.5">
-                                          <span>
-                                            {count}x {it.name}
-                                          </span>
-                                          {it.notes && (
-                                            <span className="text-amber-400 text-[10px] italic">
-                                              ({it.notes})
+                                        <div className="flex-1 pr-2">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-semibold">
+                                              {count}x {it.name}
                                             </span>
+                                            {it.notes && (
+                                              <span className="text-amber-400 text-[10px] italic">
+                                                ({it.notes})
+                                              </span>
+                                            )}
+                                          </div>
+                                          {it.selectedOptions && it.selectedOptions.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-0.5">
+                                              {it.selectedOptions.map((opt, oIdx) => (
+                                                <span key={oIdx} className="text-[9px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-medium">
+                                                  {opt}
+                                                </span>
+                                              ))}
+                                            </div>
                                           )}
                                         </div>
-                                        <div className="flex items-center gap-2 font-mono">
+                                        <div className="flex items-center gap-2 font-mono shrink-0">
                                           <span>{formatRupiah(it.price * count)}</span>
                                           {!it.isVoided && (
                                             <button
@@ -718,10 +749,21 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
                         <div className="bg-slate-900/60 p-2.5 rounded-xl space-y-1.5 text-xs">
                           {ord.items.map((it, idx) => (
                             <div key={idx} className="flex justify-between items-start">
-                              <span className="font-semibold text-slate-200">
-                                {it.quantity ?? it.qty ?? 1}x {it.name}
+                              <div>
+                                <span className="font-semibold text-slate-200">
+                                  {it.quantity ?? it.qty ?? 1}x {it.name}
+                                </span>
+                                {it.selectedOptions && it.selectedOptions.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {it.selectedOptions.map((opt, oIdx) => (
+                                      <span key={oIdx} className="text-[9px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-medium">
+                                        {opt}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                                 {it.notes && <span className="block text-amber-400 text-[10px]">Catatan: {it.notes}</span>}
-                              </span>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -797,10 +839,21 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
                         <div className="bg-slate-900/60 p-2.5 rounded-xl space-y-1.5 text-xs">
                           {ord.items.map((it, idx) => (
                             <div key={idx} className="flex justify-between items-start">
-                              <span className="font-semibold text-slate-200">
-                                {it.quantity ?? it.qty ?? 1}x {it.name}
+                              <div>
+                                <span className="font-semibold text-slate-200">
+                                  {it.quantity ?? it.qty ?? 1}x {it.name}
+                                </span>
+                                {it.selectedOptions && it.selectedOptions.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {it.selectedOptions.map((opt, oIdx) => (
+                                      <span key={oIdx} className="text-[9px] bg-blue-500/15 text-blue-300 border border-blue-500/30 px-1 py-0.2 rounded font-medium">
+                                        {opt}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                                 {it.notes && <span className="block text-amber-400 text-[10px]">Catatan: {it.notes}</span>}
-                              </span>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -867,9 +920,21 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
                         <div className="bg-slate-900/60 p-2.5 rounded-xl space-y-1.5 text-xs">
                           {ord.items.map((it, idx) => (
                             <div key={idx} className="flex justify-between items-start">
-                              <span className="font-semibold text-slate-200">
-                                {it.quantity ?? it.qty ?? 1}x {it.name}
-                              </span>
+                              <div>
+                                <span className="font-semibold text-slate-200">
+                                  {it.quantity ?? it.qty ?? 1}x {it.name}
+                                </span>
+                                {it.selectedOptions && it.selectedOptions.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {it.selectedOptions.map((opt, oIdx) => (
+                                      <span key={oIdx} className="text-[9px] bg-purple-500/15 text-purple-300 border border-purple-500/30 px-1 py-0.2 rounded font-medium">
+                                        {opt}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {it.notes && <span className="block text-amber-400 text-[10px]">Catatan: {it.notes}</span>}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -1029,6 +1094,21 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
             </div>
           </div>
         )}
+
+        {/* ========================================================================= */}
+        {/* TAB 4: PENGELOLAAN KATALOG MENU POS */}
+        {/* ========================================================================= */}
+        {activeTab === 'menu' && (
+          <PosMenuManager
+            menuItems={menuItems || {}}
+            onToggleAvailability={toggleMenuItemAvailability}
+            onQuickUpdatePrice={quickUpdateMenuPrice}
+            onAddMenuItem={addMenuItem}
+            onUpdateMenuItem={updateMenuItem}
+            onDeleteMenuItem={deleteMenuItem}
+            onResetToDefault={resetMenuToDefault}
+          />
+        )}
       </main>
 
       {/* 3. MODAL PEMBAYARAN KASIR (CASH CALCULATOR & QRIS) */}
@@ -1056,17 +1136,37 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
 
             {/* Rincian Tagihan */}
             {(() => {
-              const totalDue = payingOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+              const subtotalDue = payingOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+              const isTaxPlus = cafeSettings?.isTaxIncluded === false && (cafeSettings?.taxPercentage || 0) > 0;
+              const taxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
+              const taxAmount = Math.round((subtotalDue * taxRate) / 100);
+              const totalDue = subtotalDue + taxAmount;
               const changeAmount = cashReceived > totalDue ? cashReceived - totalDue : 0;
 
               return (
                 <div className="space-y-4">
                   {/* Total Tagihan Besar */}
-                  <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex justify-between items-center">
-                    <span className="text-xs font-bold text-slate-400">TOTAL TAGIHAN:</span>
-                    <span className="text-2xl font-black text-emerald-400 font-mono">
-                      {formatRupiah(totalDue)}
-                    </span>
+                  <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-1.5">
+                    {taxRate > 0 && (
+                      <div className="flex justify-between items-center text-xs text-slate-400">
+                        <span>Subtotal Makanan & Minuman:</span>
+                        <span className="font-mono">{formatRupiah(subtotalDue)}</span>
+                      </div>
+                    )}
+                    {taxRate > 0 && (
+                      <div className="flex justify-between items-center text-xs text-amber-400">
+                        <span>Pajak Resto (PB1 {taxRate}%):</span>
+                        <span className="font-mono">+{formatRupiah(taxAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-800">
+                      <span className="text-xs font-bold text-slate-300">
+                        {taxRate > 0 ? 'TOTAL AKHIR (+PB1):' : 'TOTAL TAGIHAN (NETT):'}
+                      </span>
+                      <span className="text-2xl font-black text-emerald-400 font-mono">
+                        {formatRupiah(totalDue)}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Pilihan Metode Bayar */}

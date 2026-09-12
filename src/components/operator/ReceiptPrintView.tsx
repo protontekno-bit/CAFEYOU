@@ -103,6 +103,11 @@ export const ReceiptPrintView: React.FC<ReceiptPrintViewProps> = ({
                 <span className="truncate pr-1">{item.name}</span>
                 <span>{formatRupiah(item.price * qty)}</span>
               </div>
+              {item.selectedOptions && item.selectedOptions.length > 0 && (
+                <div className="text-[9px] text-gray-700 pl-2">
+                  • {item.selectedOptions.join(', ')}
+                </div>
+              )}
               <div className="flex justify-between text-[10px] text-gray-600 pl-2">
                 <span>{qty} x {formatRupiah(item.price)}</span>
                 {item.notes && <span className="italic truncate max-w-[120px]">({item.notes})</span>}
@@ -113,20 +118,41 @@ export const ReceiptPrintView: React.FC<ReceiptPrintViewProps> = ({
       </div>
 
       {/* Ringkasan Pembayaran */}
-      <div className="space-y-1 mb-3">
-        <div className="flex justify-between font-bold text-xs pt-1 border-t border-black">
-          <span>TOTAL:</span>
-          <span>{formatRupiah(totalAmount)}</span>
-        </div>
-        <div className="flex justify-between text-[10px]">
-          <span>Metode Bayar:</span>
-          <span className="font-semibold uppercase">{paymentMethod}</span>
-        </div>
-        <div className="flex justify-between text-[10px]">
-          <span>Status:</span>
-          <span className="font-semibold">LUNAS</span>
-        </div>
-      </div>
+      {(() => {
+        const isTaxPlus = cafeSettings?.isTaxIncluded === false && (cafeSettings?.taxPercentage || 0) > 0;
+        const taxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
+        const taxAmount = Math.round((totalAmount * taxRate) / 100);
+        const grandTotal = totalAmount + taxAmount;
+
+        return (
+          <div className="space-y-1 mb-3">
+            {taxRate > 0 && (
+              <div className="flex justify-between text-[10px]">
+                <span>Subtotal:</span>
+                <span>{formatRupiah(totalAmount)}</span>
+              </div>
+            )}
+            {taxRate > 0 && (
+              <div className="flex justify-between text-[10px]">
+                <span>PB1 Resto ({taxRate}%):</span>
+                <span>+{formatRupiah(taxAmount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold text-xs pt-1 border-t border-black">
+              <span>TOTAL AKHIR:</span>
+              <span>{formatRupiah(grandTotal)}</span>
+            </div>
+            <div className="flex justify-between text-[10px]">
+              <span>Metode Bayar:</span>
+              <span className="font-semibold uppercase">{paymentMethod}</span>
+            </div>
+            <div className="flex justify-between text-[10px]">
+              <span>Status:</span>
+              <span className="font-semibold">LUNAS</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Footer */}
       <div className="text-center pt-2 border-t border-dashed border-gray-400 text-[10px] text-gray-500 space-y-0.5">

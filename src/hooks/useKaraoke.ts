@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useSyncState } from './useSyncState';
 import { STORAGE_KEY, DEFAULT_KARAOKE_STATE, DEFAULT_CAFE_SETTINGS, DEFAULT_TABLES } from '../constants/karaoke';
 import {
@@ -20,7 +21,7 @@ import { DEFAULT_MENU_ITEMS } from '../constants/menu';
 import { fetchYouTubeInfo, getYouTubeThumbnail } from '../utils/youtube';
 import { playSoundEffect } from '../utils/soundfx';
 import { rebalanceFairQueue } from '../utils/queue';
-import { initFirebaseDatabase, ref, get } from '../config/firebase';
+import { initFirebaseDatabase, ref, get, onValue, set, update } from '../config/firebase';
 
 
 export const isSameTable = (a?: string | null, b?: string | null): boolean => {
@@ -33,6 +34,56 @@ export function useKaraoke() {
     STORAGE_KEY,
     DEFAULT_KARAOKE_STATE
   );
+
+  // Dedicated Real-time Listener untuk tableOrders langsung dari Firebase RTDB
+  useEffect(() => {
+    const db = initFirebaseDatabase();
+    if (!db) return;
+
+    try {
+      const ordersRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders`);
+      const unsubOrders = onValue(ordersRef, (snapshot) => {
+        const cloudOrders = snapshot.exists() ? snapshot.val() : {};
+        if (cloudOrders && typeof cloudOrders === 'object') {
+          updateAppState((prev) => {
+            const currentOrders = prev?.tableOrders || {};
+            const prevStr = JSON.stringify(currentOrders);
+            const cloudStr = JSON.stringify(cloudOrders);
+            if (prevStr === cloudStr) return prev;
+            return {
+              ...prev,
+              tableOrders: cloudOrders,
+            };
+          });
+        }
+      });
+
+      // Dedicated Real-time Listener untuk expenses (kas keluar)
+      const expensesRef = ref(db, `cafeyou/${STORAGE_KEY}/expenses`);
+      const unsubExpenses = onValue(expensesRef, (snapshot) => {
+        const cloudExpenses = snapshot.exists() ? snapshot.val() : {};
+        if (cloudExpenses && typeof cloudExpenses === 'object') {
+          updateAppState((prev) => {
+            const currentExpenses = prev?.expenses || {};
+            const prevStr = JSON.stringify(currentExpenses);
+            const cloudStr = JSON.stringify(cloudExpenses);
+            if (prevStr === cloudStr) return prev;
+            return {
+              ...prev,
+              expenses: cloudExpenses,
+            };
+          });
+        }
+      });
+
+      return () => {
+        unsubOrders();
+        unsubExpenses();
+      };
+    } catch (err) {
+      console.warn('Gagal memasang realtime listener tableOrders/expenses:', err);
+    }
+  }, [updateAppState]);
 
   const addSong = async (
     videoId: string,
@@ -700,11 +751,11 @@ export function useKaraoke() {
       ? appState.tableOrders
       : {};
 
-  const createTableOrder = (
+  const createTableOrder = async (
     tableNumber: string,
     customerName: string,
     items: OrderItem[]
-  ): TableOrder | null => {
+  ): Promise<TableOrder | null> => {
     if (!tableNumber || !items || items.length === 0) return null;
 
     const timestamp = Date.now();
@@ -723,6 +774,7 @@ export function useKaraoke() {
       createdAt: timestamp,
     };
 
+    // 1. Update state lokal segera
     updateAppState((prev) => {
       const currentOrders =
         prev?.tableOrders && typeof prev.tableOrders === 'object' ? prev.tableOrders : {};
@@ -734,6 +786,17 @@ export function useKaraoke() {
         },
       };
     });
+
+    // 2. Tulis langsung secara atomik ke node Firebase RTDB agar instan terkirim ke POS & Operator
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${newOrder.id}`);
+        await set(orderRef, newOrder);
+      }
+    } catch (err) {
+      console.warn('Gagal menyimpan pesanan langsung ke Firebase:', err);
+    }
 
     return newOrder;
   };
@@ -751,16 +814,17 @@ export function useKaraoke() {
       roundingAmount?: number;
     }
   ) => {
+    let updatedTarget: TableOrder | null = null;
     updateAppState((prev) => {
       const currentOrders =
         prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
       const target = currentOrders[orderId];
       if (!target) return prev;
 
-      currentOrders[orderId] = {
+      updatedTarget = {
         ...target,
         status,
-        ...(status === 'paid'
+        ...(status === 'paid' || (status as string).toLowerCase() === 'paid'
           ? {
               paidAt: Date.now(),
               paymentMethod: paymentMethod || 'cash',
@@ -771,14 +835,29 @@ export function useKaraoke() {
               roundingAmount: financials?.roundingAmount || 0,
             }
           : {}),
-        ...(status === 'cancelled' ? { cancelReason: cancelReason || 'Dibatalkan oleh Kasir' } : {}),
+        ...((status === 'cancelled' || (status as string).toLowerCase() === 'cancelled') ? { cancelReason: cancelReason || 'Dibatalkan oleh Kasir' } : {}),
       };
+
+      currentOrders[orderId] = updatedTarget;
 
       return {
         ...prev,
         tableOrders: currentOrders,
       };
     });
+
+    // Tulis update langsung ke node Firebase RTDB
+    if (updatedTarget) {
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
+          set(orderRef, updatedTarget).catch((err) => {
+            console.warn('Gagal update status pesanan di Firebase:', err);
+          });
+        }
+      } catch (err) {}
+    }
   };
 
   const addMenuItem = (item: Omit<MenuItem, 'id'>) => {
@@ -869,6 +948,7 @@ export function useKaraoke() {
   };
 
   const moveTableOrder = (orderId: string, newTableNumber: string) => {
+    let updatedTarget: TableOrder | null = null;
     updateAppState((prev) => {
       const currentOrders =
         prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
@@ -878,7 +958,7 @@ export function useKaraoke() {
       const oldTable = target.tableNumber;
       const history = target.tableMoveHistory || [];
 
-      currentOrders[orderId] = {
+      updatedTarget = {
         ...target,
         tableNumber: newTableNumber,
         tableMoveHistory: [
@@ -887,14 +967,29 @@ export function useKaraoke() {
         ],
       };
 
+      currentOrders[orderId] = updatedTarget;
+
       return {
         ...prev,
         tableOrders: currentOrders,
       };
     });
+
+    if (updatedTarget) {
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
+          set(orderRef, updatedTarget).catch((err) => {
+            console.warn('Gagal update perpindahan meja di Firebase:', err);
+          });
+        }
+      } catch (err) {}
+    }
   };
 
   const voidOrderItem = (orderId: string, itemIndex: number, reason?: string) => {
+    let updatedTarget: TableOrder | null = null;
     updateAppState((prev) => {
       const currentOrders =
         prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
@@ -918,17 +1013,31 @@ export function useKaraoke() {
         return acc + it.price * count;
       }, 0);
 
-      currentOrders[orderId] = {
+      updatedTarget = {
         ...target,
         items: updatedItems,
         totalAmount: newTotal,
       };
+
+      currentOrders[orderId] = updatedTarget;
 
       return {
         ...prev,
         tableOrders: currentOrders,
       };
     });
+
+    if (updatedTarget) {
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
+          set(orderRef, updatedTarget).catch((err) => {
+            console.warn('Gagal void item di Firebase:', err);
+          });
+        }
+      } catch (err) {}
+    }
   };
 
   const confirmTableOrder = (orderId: string) => {
@@ -936,10 +1045,11 @@ export function useKaraoke() {
   };
 
   const clearFinishedOrders = () => {
+    let activeOnly: Record<string, TableOrder> = {};
     updateAppState((prev) => {
       const currentOrders =
         prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
-      const activeOnly: Record<string, TableOrder> = {};
+      activeOnly = {};
       Object.entries(currentOrders).forEach(([id, ord]) => {
         const s = ord.status?.toLowerCase();
         if (s === 'pending' || s === 'confirmed' || s === 'preparing' || s === 'cooking' || s === 'ready' || s === 'served') {
@@ -951,6 +1061,16 @@ export function useKaraoke() {
         tableOrders: activeOnly,
       };
     });
+
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const ordersRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders`);
+        set(ordersRef, activeOnly).catch((err) => {
+          console.warn('Gagal sinkronisasi pembersihan pesanan selesai di Firebase:', err);
+        });
+      }
+    } catch (err) {}
   };
 
   // ─── Modul Beban Pengeluaran / Kas Kecil (Petty Cash & Expenses) ───────────
@@ -987,6 +1107,16 @@ export function useKaraoke() {
       };
     });
 
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const expRef = ref(db, `cafeyou/${STORAGE_KEY}/expenses/${id}`);
+        set(expRef, newExpense).catch((err) => {
+          console.warn('Gagal menyimpan pengeluaran langsung ke Firebase:', err);
+        });
+      }
+    } catch (err) {}
+
     return newExpense;
   };
 
@@ -1000,6 +1130,16 @@ export function useKaraoke() {
         expenses: currentExpenses,
       };
     });
+
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const expRef = ref(db, `cafeyou/${STORAGE_KEY}/expenses/${id}`);
+        set(expRef, null).catch((err) => {
+          console.warn('Gagal hapus pengeluaran di Firebase:', err);
+        });
+      }
+    } catch (err) {}
   };
 
   const clearExpenses = () => {
@@ -1007,6 +1147,16 @@ export function useKaraoke() {
       ...prev,
       expenses: {},
     }));
+
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const expRef = ref(db, `cafeyou/${STORAGE_KEY}/expenses`);
+        set(expRef, {}).catch((err) => {
+          console.warn('Gagal reset pengeluaran di Firebase:', err);
+        });
+      }
+    } catch (err) {}
   };
 
   const safeQueue = Array.isArray(appState?.queue) ? appState.queue : [];

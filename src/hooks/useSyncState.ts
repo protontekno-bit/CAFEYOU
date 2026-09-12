@@ -73,6 +73,12 @@ function sanitizeState<T>(val: any, fallback: T): T {
         ? val.tableOrders
         : (fallback as any).tableOrders || {};
   }
+  if ('expenses' in (fallback as any)) {
+    merged.expenses =
+      val.expenses && typeof val.expenses === 'object'
+        ? val.expenses
+        : (fallback as any).expenses || {};
+  }
   return merged as T;
 }
 

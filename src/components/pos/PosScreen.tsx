@@ -108,10 +108,12 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
 
   // Notifikasi Suara Bel saat ada pesanan baru masuk
   const ordersList: TableOrder[] = Object.values(tableOrders || {}).sort((a, b) => b.createdAt - a.createdAt);
-  const pendingOrdersCount = ordersList.filter((o) => {
+  const pendingOrders = ordersList.filter((o) => {
     const s = o.status?.toLowerCase();
     return s === 'pending';
-  }).length;
+  });
+  const pendingOrdersCount = pendingOrders.length;
+  const latestPendingOrder = pendingOrders[0] || null;
   const prevPendingRef = useRef<number>(pendingOrdersCount);
 
   useEffect(() => {
@@ -528,6 +530,57 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
 
       {/* 2. KONTEN UTAMA SESUAI TAB */}
       <main className="flex-1 p-4 lg:p-6 max-w-7xl mx-auto w-full">
+        {/* BANNER NOTIFIKASI PESANAN BARU MASUK (REAL-TIME ALERT) */}
+        {pendingOrdersCount > 0 && (
+          <div className="mb-6 p-4 sm:p-5 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-red-500/20 border-2 border-amber-500/70 rounded-2xl shadow-xl shadow-amber-500/10 flex flex-wrap items-center justify-between gap-4 animate-pulse">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 font-black text-2xl flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/30">
+                🔔
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm sm:text-base font-black text-white">
+                    {pendingOrdersCount} Pesanan Baru Menunggu Konfirmasi!
+                  </h3>
+                  <span className="px-2 py-0.5 bg-red-500 text-white font-black text-[10px] rounded-full uppercase tracking-wider">
+                    Pesanan Masuk
+                  </span>
+                </div>
+                <p className="text-xs text-amber-200/90 mt-0.5">
+                  {latestPendingOrder
+                    ? `Pesanan dari ${latestPendingOrder.tableNumber} (${latestPendingOrder.customerName}) senilai Rp ${latestPendingOrder.totalAmount.toLocaleString('id-ID')} (${latestPendingOrder.items.length} menu)`
+                    : 'Segera periksa dan konfirmasi di Alur Dapur (KDS) untuk mulai diproses.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    triggerSoundEffect('chime');
+                  } catch {}
+                }}
+                className="px-3 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 hover:text-white transition-all flex items-center gap-1.5"
+                title="Bunyikan Ulang Bel Peringatan"
+              >
+                <span>🔔</span>
+                <span className="hidden sm:inline">Bunyikan Bel</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('kitchen')}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/30 transition-all flex items-center gap-1.5 active:scale-95"
+              >
+                <span>🍳</span>
+                <span>Buka Alur Dapur (KDS)</span>
+                <span>➔</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ========================================================================= */}
         {/* TAB 1: TAGIHAN MEJA & KASIR (BILLING) */}
         {/* ========================================================================= */}

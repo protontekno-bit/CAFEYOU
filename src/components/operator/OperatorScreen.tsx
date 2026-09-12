@@ -138,7 +138,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
 
   // Pantau penambahan pesanan makanan/minuman (F&B) baru dari Tamu
   const pendingOrdersCount = Object.values(tableOrders || {}).filter(
-    (o) => o && o.status === 'PENDING'
+    (o) => o && o.status?.toLowerCase() === 'pending'
   ).length;
   const prevPendingCountRef = React.useRef<number>(pendingOrdersCount);
 

@@ -164,12 +164,34 @@ export interface TableOrder {
   customerName: string;
   items: OrderItem[];
   totalAmount: number;
+  subtotal?: number;
+  taxAmount?: number;
+  serviceAmount?: number;
+  roundingAmount?: number;
   status: OrderStatus;
   createdAt: number;
   paidAt?: number;
   paymentMethod?: 'cash' | 'qris' | 'transfer' | 'debit' | 'TUNAI' | 'QRIS' | 'TRANSFER' | 'DEBIT';
   cancelReason?: string;
   tableMoveHistory?: { from: string; to: string; movedAt: number }[];
+}
+
+export type ExpenseCategory =
+  | 'BAHAN_BAKU'
+  | 'OPERASIONAL'
+  | 'GAJI_KASBON'
+  | 'MAINTENANCE'
+  | 'LAINNYA';
+
+export interface ExpenseItem {
+  id: string;
+  category: ExpenseCategory;
+  title: string;
+  amount: number;
+  notes?: string;
+  recordedBy: string;
+  createdAt: number;
+  paymentSource: 'CASH_DRAWER' | 'BANK_TRANSFER';
 }
 
 export interface KaraokeState {
@@ -191,6 +213,7 @@ export interface KaraokeState {
   autoSaveLibrary?: boolean;
   menuItems?: Record<string, MenuItem>;
   tableOrders?: Record<string, TableOrder>;
+  expenses?: Record<string, ExpenseItem>;
 }
 
 export interface SyncMessage<T> {

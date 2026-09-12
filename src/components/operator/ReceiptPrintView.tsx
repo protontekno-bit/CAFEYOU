@@ -119,22 +119,23 @@ export const ReceiptPrintView: React.FC<ReceiptPrintViewProps> = ({
 
       {/* Ringkasan Pembayaran */}
       {(() => {
+        const savedTax = ordersToPrint.reduce((sum: number, o) => sum + (o.taxAmount || 0), 0);
         const isTaxPlus = cafeSettings?.isTaxIncluded === false && (cafeSettings?.taxPercentage || 0) > 0;
         const taxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
-        const taxAmount = Math.round((totalAmount * taxRate) / 100);
-        const grandTotal = totalAmount + taxAmount;
+        const taxAmount = savedTax > 0 ? savedTax : Math.round((totalAmount * taxRate) / 100);
+        const grandTotal = totalAmount + (savedTax > 0 ? 0 : taxAmount);
 
         return (
           <div className="space-y-1 mb-3">
-            {taxRate > 0 && (
+            {taxAmount > 0 && (
               <div className="flex justify-between text-[10px]">
                 <span>Subtotal:</span>
-                <span>{formatRupiah(totalAmount)}</span>
+                <span>{formatRupiah(grandTotal - taxAmount)}</span>
               </div>
             )}
-            {taxRate > 0 && (
+            {taxAmount > 0 && (
               <div className="flex justify-between text-[10px]">
-                <span>PB1 Resto ({taxRate}%):</span>
+                <span>PB1 Resto:</span>
                 <span>+{formatRupiah(taxAmount)}</span>
               </div>
             )}

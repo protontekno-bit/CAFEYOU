@@ -6,6 +6,7 @@ import { ReceiptPrintView } from '../operator/ReceiptPrintView';
 import { DeveloperFooter } from '../common/DeveloperFooter';
 import { PosMenuManager } from './PosMenuManager';
 import { PosSettingsModal } from './PosSettingsModal';
+import { PosExpenseModal } from './PosExpenseModal';
 
 interface PosScreenProps {
   setRole?: (role: AppRole) => void;
@@ -37,6 +38,9 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     triggerSoundEffect,
     updateCafeSettings,
     updateRolePasswords,
+    expenses,
+    addExpense,
+    deleteExpense,
   } = useKaraoke();
 
   // 1. Status Autentikasi Kasir / Staff Security Gate
@@ -52,6 +56,9 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
 
   // Modal Pengaturan Kasir (PB1, Service Charge, Ganti PIN)
   const [isPosSettingsOpen, setIsPosSettingsOpen] = useState(false);
+
+  // Modal Kas Keluar / Pengeluaran (Petty Cash)
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
 
   // 2. Tab Aktif & Jam Digital
   const [activeTab, setActiveTab] = useState<PosTab>('billing');
@@ -159,12 +166,39 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     }, 150);
   };
 
-  // Eksekusi Pembayaran Kasir
-  const handleConfirmPayment = () => {
+  // Eksekusi Pembayaran Kasir (Dengan Sinkronisasi Pajak PB1 & Service Charge)
+  const handleConfirmPayment = (
+    taxRateVal: number = 0,
+    serviceRateVal: number = 0,
+    isCashRounding: boolean = false
+  ) => {
     if (payingOrders.length === 0) return;
+
+    const totalSubtotal = payingOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+
     payingOrders.forEach((ord) => {
-      updateTableOrderStatus(ord.id, 'PAID', paymentMethod);
+      const ordSub = ord.subtotal || ord.totalAmount;
+      const proportion = totalSubtotal > 0 ? ordSub / totalSubtotal : 1 / payingOrders.length;
+      const taxAmt = Math.round((ordSub * taxRateVal) / 100);
+      const servAmt = Math.round((ordSub * serviceRateVal) / 100);
+      let finalAmt = ordSub + taxAmt + servAmt;
+
+      let roundAmt = 0;
+      if (isCashRounding && paymentMethod === 'cash') {
+        const rounded = Math.round(finalAmt / 100) * 100;
+        roundAmt = rounded - finalAmt;
+        finalAmt = rounded;
+      }
+
+      updateTableOrderStatus(ord.id, 'PAID', paymentMethod, undefined, {
+        finalTotal: finalAmt,
+        subtotal: ordSub,
+        taxAmount: taxAmt,
+        serviceAmount: servAmt,
+        roundingAmount: roundAmt,
+      });
     });
+
     setPayingTable(null);
     setPayingOrders([]);
     setCashReceived(0);
@@ -205,7 +239,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     return acc;
   }, {});
 
-  // Perhitungan Rekap Omzet Shift
+  // Perhitungan Rekap Omzet Shift & Audit Finansial
   const paidOrders = ordersList.filter((o) => o.status?.toLowerCase() === 'paid');
   const revenueCash = paidOrders
     .filter((o) => o.paymentMethod?.toLowerCase() === 'cash' || o.paymentMethod === 'TUNAI')
@@ -220,6 +254,23 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     .filter((o) => o.paymentMethod?.toLowerCase() === 'debit' || o.paymentMethod === 'DEBIT')
     .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
   const totalRevenue = revenueCash + revenueQris + revenueTransfer + revenueDebit;
+
+  // Rincian Pajak Resto (PB1) Terkumpul
+  const totalPb1Collected = paidOrders.reduce((sum, o) => sum + (o.taxAmount || 0), 0);
+  const totalServiceCollected = paidOrders.reduce((sum, o) => sum + (o.serviceAmount || 0), 0);
+
+  // Perhitungan Beban Kas Keluar (Petty Cash Expenses)
+  const expenseList = Object.values(expenses || {});
+  const totalExpenseAll = expenseList.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalExpenseCash = expenseList
+    .filter((e) => e.paymentSource === 'CASH_DRAWER')
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+  // Uang Fisik yang Wajib Ada di Laci Kasir (Cash Drawer Real Balance)
+  const cashDrawerExpected = Math.max(0, revenueCash - totalExpenseCash);
+
+  // Estimasi Laba Bersih Shift (Net Income)
+  const netIncomeShift = totalRevenue - totalExpenseAll;
 
   // Lencana Status Pesanan
   const renderStatusBadge = (status: OrderStatus) => {
@@ -988,69 +1039,141 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
               <div>
                 <h2 className="text-lg font-black text-white flex items-center gap-2">
                   <span>📊</span>
-                  <span>Rekapitulasi Shift Kasir & Omzet Penjualan</span>
+                  <span>Rekapitulasi Shift Kasir & Audit Finansial</span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Rincian pemisahan uang tunai (*cash drawer*) dan non-tunai untuk audit penutupan shift kasir.
+                  Pemantauan omzet, pajak PB1 daerah, pengeluaran kas kecil, dan rekonsiliasi saldo fisik laci kasir.
                 </p>
               </div>
 
-              <button
-                onClick={() => {
-                  if (window.confirm('Bersihkan semua data pesanan yang sudah berstatus Lunas/Batal?')) {
-                    clearFinishedOrders();
-                  }
-                }}
-                className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 rounded-xl text-xs font-bold transition-all"
-              >
-                🧹 Tutup Shift & Bersihkan Data Selesai
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsExpenseModalOpen(true)}
+                  className="px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                >
+                  <span>💸</span>
+                  <span>Catat Kas Keluar</span>
+                  {expenseList.length > 0 && (
+                    <span className="text-[10px] bg-rose-500 text-white px-1.5 py-0.2 rounded-full font-mono">
+                      {expenseList.length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Bersihkan semua data pesanan yang sudah berstatus Lunas/Batal?')) {
+                      clearFinishedOrders();
+                    }
+                  }}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-slate-700 hover:border-red-500/30 rounded-xl text-xs font-bold transition-all"
+                >
+                  🧹 Tutup Shift
+                </button>
+              </div>
             </div>
 
-            {/* Kartu Ringkasan Omzet */}
+            {/* Kartu Ringkasan Omzet & Arus Kas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. Total Omzet Kotor */}
               <div className="bg-slate-900/80 border border-emerald-500/30 p-5 rounded-3xl space-y-2">
                 <div className="flex justify-between items-center text-xs text-slate-400 font-bold">
-                  <span>TOTAL OMZET F&B</span>
+                  <span>TOTAL OMZET BRUTO</span>
                   <span className="text-lg">💰</span>
                 </div>
                 <div className="text-2xl font-black text-emerald-400 font-mono">
                   {formatRupiah(totalRevenue)}
                 </div>
-                <div className="text-[11px] text-slate-500">{paidOrders.length} Pesanan Berhasil Lunas</div>
+                <div className="text-[11px] text-slate-500 flex justify-between">
+                  <span>{paidOrders.length} Pesanan Lunas</span>
+                  {totalPb1Collected > 0 && (
+                    <span className="text-amber-400">PB1: +{formatRupiah(totalPb1Collected)}</span>
+                  )}
+                </div>
               </div>
 
-              <div className="bg-slate-900/80 border border-blue-500/30 p-5 rounded-3xl space-y-2">
-                <div className="flex justify-between items-center text-xs text-slate-400 font-bold">
-                  <span>TUNAI (CASH DRAWER)</span>
+              {/* 2. Uang Tunai yang Wajib Ada di Laci (Cash Drawer) */}
+              <div className="bg-slate-900/80 border border-amber-500/40 p-5 rounded-3xl space-y-2 bg-gradient-to-b from-amber-500/5 to-transparent">
+                <div className="flex justify-between items-center text-xs text-amber-300 font-black">
+                  <span>SALDO FISIK LACI KASIR</span>
                   <span className="text-lg">💵</span>
                 </div>
-                <div className="text-2xl font-black text-blue-400 font-mono">
-                  {formatRupiah(revenueCash)}
+                <div className="text-2xl font-black text-amber-300 font-mono">
+                  {formatRupiah(cashDrawerExpected)}
                 </div>
-                <div className="text-[11px] text-slate-500">Uang fisik wajib ada di laci kasir</div>
+                <div className="text-[10px] text-slate-400 leading-tight">
+                  Tunai masuk {formatRupiah(revenueCash)}
+                  {totalExpenseCash > 0 && (
+                    <span className="text-rose-400"> - Kasbon/Beban {formatRupiah(totalExpenseCash)}</span>
+                  )}
+                </div>
               </div>
 
-              <div className="bg-slate-900/80 border border-purple-500/30 p-5 rounded-3xl space-y-2">
+              {/* 3. Beban Kas Keluar (Petty Cash) */}
+              <div
+                onClick={() => setIsExpenseModalOpen(true)}
+                className="bg-slate-900/80 border border-rose-500/30 p-5 rounded-3xl space-y-2 cursor-pointer hover:border-rose-500/60 transition-all"
+              >
                 <div className="flex justify-between items-center text-xs text-slate-400 font-bold">
-                  <span>NON-TUNAI QRIS</span>
-                  <span className="text-lg">📱</span>
+                  <span>BEBAN PENGELUARAN KAS</span>
+                  <span className="text-lg">💸</span>
                 </div>
-                <div className="text-2xl font-black text-purple-400 font-mono">
-                  {formatRupiah(revenueQris)}
+                <div className="text-2xl font-black text-rose-400 font-mono">
+                  {formatRupiah(totalExpenseAll)}
                 </div>
-                <div className="text-[11px] text-slate-500">Masuk rekening QRIS Kafe</div>
+                <div className="text-[11px] text-rose-300/80 flex items-center justify-between">
+                  <span>{expenseList.length} Nota Biaya</span>
+                  <span className="text-[10px] underline">Kelola ➔</span>
+                </div>
               </div>
 
-              <div className="bg-slate-900/80 border border-cyan-500/30 p-5 rounded-3xl space-y-2">
+              {/* 4. Estimasi Laba Bersih Shift */}
+              <div className="bg-slate-900/80 border border-blue-500/30 p-5 rounded-3xl space-y-2">
                 <div className="flex justify-between items-center text-xs text-slate-400 font-bold">
-                  <span>TRANSFER & DEBIT</span>
-                  <span className="text-lg">🏦</span>
+                  <span>ESTIMASI LABA BERSIH</span>
+                  <span className="text-lg">📈</span>
                 </div>
-                <div className="text-2xl font-black text-cyan-400 font-mono">
-                  {formatRupiah(revenueTransfer + revenueDebit)}
+                <div className={`text-2xl font-black font-mono ${netIncomeShift >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                  {formatRupiah(netIncomeShift)}
                 </div>
-                <div className="text-[11px] text-slate-500">Bank Transfer / Mesin EDC</div>
+                <div className="text-[11px] text-slate-500">
+                  Omzet dikurangi pengeluaran operasional
+                </div>
+              </div>
+            </div>
+
+            {/* Rincian Tambahan: Non-Tunai QRIS & EDC Bank */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-slate-900/60 border border-purple-500/30 p-4 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center text-lg font-black">
+                    📱
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-400 block">NON-TUNAI QRIS (REKENING KAFE)</span>
+                    <span className="text-base font-black text-purple-300 font-mono">
+                      {formatRupiah(revenueQris)}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[11px] text-slate-500">Settle otomatis ke Bank</span>
+              </div>
+
+              <div className="bg-slate-900/60 border border-cyan-500/30 p-4 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-lg font-black">
+                    🏦
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-400 block">TRANSFER BANK & MESIN EDC DEBIT</span>
+                    <span className="text-base font-black text-cyan-300 font-mono">
+                      {formatRupiah(revenueTransfer + revenueDebit)}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[11px] text-slate-500">Bukti struk EDC / Mutasi</span>
               </div>
             </div>
 
@@ -1280,7 +1403,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
                   <div className="flex gap-2 pt-2">
                     <button
                       type="button"
-                      onClick={handleConfirmPayment}
+                      onClick={() => handleConfirmPayment(taxRate, cafeSettings?.servicePercentage || 0, true)}
                       disabled={paymentMethod === 'cash' && cashReceived > 0 && cashReceived < totalDue}
                       className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 active:scale-98 transition-all"
                     >
@@ -1417,6 +1540,15 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         cafeSettings={cafeSettings}
         onUpdateCafeSettings={updateCafeSettings}
         onUpdatePosPassword={(newPin) => updateRolePasswords(undefined, newPin)}
+      />
+
+      {/* 8. MODAL KAS KELUAR & PENGELUARAN (PETTY CASH) */}
+      <PosExpenseModal
+        isOpen={isExpenseModalOpen}
+        onClose={() => setIsExpenseModalOpen(false)}
+        expenses={expenses || {}}
+        onAddExpense={addExpense}
+        onDeleteExpense={deleteExpense}
       />
 
       <DeveloperFooter className="px-4 mt-auto" />

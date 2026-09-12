@@ -13,6 +13,8 @@ import {
   OrderItem,
   OrderStatus,
   TableOrder,
+  ExpenseItem,
+  ExpenseCategory,
 } from '../types';
 import { DEFAULT_MENU_ITEMS } from '../constants/menu';
 import { fetchYouTubeInfo, getYouTubeThumbnail } from '../utils/youtube';
@@ -740,7 +742,14 @@ export function useKaraoke() {
     orderId: string,
     status: OrderStatus,
     paymentMethod?: 'cash' | 'qris' | 'transfer' | 'debit' | 'TUNAI' | 'QRIS' | 'TRANSFER' | 'DEBIT',
-    cancelReason?: string
+    cancelReason?: string,
+    financials?: {
+      finalTotal?: number;
+      subtotal?: number;
+      taxAmount?: number;
+      serviceAmount?: number;
+      roundingAmount?: number;
+    }
   ) => {
     updateAppState((prev) => {
       const currentOrders =
@@ -751,7 +760,17 @@ export function useKaraoke() {
       currentOrders[orderId] = {
         ...target,
         status,
-        ...(status === 'paid' ? { paidAt: Date.now(), paymentMethod: paymentMethod || 'cash' } : {}),
+        ...(status === 'paid'
+          ? {
+              paidAt: Date.now(),
+              paymentMethod: paymentMethod || 'cash',
+              totalAmount: financials?.finalTotal !== undefined ? financials.finalTotal : target.totalAmount,
+              subtotal: financials?.subtotal !== undefined ? financials.subtotal : target.totalAmount,
+              taxAmount: financials?.taxAmount || 0,
+              serviceAmount: financials?.serviceAmount || 0,
+              roundingAmount: financials?.roundingAmount || 0,
+            }
+          : {}),
         ...(status === 'cancelled' ? { cancelReason: cancelReason || 'Dibatalkan oleh Kasir' } : {}),
       };
 
@@ -934,6 +953,62 @@ export function useKaraoke() {
     });
   };
 
+  // ─── Modul Beban Pengeluaran / Kas Kecil (Petty Cash & Expenses) ───────────
+  const addExpense = (
+    category: ExpenseCategory,
+    title: string,
+    amount: number,
+    notes?: string,
+    recordedBy?: string,
+    paymentSource: 'CASH_DRAWER' | 'BANK_TRANSFER' = 'CASH_DRAWER'
+  ): ExpenseItem => {
+    const timestamp = Date.now();
+    const id = `exp-${timestamp}-${Math.random().toString(36).substring(2, 6)}`;
+    const newExpense: ExpenseItem = {
+      id,
+      category,
+      title: title.trim() || 'Pengeluaran Operasional',
+      amount: Math.max(0, Number(amount) || 0),
+      notes: notes?.trim() || '',
+      recordedBy: recordedBy?.trim() || 'Staf Kasir',
+      createdAt: timestamp,
+      paymentSource,
+    };
+
+    updateAppState((prev) => {
+      const currentExpenses =
+        prev?.expenses && typeof prev.expenses === 'object' ? { ...prev.expenses } : {};
+      return {
+        ...prev,
+        expenses: {
+          ...currentExpenses,
+          [id]: newExpense,
+        },
+      };
+    });
+
+    return newExpense;
+  };
+
+  const deleteExpense = (id: string) => {
+    updateAppState((prev) => {
+      const currentExpenses =
+        prev?.expenses && typeof prev.expenses === 'object' ? { ...prev.expenses } : {};
+      delete currentExpenses[id];
+      return {
+        ...prev,
+        expenses: currentExpenses,
+      };
+    });
+  };
+
+  const clearExpenses = () => {
+    updateAppState((prev) => ({
+      ...prev,
+      expenses: {},
+    }));
+  };
+
   const safeQueue = Array.isArray(appState?.queue) ? appState.queue : [];
   const currentSong = safeQueue[0] || null;
   const nextSongs = safeQueue.slice(1);
@@ -948,6 +1023,8 @@ export function useKaraoke() {
   const cafeSettings = appState?.cafeSettings || DEFAULT_CAFE_SETTINGS;
   const tables = Array.isArray(appState?.tables) && appState.tables.length > 0 ? appState.tables : DEFAULT_TABLES;
   const autoSaveLibrary = appState?.autoSaveLibrary !== false;
+  const expenses: Record<string, ExpenseItem> =
+    appState?.expenses && typeof appState.expenses === 'object' ? appState.expenses : {};
 
   return {
     state: {
@@ -962,6 +1039,7 @@ export function useKaraoke() {
       cafeSettings,
       tables,
       autoSaveLibrary,
+      expenses,
     },
     updateState: updateAppState,
     isCloudConnected,
@@ -1020,5 +1098,9 @@ export function useKaraoke() {
     clearFinishedOrders,
     updateLocalServerIp,
     updateRolePasswords,
+    expenses,
+    addExpense,
+    deleteExpense,
+    clearExpenses,
   };
 }

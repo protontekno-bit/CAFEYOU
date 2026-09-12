@@ -15,6 +15,7 @@ import { TableQrGeneratorModal } from './TableQrGeneratorModal';
 import { CafeSettingsModal } from './CafeSettingsModal';
 import { SongLibraryManagerModal } from './SongLibraryManagerModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { SettingsCenterModal } from './SettingsCenterModal';
 import { OperatorLoginView } from './OperatorLoginView';
 import { DeveloperHelpModal } from '../common/DeveloperHelpModal';
 import { DeveloperFooter } from '../common/DeveloperFooter';
@@ -87,6 +88,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isDeveloperHelpOpen, setIsDeveloperHelpOpen] = useState(false);
   const [isLibraryManagerOpen, setIsLibraryManagerOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isSettingsCenterOpen, setIsSettingsCenterOpen] = useState(false);
 
   // Notifikasi Pesanan Meja Baru
   const [newOrderAlert, setNewOrderAlert] = useState<{
@@ -162,19 +164,11 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onBack={setRole ? () => setRole('landing') : undefined}
           isCloudConnected={isCloudConnected}
           historyCount={history.length}
-          onOpenSoundBoard={() => setIsSoundBoardOpen(true)}
-          onOpenPopularSongs={() => setIsPopularOpen(true)}
-          onOpenRunningText={() => setIsRunningTextOpen(true)}
           onOpenProjectorTab={handleOpenProjector}
-          onOpenFirebaseConfig={() => setIsFirebaseOpen(true)}
-          onOpenQrShare={() => setIsQrShareOpen(true)}
+          onOpenPopularSongs={() => setIsPopularOpen(true)}
           onOpenHistory={() => setIsHistoryOpen(true)}
-          onOpenVouchers={() => setIsVoucherOpen(true)}
-          onOpenTableQr={() => setIsTableQrOpen(true)}
-          onOpenCafeSettings={() => setIsCafeSettingsOpen(true)}
-          onOpenDeveloperHelp={() => setIsDeveloperHelpOpen(true)}
-          onOpenLibraryManager={() => setIsLibraryManagerOpen(true)}
-          onChangePassword={() => setIsChangePasswordOpen(true)}
+          onOpenSoundBoard={() => setIsSoundBoardOpen(true)}
+          onOpenSettings={() => setIsSettingsCenterOpen(true)}
           onLogout={handleLogout}
         />
 
@@ -333,6 +327,31 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
       <DeveloperHelpModal
         isOpen={isDeveloperHelpOpen}
         onClose={() => setIsDeveloperHelpOpen(false)}
+      />
+
+      {/* Pusat Pengaturan Kafe (Sidebar Layout) */}
+      <SettingsCenterModal
+        isOpen={isSettingsCenterOpen}
+        onClose={() => setIsSettingsCenterOpen(false)}
+        cafeSettings={cafeSettings}
+        onUpdateCafeSettings={updateCafeSettings}
+        runningText={state.runningText || ''}
+        onSaveRunningText={setRunningText}
+        onOpenProjectorTab={handleOpenProjector}
+        onOpenQrShare={() => setIsQrShareOpen(true)}
+        onOpenTableQrModal={() => setIsTableQrOpen(true)}
+        vouchers={vouchers}
+        dailyPin={dailyPin}
+        onCreateVoucher={createVoucher}
+        onRevokeVoucher={revokeVoucher}
+        onSetDailyPin={setDailyPin}
+        onOpenVoucherModal={() => setIsVoucherOpen(true)}
+        songLibrary={songLibrary}
+        onDeleteFromLibrary={deleteFromLibrary}
+        onClearLibrary={clearLibrary}
+        isCloudConnected={isCloudConnected}
+        onOpenFirebaseConfig={() => setIsFirebaseOpen(true)}
+        onPasswordChangedLogout={handleLogout}
       />
 
       </div>

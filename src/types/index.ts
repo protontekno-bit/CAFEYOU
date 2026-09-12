@@ -80,6 +80,65 @@ export interface YouTubeSearchResult {
   thumbnail: string;
 }
 
+export type MenuCategory =
+  | 'KOPI'
+  | 'NON_KOPI'
+  | 'MAKANAN'
+  | 'SNACK'
+  | 'PAKET'
+  | 'Kopi'
+  | 'Minuman'
+  | 'Makanan'
+  | 'Snack'
+  | 'Paket';
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  category: MenuCategory;
+  price: number;
+  description?: string;
+  image?: string;
+  imageUrl?: string;
+  isAvailable: boolean;
+}
+
+export interface OrderItem {
+  menuId?: string;
+  menuItemId?: string;
+  name: string;
+  price: number;
+  qty?: number;
+  quantity?: number;
+  notes?: string;
+}
+
+export type OrderStatus =
+  | 'pending'
+  | 'cooking'
+  | 'served'
+  | 'paid'
+  | 'cancelled'
+  | 'PENDING'
+  | 'COOKING'
+  | 'SERVED'
+  | 'PAID'
+  | 'CANCELLED';
+
+export interface TableOrder {
+  id: string;
+  orderNumber?: string;
+  tableNumber: string;
+  customerName: string;
+  items: OrderItem[];
+  totalAmount: number;
+  status: OrderStatus;
+  createdAt: number;
+  paidAt?: number;
+  paymentMethod?: 'cash' | 'qris' | 'transfer' | 'debit' | 'TUNAI' | 'QRIS' | 'TRANSFER' | 'DEBIT';
+  cancelReason?: string;
+}
+
 export interface KaraokeState {
   queue: Song[];
   playbackStatus: PlaybackStatus;
@@ -97,6 +156,8 @@ export interface KaraokeState {
   cafeSettings?: CafeSettings;
   tables?: string[];
   autoSaveLibrary?: boolean;
+  menuItems?: Record<string, MenuItem>;
+  tableOrders?: Record<string, TableOrder>;
 }
 
 export interface SyncMessage<T> {

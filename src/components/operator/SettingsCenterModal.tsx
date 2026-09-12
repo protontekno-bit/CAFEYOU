@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CafeSettings, Voucher, DailyPinConfig, SavedLibrarySong } from '../../types';
+import { CafeSettings, Voucher, DailyPinConfig, SavedLibrarySong, MenuItem, MenuCategory } from '../../types';
 import { DEFAULT_CAFE_SETTINGS, QUICK_TABLES } from '../../constants/karaoke';
 import { CheckIcon, TicketIcon, LockIcon } from '../icons/Icons';
 import {
@@ -20,6 +20,7 @@ type SettingsTab =
   | 'display'
   | 'tables'
   | 'vouchers'
+  | 'menu'
   | 'library'
   | 'cloud'
   | 'security'
@@ -49,6 +50,12 @@ interface SettingsCenterModalProps {
   onRevokeVoucher?: (code: string) => void;
   onSetDailyPin?: (enabled: boolean, code: string) => void;
   onOpenVoucherModal?: () => void;
+  // Menu F&B (POS)
+  menuItems?: MenuItem[];
+  onAddMenuItem?: (item: Omit<MenuItem, 'id'>) => Promise<void> | void;
+  onUpdateMenuItem?: (item: MenuItem) => Promise<void> | void;
+  onDeleteMenuItem?: (id: string) => Promise<void> | void;
+  onResetMenuToDefault?: () => Promise<void> | void;
   // Library
   songLibrary?: Record<string, SavedLibrarySong>;
   onDeleteFromLibrary?: (videoId: string) => void;
@@ -83,6 +90,11 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   onRevokeVoucher,
   onSetDailyPin,
   onOpenVoucherModal,
+  menuItems = [],
+  onAddMenuItem,
+  onUpdateMenuItem,
+  onDeleteMenuItem,
+  onResetMenuToDefault,
   songLibrary = {},
   onDeleteFromLibrary,
   onClearLibrary,
@@ -150,6 +162,71 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   const [fbStorageBucket, setFbStorageBucket] = useState('');
   const [fbAppId, setFbAppId] = useState('');
   const [fbStatusMsg, setFbStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  // State: Menu F&B Management
+  const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
+  const [isNewMenuModalOpen, setIsNewMenuModalOpen] = useState(false);
+  const [menuFormName, setMenuFormName] = useState('');
+  const [menuFormCategory, setMenuFormCategory] = useState<MenuCategory>('KOPI');
+  const [menuFormPrice, setMenuFormPrice] = useState<number>(15000);
+  const [menuFormDesc, setMenuFormDesc] = useState('');
+  const [menuFormImage, setMenuFormImage] = useState('☕');
+  const [menuCategoryFilter, setMenuCategoryFilter] = useState<MenuCategory | 'ALL'>('ALL');
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [menuFeedbackMsg, setMenuFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleOpenAddMenu = () => {
+    setEditingMenuItem(null);
+    setMenuFormName('');
+    setMenuFormCategory('KOPI');
+    setMenuFormPrice(15000);
+    setMenuFormDesc('');
+    setMenuFormImage('☕');
+    setIsNewMenuModalOpen(true);
+  };
+
+  const handleOpenEditMenu = (item: MenuItem) => {
+    setEditingMenuItem(item);
+    setMenuFormName(item.name);
+    setMenuFormCategory(item.category);
+    setMenuFormPrice(item.price);
+    setMenuFormDesc(item.description || '');
+    setMenuFormImage(item.imageUrl || '🍽️');
+    setIsNewMenuModalOpen(true);
+  };
+
+  const handleSaveMenuItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!menuFormName.trim()) return;
+
+    try {
+      if (editingMenuItem && onUpdateMenuItem) {
+        await onUpdateMenuItem({
+          ...editingMenuItem,
+          name: menuFormName.trim(),
+          category: menuFormCategory,
+          price: Number(menuFormPrice),
+          description: menuFormDesc.trim(),
+          imageUrl: menuFormImage.trim() || '🍽️',
+        });
+        setMenuFeedbackMsg({ type: 'success', text: `Menu "${menuFormName}" berhasil diperbarui!` });
+      } else if (onAddMenuItem) {
+        await onAddMenuItem({
+          name: menuFormName.trim(),
+          category: menuFormCategory,
+          price: Number(menuFormPrice),
+          description: menuFormDesc.trim(),
+          imageUrl: menuFormImage.trim() || '🍽️',
+          isAvailable: true,
+        });
+        setMenuFeedbackMsg({ type: 'success', text: `Menu "${menuFormName}" berhasil ditambahkan!` });
+      }
+      setIsNewMenuModalOpen(false);
+    } catch (err: any) {
+      setMenuFeedbackMsg({ type: 'error', text: err?.message || 'Gagal menyimpan menu' });
+    }
+    setTimeout(() => setMenuFeedbackMsg(null), 3000);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -483,6 +560,12 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                   icon: '🎟️',
                   label: 'Voucher & PIN Tamu',
                   badge: activeVouchersList.length > 0 ? `${activeVouchersList.length}` : undefined,
+                },
+                {
+                  id: 'menu',
+                  icon: '🍽️',
+                  label: 'Katalog Menu F&B',
+                  badge: `${(menuItems || []).length}`,
                 },
                 {
                   id: 'library',
@@ -1188,6 +1271,299 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* 4.5. TAB: KATALOG MENU F&B (POS KAFE) */}
+          {activeTab === 'menu' && (
+            <div className="space-y-6 animate-fadeIn max-w-3xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                    <span>🍽️ Katalog Menu Makanan & Minuman</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Atur daftar menu F&B, harga jual, dan status ketersediaan di portal HP tamu.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenAddMenu}
+                    className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center gap-1.5 transition-all"
+                  >
+                    <span>+</span> Tambah Menu
+                  </button>
+                  {onResetMenuToDefault && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('Kembalikan semua daftar menu ke katalog bawaan kafe?')) {
+                          onResetMenuToDefault();
+                          setMenuFeedbackMsg({ type: 'success', text: 'Menu berhasil direset ke katalog standar!' });
+                          setTimeout(() => setMenuFeedbackMsg(null), 3000);
+                        }
+                      }}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl text-xs font-semibold border border-slate-700 transition-colors"
+                      title="Reset ke daftar menu default"
+                    >
+                      🔄 Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {menuFeedbackMsg && (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+                    menuFeedbackMsg.type === 'success'
+                      ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                      : 'bg-red-500/15 border-red-500/30 text-red-300'
+                  }`}
+                >
+                  <span>{menuFeedbackMsg.type === 'success' ? '✅' : '⚠️'} {menuFeedbackMsg.text}</span>
+                </div>
+              )}
+
+              {/* Filter & Search Bar */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={menuSearchQuery}
+                    onChange={(e) => setMenuSearchQuery(e.target.value)}
+                    placeholder="Cari nama menu atau minuman..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 placeholder:text-slate-600"
+                  />
+                </div>
+                <div className="flex gap-1 overflow-x-auto pb-1 max-w-full">
+                  {(['ALL', 'KOPI', 'NON_KOPI', 'MAKANAN', 'SNACK', 'PAKET'] as const).map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setMenuCategoryFilter(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-colors ${
+                        menuCategoryFilter === cat
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {cat === 'ALL' ? 'Semua' : cat === 'NON_KOPI' ? 'Minuman Segar' : cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Daftar Menu List */}
+              <div className="space-y-2.5 max-h-[460px] overflow-y-auto custom-scrollbar pr-1">
+                {menuItems
+                  .filter((m) => {
+                    if (menuCategoryFilter !== 'ALL' && m.category !== menuCategoryFilter) return false;
+                    if (menuSearchQuery.trim()) {
+                      const q = menuSearchQuery.toLowerCase();
+                      return m.name.toLowerCase().includes(q) || (m.description && m.description.toLowerCase().includes(q));
+                    }
+                    return true;
+                  })
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-3.5 bg-slate-950/60 border rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                        item.isAvailable ? 'border-slate-800 hover:border-slate-700' : 'border-slate-800/40 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-slate-800 flex items-center justify-center text-xl shrink-0 border border-slate-700">
+                          {item.imageUrl && (item.imageUrl.startsWith('http') ? (
+                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover rounded-xl" />
+                          ) : (
+                            item.imageUrl
+                          ))}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-bold text-white">{item.name}</h4>
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono font-bold">
+                              {item.category}
+                            </span>
+                            {!item.isAvailable && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-bold">
+                                Habis
+                              </span>
+                            )}
+                          </div>
+                          {item.description && (
+                            <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{item.description}</p>
+                          )}
+                          <div className="text-xs font-black text-amber-400 mt-1">
+                            Rp {item.price.toLocaleString('id-ID')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Kontrol Ketersediaan & Edit/Hapus */}
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onUpdateMenuItem) {
+                              onUpdateMenuItem({ ...item, isAvailable: !item.isAvailable });
+                            }
+                          }}
+                          className={`px-2.5 py-1 text-[11px] rounded-lg font-bold transition-colors ${
+                            item.isAvailable
+                              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25'
+                              : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+                          }`}
+                        >
+                          {item.isAvailable ? 'Tersedia' : 'Habis (Sold Out)'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditMenu(item)}
+                          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg text-xs transition-colors"
+                          title="Ubah Menu & Harga"
+                        >
+                          ✏️
+                        </button>
+                        {onDeleteMenuItem && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Hapus "${item.name}" dari daftar menu kafe?`)) {
+                                onDeleteMenuItem(item.id);
+                              }
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg text-xs transition-colors"
+                            title="Hapus Menu"
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Form Modal Tambah / Edit Menu */}
+              {isNewMenuModalOpen && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+                  <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                      <h3 className="text-sm font-bold text-white">
+                        {editingMenuItem ? 'Edit Menu F&B' : 'Tambah Menu Baru'}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setIsNewMenuModalOpen(false)}
+                        className="text-slate-400 hover:text-white"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleSaveMenuItem} className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-300">Nama Menu / Minuman:</label>
+                        <input
+                          type="text"
+                          value={menuFormName}
+                          onChange={(e) => setMenuFormName(e.target.value)}
+                          placeholder="misal: Caramel Macchiato Ice"
+                          required
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-300">Kategori:</label>
+                          <select
+                            value={menuFormCategory}
+                            onChange={(e) => setMenuFormCategory(e.target.value as MenuCategory)}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                          >
+                            <option value="KOPI">Kopi</option>
+                            <option value="NON_KOPI">Minuman Segar</option>
+                            <option value="MAKANAN">Makanan Utama</option>
+                            <option value="SNACK">Camilan / Snack</option>
+                            <option value="PAKET">Paket Hemat</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-300">Harga Jual (Rp):</label>
+                          <input
+                            type="number"
+                            value={menuFormPrice}
+                            onChange={(e) => setMenuFormPrice(Number(e.target.value))}
+                            required
+                            min={0}
+                            step={500}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-mono font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-300">Ikon Emoji atau URL Gambar:</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={menuFormImage}
+                            onChange={(e) => setMenuFormImage(e.target.value)}
+                            placeholder="Emoji atau link https://..."
+                            className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                          />
+                          <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-lg border border-slate-700 shrink-0">
+                            {menuFormImage || '🍽️'}
+                          </div>
+                        </div>
+                        {/* Quick Emoji Picker */}
+                        <div className="flex gap-1.5 overflow-x-auto pt-1 pb-1">
+                          {['☕', '🥤', '🧋', '🍵', '🍟', '🍜', '🍗', '🥪', '🍞', '🍢', '🍱', '🍕', '🍰', '🧇'].map((em) => (
+                            <button
+                              key={em}
+                              type="button"
+                              onClick={() => setMenuFormImage(em)}
+                              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-sm transition-colors"
+                            >
+                              {em}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-300">Deskripsi Singkat (Opsional):</label>
+                        <textarea
+                          value={menuFormDesc}
+                          onChange={(e) => setMenuFormDesc(e.target.value)}
+                          placeholder="misal: Espresso dengan saus karamel gurih & susu segar"
+                          rows={2}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsNewMenuModalOpen(false)}
+                          className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs shadow-lg shadow-amber-500/30 transition-all"
+                        >
+                          {editingMenuItem ? 'Simpan Perubahan' : 'Tambah ke Menu'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

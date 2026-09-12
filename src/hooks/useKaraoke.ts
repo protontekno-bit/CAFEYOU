@@ -9,7 +9,12 @@ import {
   Voucher,
   LiveReactionEvent,
   CafeSettings,
+  MenuItem,
+  OrderItem,
+  OrderStatus,
+  TableOrder,
 } from '../types';
+import { DEFAULT_MENU_ITEMS } from '../constants/menu';
 import { fetchYouTubeInfo, getYouTubeThumbnail } from '../utils/youtube';
 import { playSoundEffect } from '../utils/soundfx';
 import { rebalanceFairQueue } from '../utils/queue';
@@ -622,6 +627,147 @@ export function useKaraoke() {
     });
   };
 
+  // ─── Modul POS F&B & Pesanan Meja ──────────────────────────────────────
+  const menuItems: Record<string, MenuItem> =
+    appState?.menuItems && typeof appState.menuItems === 'object'
+      ? appState.menuItems
+      : DEFAULT_MENU_ITEMS;
+
+  const tableOrders: Record<string, TableOrder> =
+    appState?.tableOrders && typeof appState.tableOrders === 'object'
+      ? appState.tableOrders
+      : {};
+
+  const createTableOrder = (
+    tableNumber: string,
+    customerName: string,
+    items: OrderItem[]
+  ): TableOrder | null => {
+    if (!tableNumber || !items || items.length === 0) return null;
+
+    const timestamp = Date.now();
+    const orderSeq = (Object.keys(tableOrders).length + 1).toString().padStart(3, '0');
+    const orderNumber = `ORD-${orderSeq}`;
+    const totalAmount = items.reduce((sum, item) => sum + item.price * (item.quantity ?? item.qty ?? 1), 0);
+
+    const newOrder: TableOrder = {
+      id: `order-${timestamp}-${Math.random().toString(36).substring(2, 6)}`,
+      orderNumber,
+      tableNumber,
+      customerName: customerName.trim() || tableNumber,
+      items,
+      totalAmount,
+      status: 'pending',
+      createdAt: timestamp,
+    };
+
+    updateAppState((prev) => {
+      const currentOrders =
+        prev?.tableOrders && typeof prev.tableOrders === 'object' ? prev.tableOrders : {};
+      return {
+        ...prev,
+        tableOrders: {
+          ...currentOrders,
+          [newOrder.id]: newOrder,
+        },
+      };
+    });
+
+    return newOrder;
+  };
+
+  const updateTableOrderStatus = (
+    orderId: string,
+    status: OrderStatus,
+    paymentMethod?: 'cash' | 'qris' | 'transfer' | 'debit' | 'TUNAI' | 'QRIS' | 'TRANSFER' | 'DEBIT',
+    cancelReason?: string
+  ) => {
+    updateAppState((prev) => {
+      const currentOrders =
+        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
+      const target = currentOrders[orderId];
+      if (!target) return prev;
+
+      currentOrders[orderId] = {
+        ...target,
+        status,
+        ...(status === 'paid' ? { paidAt: Date.now(), paymentMethod: paymentMethod || 'cash' } : {}),
+        ...(status === 'cancelled' ? { cancelReason: cancelReason || 'Dibatalkan oleh Kasir' } : {}),
+      };
+
+      return {
+        ...prev,
+        tableOrders: currentOrders,
+      };
+    });
+  };
+
+  const addMenuItem = (item: Omit<MenuItem, 'id'>) => {
+    const id = `menu-${Date.now()}`;
+    const newItem: MenuItem = { ...item, id };
+    updateAppState((prev) => {
+      const currentMenu =
+        prev?.menuItems && typeof prev.menuItems === 'object' ? prev.menuItems : DEFAULT_MENU_ITEMS;
+      return {
+        ...prev,
+        menuItems: {
+          ...currentMenu,
+          [id]: newItem,
+        },
+      };
+    });
+  };
+
+  const updateMenuItem = (item: MenuItem) => {
+    updateAppState((prev) => {
+      const currentMenu =
+        prev?.menuItems && typeof prev.menuItems === 'object' ? prev.menuItems : DEFAULT_MENU_ITEMS;
+      return {
+        ...prev,
+        menuItems: {
+          ...currentMenu,
+          [item.id]: item,
+        },
+      };
+    });
+  };
+
+  const deleteMenuItem = (id: string) => {
+    updateAppState((prev) => {
+      const currentMenu =
+        prev?.menuItems && typeof prev.menuItems === 'object' ? { ...prev.menuItems } : {};
+      delete currentMenu[id];
+      return {
+        ...prev,
+        menuItems: currentMenu,
+      };
+    });
+  };
+
+  const resetMenuToDefault = () => {
+    updateAppState((prev) => ({
+      ...prev,
+      menuItems: DEFAULT_MENU_ITEMS,
+    }));
+  };
+
+  const clearFinishedOrders = () => {
+    updateAppState((prev) => {
+      const currentOrders =
+        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
+      const activeOnly: Record<string, TableOrder> = {};
+      Object.entries(currentOrders).forEach(([id, ord]) => {
+        if (ord.status === 'pending' || ord.status === 'cooking' || ord.status === 'served') {
+          activeOnly[id] = ord;
+        }
+      });
+      return {
+        ...prev,
+        tableOrders: activeOnly,
+      };
+    });
+  };
+
   const safeQueue = Array.isArray(appState?.queue) ? appState.queue : [];
   const currentSong = safeQueue[0] || null;
   const nextSongs = safeQueue.slice(1);
@@ -692,5 +838,14 @@ export function useKaraoke() {
     autoSaveLibrary,
     toggleAutoSaveLibrary,
     saveSongToLibrary,
+    menuItems,
+    tableOrders,
+    createTableOrder,
+    updateTableOrderStatus,
+    addMenuItem,
+    updateMenuItem,
+    deleteMenuItem,
+    resetMenuToDefault,
+    clearFinishedOrders,
   };
 }

@@ -16,6 +16,7 @@ import { CafeSettingsModal } from './CafeSettingsModal';
 import { SongLibraryManagerModal } from './SongLibraryManagerModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { SettingsCenterModal } from './SettingsCenterModal';
+import { PosOrdersModal } from './PosOrdersModal';
 import { OperatorLoginView } from './OperatorLoginView';
 import { DeveloperHelpModal } from '../common/DeveloperHelpModal';
 import { DeveloperFooter } from '../common/DeveloperFooter';
@@ -81,6 +82,14 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     autoSaveLibrary,
     toggleAutoSaveLibrary,
     saveSongToLibrary,
+    menuItems,
+    tableOrders,
+    updateTableOrderStatus,
+    addMenuItem,
+    updateMenuItem,
+    deleteMenuItem,
+    resetMenuToDefault,
+    clearFinishedOrders,
   } = useKaraoke();
 
   const [isSoundBoardOpen, setIsSoundBoardOpen] = useState(false);
@@ -96,8 +105,9 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isLibraryManagerOpen, setIsLibraryManagerOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSettingsCenterOpen, setIsSettingsCenterOpen] = useState(false);
+  const [isPosOrdersOpen, setIsPosOrdersOpen] = useState(false);
 
-  // Notifikasi Pesanan Meja Baru
+  // Notifikasi Pesanan Meja Baru (Lagu & F&B)
   const [newOrderAlert, setNewOrderAlert] = useState<{
     table: string;
     requester: string;
@@ -105,11 +115,10 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   } | null>(null);
   const prevQueueLengthRef = React.useRef<number>(state.queue?.length || 0);
 
-  // Pantau penambahan antrean dari Meja Tamu
+  // Pantau penambahan antrean lagu dari Meja Tamu
   React.useEffect(() => {
     const currentLen = state.queue?.length || 0;
     if (currentLen > prevQueueLengthRef.current && currentLen > 0) {
-      // Ambil lagu paling baru masuk
       const newestSong = state.queue[state.queue.length - 1];
       if (newestSong && (newestSong.source === 'guest' || newestSong.tableNumber)) {
         try {
@@ -118,7 +127,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         setNewOrderAlert({
           table: newestSong.tableNumber || 'Meja Tamu',
           requester: newestSong.requester || 'Pelanggan',
-          title: newestSong.title,
+          title: `Lagu: ${newestSong.title}`,
         });
         setTimeout(() => {
           setNewOrderAlert(null);
@@ -127,6 +136,29 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     }
     prevQueueLengthRef.current = currentLen;
   }, [state.queue, triggerSoundEffect]);
+
+  // Pantau penambahan pesanan makanan/minuman (F&B) baru dari Tamu
+  const pendingOrdersCount = Object.values(tableOrders || {}).filter(
+    (o) => o && o.status === 'PENDING'
+  ).length;
+  const prevPendingCountRef = React.useRef<number>(pendingOrdersCount);
+
+  React.useEffect(() => {
+    if (pendingOrdersCount > prevPendingCountRef.current) {
+      try {
+        triggerSoundEffect('chime');
+      } catch {}
+      setNewOrderAlert({
+        table: 'Pesanan F&B',
+        requester: 'Meja Tamu',
+        title: `${pendingOrdersCount} Pesanan menu makanan/minuman baru masuk!`,
+      });
+      setTimeout(() => {
+        setNewOrderAlert(null);
+      }, 7000);
+    }
+    prevPendingCountRef.current = pendingOrdersCount;
+  }, [pendingOrdersCount, triggerSoundEffect]);
 
   // Jika belum login, tampilkan OperatorLoginView Neumorphism
   if (!isLoggedIn) {
@@ -173,6 +205,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           historyCount={history.length}
           activeVoucherCount={Object.values(vouchers || {}).filter((v) => v?.status === 'active').length}
           isDailyPinActive={dailyPin?.enabled}
+          pendingOrdersCount={pendingOrdersCount}
+          onOpenPosOrders={() => setIsPosOrdersOpen(true)}
           onOpenVoucherManager={() => setIsVoucherOpen(true)}
           onOpenProjectorTab={handleOpenProjector}
           onOpenPopularSongs={() => setIsPopularOpen(true)}
@@ -370,6 +404,11 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         onRevokeVoucher={revokeVoucher}
         onSetDailyPin={setDailyPin}
         onOpenVoucherModal={() => setIsVoucherOpen(true)}
+        menuItems={Object.values(menuItems || {})}
+        onAddMenuItem={addMenuItem}
+        onUpdateMenuItem={updateMenuItem}
+        onDeleteMenuItem={deleteMenuItem}
+        onResetMenuToDefault={resetMenuToDefault}
         songLibrary={songLibrary}
         onDeleteFromLibrary={deleteFromLibrary}
         onClearLibrary={clearLibrary}
@@ -378,6 +417,16 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         isCloudConnected={isCloudConnected}
         onOpenFirebaseConfig={() => setIsFirebaseOpen(true)}
         onPasswordChangedLogout={handleLogout}
+      />
+
+      {/* Kasir & POS Kafe Modal (Billing, Dapur, Cetak Struk) */}
+      <PosOrdersModal
+        isOpen={isPosOrdersOpen}
+        onClose={() => setIsPosOrdersOpen(false)}
+        tableOrders={tableOrders}
+        cafeSettings={cafeSettings}
+        onUpdateOrderStatus={updateTableOrderStatus}
+        onClearFinishedOrders={clearFinishedOrders}
       />
 
       </div>

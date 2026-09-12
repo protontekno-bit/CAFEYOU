@@ -16,6 +16,7 @@ interface GuestVoucherGateProps {
   }>;
   onBackToLanding?: () => void;
   onChangeTable?: () => void;
+  onSkipToMenu?: () => void;
 }
 
 export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
@@ -24,6 +25,7 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
   validateVoucher,
   onBackToLanding,
   onChangeTable,
+  onSkipToMenu,
 }) => {
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -164,6 +166,17 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
               <TicketIcon className="w-4 h-4" />
               <span>{isSubmitting ? 'Memeriksa...' : 'Buka Katalog Lagu'}</span>
             </button>
+
+            {onSkipToMenu && (
+              <button
+                type="button"
+                onClick={onSkipToMenu}
+                className="w-full max-w-[240px] mx-auto py-2 px-4 bg-slate-800/80 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-full border border-amber-500/30 transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>🍽️</span>
+                <span>Pesan Makanan & Minuman Saja</span>
+              </button>
+            )}
           </form>
         )}
       </div>

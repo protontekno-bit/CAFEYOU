@@ -18,11 +18,13 @@ interface HeaderProps {
   historyCount?: number;
   activeVoucherCount?: number;
   isDailyPinActive?: boolean;
+  pendingOrdersCount?: number;
   onOpenSoundBoard?: () => void;
   onOpenPopularSongs?: () => void;
   onOpenProjectorTab?: () => void;
   onOpenHistory?: () => void;
   onOpenVoucherManager?: () => void;
+  onOpenPosOrders?: () => void;
   onOpenSettings?: () => void;
   onLogout?: () => void;
 }
@@ -35,11 +37,13 @@ export const Header: React.FC<HeaderProps> = ({
   historyCount = 0,
   activeVoucherCount = 0,
   isDailyPinActive = false,
+  pendingOrdersCount = 0,
   onOpenSoundBoard,
   onOpenPopularSongs,
   onOpenProjectorTab,
   onOpenHistory,
   onOpenVoucherManager,
+  onOpenPosOrders,
   onOpenSettings,
   onLogout,
 }) => {
@@ -144,6 +148,27 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* GRUP 2: ⚙️ PUSAT PENGATURAN & KONTROL SISTEM */}
         <div className="flex items-center gap-1.5">
+          {/* Tombol Pesanan F&B / Kasir POS */}
+          {onOpenPosOrders && (
+            <button
+              onClick={onOpenPosOrders}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all shadow-md active:scale-95 ${
+                pendingOrdersCount > 0
+                  ? 'bg-gradient-to-r from-red-600/30 to-amber-600/30 border-amber-500/70 text-amber-200 shadow-amber-500/20 ring-1 ring-amber-500/40'
+                  : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700 hover:text-white'
+              }`}
+              title="Kelola Pesanan Makanan & Minuman Meja (Kasir POS)"
+            >
+              <span>🍽️</span>
+              <span className="font-extrabold">Pesanan F&B</span>
+              {pendingOrdersCount > 0 && (
+                <span className="text-[9px] bg-red-500 text-white font-black px-1.5 py-0.2 rounded-full shadow-sm animate-pulse">
+                  {pendingOrdersCount} Baru
+                </span>
+              )}
+            </button>
+          )}
+
           {/* Tombol Akses Cepat Voucher & PIN Tamu */}
           {onOpenVoucherManager && (
             <button

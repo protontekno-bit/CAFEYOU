@@ -1,5 +1,6 @@
 import { KaraokeState, SavedLibrarySong, CafeSettings } from '../types';
 import { POPULAR_KARAOKE_SONGS, getYouTubeThumbnail } from '../utils/youtube';
+import { DEFAULT_MENU_ITEMS } from './menu';
 
 export const STORAGE_KEY = 'karaoke_state_v2';
 export const BROADCAST_CHANNEL_NAME = 'karaoke_sync_channel';
@@ -57,6 +58,8 @@ export const DEFAULT_KARAOKE_STATE: KaraokeState = {
     'Bar Area',
   ],
   autoSaveLibrary: true,
+  menuItems: DEFAULT_MENU_ITEMS,
+  tableOrders: {},
 };
 
 export const DEFAULT_TABLES = [

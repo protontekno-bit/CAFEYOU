@@ -61,6 +61,18 @@ function sanitizeState<T>(val: any, fallback: T): T {
         ? val.autoSaveLibrary
         : (fallback as any).autoSaveLibrary ?? true;
   }
+  if ('menuItems' in (fallback as any)) {
+    merged.menuItems =
+      val.menuItems && typeof val.menuItems === 'object'
+        ? val.menuItems
+        : (fallback as any).menuItems || {};
+  }
+  if ('tableOrders' in (fallback as any)) {
+    merged.tableOrders =
+      val.tableOrders && typeof val.tableOrders === 'object'
+        ? val.tableOrders
+        : (fallback as any).tableOrders || {};
+  }
   return merged as T;
 }
 

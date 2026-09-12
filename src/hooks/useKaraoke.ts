@@ -751,13 +751,81 @@ export function useKaraoke() {
     }));
   };
 
+  const moveTableOrder = (orderId: string, newTableNumber: string) => {
+    updateAppState((prev) => {
+      const currentOrders =
+        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
+      const target = currentOrders[orderId];
+      if (!target) return prev;
+
+      const oldTable = target.tableNumber;
+      const history = target.tableMoveHistory || [];
+
+      currentOrders[orderId] = {
+        ...target,
+        tableNumber: newTableNumber,
+        tableMoveHistory: [
+          ...history,
+          { from: oldTable, to: newTableNumber, movedAt: Date.now() },
+        ],
+      };
+
+      return {
+        ...prev,
+        tableOrders: currentOrders,
+      };
+    });
+  };
+
+  const voidOrderItem = (orderId: string, itemIndex: number, reason?: string) => {
+    updateAppState((prev) => {
+      const currentOrders =
+        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
+      const target = currentOrders[orderId];
+      if (!target || !target.items || !target.items[itemIndex]) return prev;
+
+      const updatedItems = target.items.map((it, idx) => {
+        if (idx === itemIndex) {
+          return {
+            ...it,
+            isVoided: true,
+            voidReason: reason || 'Stok dapur habis / Dibatalkan kasir',
+          };
+        }
+        return it;
+      });
+
+      const newTotal = updatedItems.reduce((acc, it) => {
+        if (it.isVoided) return acc;
+        const count = it.quantity ?? it.qty ?? 1;
+        return acc + it.price * count;
+      }, 0);
+
+      currentOrders[orderId] = {
+        ...target,
+        items: updatedItems,
+        totalAmount: newTotal,
+      };
+
+      return {
+        ...prev,
+        tableOrders: currentOrders,
+      };
+    });
+  };
+
+  const confirmTableOrder = (orderId: string) => {
+    updateTableOrderStatus(orderId, 'PREPARING');
+  };
+
   const clearFinishedOrders = () => {
     updateAppState((prev) => {
       const currentOrders =
         prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
       const activeOnly: Record<string, TableOrder> = {};
       Object.entries(currentOrders).forEach(([id, ord]) => {
-        if (ord.status === 'pending' || ord.status === 'cooking' || ord.status === 'served') {
+        const s = ord.status?.toLowerCase();
+        if (s === 'pending' || s === 'confirmed' || s === 'preparing' || s === 'cooking' || s === 'ready' || s === 'served') {
           activeOnly[id] = ord;
         }
       });
@@ -842,6 +910,9 @@ export function useKaraoke() {
     tableOrders,
     createTableOrder,
     updateTableOrderStatus,
+    moveTableOrder,
+    voidOrderItem,
+    confirmTableOrder,
     addMenuItem,
     updateMenuItem,
     deleteMenuItem,

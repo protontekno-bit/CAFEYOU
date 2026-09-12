@@ -17,6 +17,9 @@ const LandingScreen = lazy(() =>
 const GuestScreen = lazy(() =>
   import('./components/guest/GuestScreen').then((m) => ({ default: m.GuestScreen }))
 );
+const PosScreen = lazy(() =>
+  import('./components/pos/PosScreen').then((m) => ({ default: m.PosScreen }))
+);
 
 // Fallback spinner elegan bertema gelap
 const ScreenFallback = () => (
@@ -42,6 +45,7 @@ export default function App() {
     if (hash.startsWith('#player')) return 'player';
     if (hash.startsWith('#split')) return 'split';
     if (hash.startsWith('#guest')) return 'guest';
+    if (hash.startsWith('#pos')) return 'pos';
     return 'landing';
   });
 
@@ -53,6 +57,7 @@ export default function App() {
       else if (hash.startsWith('#player')) setRole('player');
       else if (hash.startsWith('#split')) setRole('split');
       else if (hash.startsWith('#guest')) setRole('guest');
+      else if (hash.startsWith('#pos')) setRole('pos');
       else setRole('landing');
     };
 
@@ -81,6 +86,8 @@ export default function App() {
         return <SplitScreen setRole={setRole} />;
       case 'guest':
         return <GuestScreen setRole={setRole} />;
+      case 'pos':
+        return <PosScreen setRole={setRole} />;
       default:
         return <LandingScreen setRole={setRole} />;
     }

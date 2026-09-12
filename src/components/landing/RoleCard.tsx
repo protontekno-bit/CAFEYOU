@@ -4,7 +4,7 @@ interface RoleCardProps {
   title: string;
   description: string;
   icon: React.ReactNode;
-  themeColor: 'blue' | 'emerald' | 'purple';
+  themeColor: 'blue' | 'emerald' | 'purple' | 'amber';
   onClick: () => void;
 }
 
@@ -17,6 +17,12 @@ export const RoleCard: React.FC<RoleCardProps> = ({
 }) => {
   const getThemeClasses = () => {
     switch (themeColor) {
+      case 'amber':
+        return {
+          hoverBorder: 'hover:border-amber-500 hover:shadow-amber-500/10',
+          gradient: 'from-amber-500/5 to-transparent',
+          iconBg: 'bg-amber-500/10 text-amber-400',
+        };
       case 'emerald':
         return {
           hoverBorder: 'hover:border-emerald-500 hover:shadow-emerald-500/10',

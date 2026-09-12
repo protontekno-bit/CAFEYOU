@@ -79,6 +79,9 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     !isDirectQr && !tableNumber
   );
 
+  // Digital Receipt Modal for Guests (E-Billing)
+  const [selectedDigitalReceipt, setSelectedDigitalReceipt] = useState<TableOrder | null>(null);
+
   // 2. Status autentikasi voucher (Per-Meja)
   const [activeVoucher, setActiveVoucher] = useState<Voucher | null>(() => {
     if (!tableNumber) return null;
@@ -230,17 +233,21 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
       .sort((a, b) => b.createdAt - a.createdAt);
   }, [tableOrders, tableNumber]);
 
-  const activeTableOrdersCount = myTableOrders.filter(
-    (o) => o.status !== 'PAID' && o.status !== 'CANCELLED'
-  ).length;
+  const activeTableOrdersCount = myTableOrders.filter((o) => {
+    const s = o.status?.toLowerCase();
+    return s !== 'paid' && s !== 'cancelled';
+  }).length;
 
   const tableAccumulatedBill = myTableOrders
-    .filter((o) => o.status !== 'CANCELLED')
-    .reduce((sum, o) => sum + o.totalAmount, 0);
+    .filter((o) => o.status?.toLowerCase() !== 'cancelled')
+    .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
   const tableUnpaidBill = myTableOrders
-    .filter((o) => o.status !== 'PAID' && o.status !== 'CANCELLED')
-    .reduce((sum, o) => sum + o.totalAmount, 0);
+    .filter((o) => {
+      const s = o.status?.toLowerCase();
+      return s !== 'paid' && s !== 'cancelled';
+    })
+    .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
   // Checkout Handler
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
@@ -1376,70 +1383,134 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                   </button>
                 </div>
               ) : (
-                myTableOrders.map((ord) => (
-                  <div key={ord.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-slate-400">
-                          #{ord.id.slice(-6).toUpperCase()}
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          {new Date(ord.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
+                myTableOrders.map((ord) => {
+                  const s = ord.status?.toLowerCase();
+                  const isPaid = s === 'paid';
+                  const isCancelled = s === 'cancelled';
+                  const isPending = s === 'pending';
+                  const isCooking = s === 'confirmed' || s === 'preparing' || s === 'cooking';
+                  const isReady = s === 'ready' || s === 'served';
 
-                      {/* Status Badges */}
-                      {ord.status === 'PENDING' && (
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold animate-pulse">
-                          🟡 Diterima Kasir / Menunggu
-                        </span>
-                      )}
-                      {ord.status === 'COOKING' && (
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
-                          👨‍🍳 Sedang Dimasak
-                        </span>
-                      )}
-                      {ord.status === 'SERVED' && (
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
-                          🍽️ Telah Disajikan
-                        </span>
-                      )}
-                      {ord.status === 'PAID' && (
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                          ✅ Lunas
-                        </span>
-                      )}
-                      {ord.status === 'CANCELLED' && (
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-red-500/20 text-red-300 border border-red-500/30 font-bold">
-                          ✕ Dibatalkan
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Order items */}
-                    <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-850 space-y-1">
-                      {ord.items.map((it, idx) => {
-                        const count = it.quantity ?? it.qty ?? 1;
-                        return (
-                          <div key={idx} className="flex justify-between items-center text-xs">
-                            <span className="text-slate-300 font-medium">
-                              {count}x {it.name}
-                              {it.notes && <span className="ml-1.5 text-amber-400/80 italic text-[10px]">({it.notes})</span>}
+                  return (
+                    <div
+                      key={ord.id}
+                      className={`bg-slate-900 border rounded-2xl p-4 space-y-3 transition-all ${
+                        isPaid
+                          ? 'border-emerald-500/40 bg-gradient-to-b from-slate-900 via-slate-900 to-emerald-950/20'
+                          : 'border-slate-800'
+                      }`}
+                    >
+                      {/* Header Tiket */}
+                      <div className="flex justify-between items-start border-b border-slate-800/80 pb-2.5">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-mono font-bold text-slate-300">
+                              #{ord.id.slice(-6).toUpperCase()}
                             </span>
-                            <span className="text-slate-400 font-mono">
-                              Rp {(it.price * count).toLocaleString('id-ID')}
+                            <span className="text-[10px] text-slate-500">•</span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {new Date(ord.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <span className="text-[11px] font-semibold text-slate-300 block">
+                            {ord.customerName || `Tamu ${ord.tableNumber}`}
+                          </span>
+                        </div>
 
-                    <div className="flex justify-between items-center pt-1 border-t border-slate-800 text-xs font-bold">
-                      <span className="text-slate-400">Total Tagihan Pesanan:</span>
-                      <span className="text-emerald-400">Rp {ord.totalAmount.toLocaleString('id-ID')}</span>
+                        {/* Status Badges */}
+                        <div>
+                          {isPending && (
+                            <span className="px-2 py-0.5 text-[10px] rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold animate-pulse">
+                              🟡 Menunggu Kasir
+                            </span>
+                          )}
+                          {isCooking && (
+                            <span className="px-2 py-0.5 text-[10px] rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+                              👨‍🍳 Sedang Dimasak
+                            </span>
+                          )}
+                          {isReady && (
+                            <span className="px-2 py-0.5 text-[10px] rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
+                              🍽️ Siap / Disajikan
+                            </span>
+                          )}
+                          {isPaid && (
+                            <span className="px-2.5 py-0.5 text-[10px] rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-black flex items-center gap-1">
+                              <span>✅</span> LUNAS
+                            </span>
+                          )}
+                          {isCancelled && (
+                            <span className="px-2 py-0.5 text-[10px] rounded-full bg-red-500/20 text-red-300 border border-red-500/30 font-bold">
+                              ✕ Dibatalkan
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Order items */}
+                      <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-850 space-y-1.5">
+                        {ord.items.map((it, idx) => {
+                          const count = it.quantity ?? it.qty ?? 1;
+                          return (
+                            <div
+                              key={idx}
+                              className={`flex justify-between items-center text-xs ${
+                                it.isVoided ? 'line-through text-red-400 opacity-50' : 'text-slate-300'
+                              }`}
+                            >
+                              <span className="font-medium">
+                                {count}x {it.name}
+                                {it.notes && <span className="ml-1 text-amber-400/80 italic text-[10px]">({it.notes})</span>}
+                              </span>
+                              <span className="font-mono text-slate-400">
+                                Rp {(it.price * count).toLocaleString('id-ID')}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Stempel Digital Lunas jika sudah dibayar */}
+                      {isPaid && (
+                        <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-2.5 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">🧾</span>
+                            <div>
+                              <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider block">
+                                PEMBAYARAN TERVERIFIKASI
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                Metode: {ord.paymentMethod?.toUpperCase() || 'TUNAI'}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black text-xs rounded-lg tracking-widest uppercase">
+                            LUNAS
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Footer Total & Tombol Struk Digital */}
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-xs">
+                        <div>
+                          <span className="text-slate-400 text-[11px] block">Total Pesanan:</span>
+                          <span className="text-emerald-400 font-bold font-mono text-sm">
+                            Rp {ord.totalAmount.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+
+                        {/* Tombol Buka Struk Digital */}
+                        <button
+                          onClick={() => setSelectedDigitalReceipt(ord)}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                        >
+                          <span>📥</span>
+                          <span>Struk Digital</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -1604,6 +1675,104 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                   <span>{orderSubmitting ? 'Mengirim...' : 'Kirim ke Dapur ➔'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Struk Digital Tamu (E-Billing) */}
+      {selectedDigitalReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 animate-scaleUp text-slate-200 text-left">
+            {/* Header Nota */}
+            <div className="text-center border-b border-dashed border-slate-750 pb-4 space-y-1">
+              <span className="text-2xl">☕</span>
+              <h3 className="text-base font-black text-white tracking-wide uppercase">
+                {cafeSettings?.name || 'CAFEYOU'}
+              </h3>
+              {cafeSettings?.tagline && (
+                <p className="text-[11px] text-slate-400 italic">{cafeSettings.tagline}</p>
+              )}
+              <div className="pt-2 text-[10px] text-slate-400 font-mono space-y-0.5">
+                <div>No: #{selectedDigitalReceipt.id.slice(-8).toUpperCase()}</div>
+                <div>
+                  {new Date(selectedDigitalReceipt.createdAt).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}{' '}
+                  •{' '}
+                  {new Date(selectedDigitalReceipt.createdAt).toLocaleTimeString('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </div>
+                <div>
+                  Meja: <strong className="text-white">{selectedDigitalReceipt.tableNumber}</strong> ({selectedDigitalReceipt.customerName})
+                </div>
+              </div>
+            </div>
+
+            {/* List Item */}
+            <div className="space-y-2 max-h-48 overflow-y-auto py-1 text-xs">
+              {selectedDigitalReceipt.items.map((it, idx) => {
+                const count = it.quantity ?? it.qty ?? 1;
+                return (
+                  <div key={idx} className={`flex justify-between items-start ${it.isVoided ? 'line-through text-red-400 opacity-50' : 'text-slate-300'}`}>
+                    <div>
+                      <span className="font-semibold">{count}x {it.name}</span>
+                      {it.notes && <span className="block text-[10px] text-amber-400/90 italic">({it.notes})</span>}
+                    </div>
+                    <span className="font-mono text-slate-400">
+                      Rp {(it.price * count).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Summary & Stempel */}
+            <div className="border-t border-dashed border-slate-750 pt-3 space-y-2 text-xs">
+              <div className="flex justify-between items-center font-bold">
+                <span className="text-slate-400">TOTAL:</span>
+                <span className="text-emerald-400 font-mono text-base font-black">
+                  Rp {selectedDigitalReceipt.totalAmount.toLocaleString('id-ID')}
+                </span>
+              </div>
+
+              {selectedDigitalReceipt.status?.toLowerCase() === 'paid' ? (
+                <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-2.5 text-center">
+                  <span className="text-xs font-black text-emerald-300 tracking-widest uppercase block">
+                    [ ✅ LUNAS / PAID ]
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Metode: {selectedDigitalReceipt.paymentMethod?.toUpperCase() || 'TUNAI'}
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-2.5 text-center text-xs font-bold text-amber-300">
+                  ⏳ Menunggu Pembayaran di Kasir
+                </div>
+              )}
+            </div>
+
+            {/* Tombol Aksi */}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1"
+              >
+                <span>🖨️</span>
+                <span>Cetak / PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDigitalReceipt(null)}
+                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all"
+              >
+                Tutup ✕
+              </button>
             </div>
           </div>
         </div>

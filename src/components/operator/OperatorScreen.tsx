@@ -16,7 +16,6 @@ import { CafeSettingsModal } from './CafeSettingsModal';
 import { SongLibraryManagerModal } from './SongLibraryManagerModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { SettingsCenterModal } from './SettingsCenterModal';
-import { PosOrdersModal } from './PosOrdersModal';
 import { OperatorLoginView } from './OperatorLoginView';
 import { DeveloperHelpModal } from '../common/DeveloperHelpModal';
 import { DeveloperFooter } from '../common/DeveloperFooter';
@@ -105,7 +104,6 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isLibraryManagerOpen, setIsLibraryManagerOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSettingsCenterOpen, setIsSettingsCenterOpen] = useState(false);
-  const [isPosOrdersOpen, setIsPosOrdersOpen] = useState(false);
 
   // Notifikasi Pesanan Meja Baru (Lagu & F&B)
   const [newOrderAlert, setNewOrderAlert] = useState<{
@@ -206,7 +204,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           activeVoucherCount={Object.values(vouchers || {}).filter((v) => v?.status === 'active').length}
           isDailyPinActive={dailyPin?.enabled}
           pendingOrdersCount={pendingOrdersCount}
-          onOpenPosOrders={() => setIsPosOrdersOpen(true)}
+          onOpenPosOrders={() => window.open('#pos', '_blank')}
           onOpenVoucherManager={() => setIsVoucherOpen(true)}
           onOpenProjectorTab={handleOpenProjector}
           onOpenPopularSongs={() => setIsPopularOpen(true)}
@@ -417,16 +415,6 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         isCloudConnected={isCloudConnected}
         onOpenFirebaseConfig={() => setIsFirebaseOpen(true)}
         onPasswordChangedLogout={handleLogout}
-      />
-
-      {/* Kasir & POS Kafe Modal (Billing, Dapur, Cetak Struk) */}
-      <PosOrdersModal
-        isOpen={isPosOrdersOpen}
-        onClose={() => setIsPosOrdersOpen(false)}
-        tableOrders={tableOrders}
-        cafeSettings={cafeSettings}
-        onUpdateOrderStatus={updateTableOrderStatus}
-        onClearFinishedOrders={clearFinishedOrders}
       />
 
       </div>

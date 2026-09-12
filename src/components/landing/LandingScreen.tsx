@@ -13,6 +13,8 @@ interface LandingScreenProps {
 export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
+  const [loginTargetRole, setLoginTargetRole] = useState<'operator' | 'pos'>('operator');
+
   const handleOpenPlayerInNewTab = () => {
     // Membuka tab baru dengan menyisipkan hash #player untuk menghindari error 404
     const currentUrl = window.location.href.split('#')[0];
@@ -30,30 +32,46 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
     } catch {
       // ignore
     }
+    setLoginTargetRole('operator');
+    setIsLoginModalOpen(true);
+  };
+
+  const handlePosClick = () => {
+    // Periksa apakah kasir sudah login sebelumnya di sesi ini
+    try {
+      const savedAuth = sessionStorage.getItem('cafeyou_operator_auth');
+      if (savedAuth) {
+        setRole('pos');
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    setLoginTargetRole('pos');
     setIsLoginModalOpen(true);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-between items-center p-4 font-sans text-slate-200 selection:bg-blue-500 selection:text-white">
-      <div className="max-w-4xl w-full py-6 my-auto">
+      <div className="max-w-5xl w-full py-6 my-auto">
         {/* Header Hero */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-xs font-bold uppercase tracking-wider mb-3">
-            <span>🎤 CAFEYOU KARAOKE SYSTEM</span>
+            <span>🎤 CAFEYOU KARAOKE & POS SYSTEM</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400 mb-3 tracking-tight">
-            Sistem Karaoke Kafe Dual Screen
+            Sistem Karaoke & POS Kafe Dual Screen
           </h1>
           <p className="text-slate-400 text-base max-w-xl mx-auto leading-relaxed">
-            Pilih peran perangkat ini dalam ekosistem karaoke kafe Anda.
+            Pilih peran perangkat ini dalam ekosistem kafe dan karaoke Anda.
           </p>
         </div>
 
-        {/* Pilihan Peran Utama (3 Kartu) */}
-        <div className="grid md:grid-cols-3 gap-5 max-w-4xl mx-auto mb-6">
+        {/* Pilihan Peran Utama (4 Kartu) */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto mb-6">
           <RoleCard
             title="Dasbor Operator"
-            description="Kelola antrean lagu, kontrol volume, dan cetak voucher dari layar laptop kasir."
+            description="Kelola antrean lagu, kontrol volume, dan cetak voucher dari layar laptop operator."
             themeColor="blue"
             onClick={handleOperatorClick}
             icon={
@@ -69,7 +87,15 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
           />
 
           <RoleCard
-            title="Layar Proyektor / TV"
+            title="Kasir & Dapur (POS)"
+            description="Kelola pesanan F&B meja, alur dapur KDS, kalkulator pembayaran, dan struk."
+            themeColor="amber"
+            onClick={handlePosClick}
+            icon={<span className="text-3xl">🍽️</span>}
+          />
+
+          <RoleCard
+            title="Layar TV / Player"
             description="Layar bersih khusus tayangan video YouTube, running text, dan reaksi penonton."
             themeColor="emerald"
             onClick={handleOpenPlayerInNewTab}
@@ -87,7 +113,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
 
           <RoleCard
             title="Portal Pelanggan"
-            description="Scan QR meja untuk pilih lagu dari HP, cek antrean, dan kirim reaksi live ke TV."
+            description="Scan QR meja untuk pesan makanan/minuman, pilih lagu HP, dan cek antrean."
             themeColor="purple"
             onClick={() => setRole('guest')}
             icon={<TicketIcon className="w-8 h-8 text-purple-400" />}
@@ -104,7 +130,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
         onClose={() => setIsLoginModalOpen(false)}
         onSuccess={() => {
           setIsLoginModalOpen(false);
-          setRole('operator');
+          setRole(loginTargetRole);
         }}
       />
     </div>

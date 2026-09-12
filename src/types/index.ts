@@ -1,6 +1,6 @@
 export type PlaybackStatus = 'PLAYING' | 'PAUSED';
 
-export type AppRole = 'landing' | 'operator' | 'player' | 'split' | 'guest';
+export type AppRole = 'landing' | 'operator' | 'player' | 'split' | 'guest' | 'pos';
 
 export interface Song {
   id: string;
@@ -111,17 +111,27 @@ export interface OrderItem {
   qty?: number;
   quantity?: number;
   notes?: string;
+  isVoided?: boolean;
+  voidReason?: string;
 }
 
 export type OrderStatus =
   | 'pending'
+  | 'confirmed'
+  | 'preparing'
   | 'cooking'
+  | 'ready'
   | 'served'
+  | 'completed'
   | 'paid'
   | 'cancelled'
   | 'PENDING'
+  | 'CONFIRMED'
+  | 'PREPARING'
   | 'COOKING'
+  | 'READY'
   | 'SERVED'
+  | 'COMPLETED'
   | 'PAID'
   | 'CANCELLED';
 
@@ -137,6 +147,7 @@ export interface TableOrder {
   paidAt?: number;
   paymentMethod?: 'cash' | 'qris' | 'transfer' | 'debit' | 'TUNAI' | 'QRIS' | 'TRANSFER' | 'DEBIT';
   cancelReason?: string;
+  tableMoveHistory?: { from: string; to: string; movedAt: number }[];
 }
 
 export interface KaraokeState {

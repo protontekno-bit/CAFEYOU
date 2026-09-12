@@ -3,6 +3,7 @@ import { BackIcon, FullscreenIcon } from '../icons/Icons';
 import { PlayerPlaceholder } from './PlayerPlaceholder';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { useYouTubePlayer } from '../../hooks/useYouTubePlayer';
+import { useWakeLock } from '../../hooks/useWakeLock';
 import { AppRole, LiveReactionEvent } from '../../types';
 
 interface PlayerScreenProps {
@@ -21,7 +22,11 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
   const playerWrapperRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const lastProcessedReactionRef = useRef<string | null>(null);
+
+  // Mencegah layar proyektor redup/mati otomatis
+  useWakeLock(true);
 
   const { state, currentSong, nextSongs, nextSong } = useKaraoke();
 
@@ -207,6 +212,40 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
             </div>
             <div className="text-[10px] text-blue-300 font-bold bg-blue-500/10 px-2.5 py-0.5 rounded-full shrink-0 border border-blue-500/20">
               {state?.cafeSettings?.name || 'CAFEYOU'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY: Audio & Fullscreen Unlock Banner (Khusus Smart Proyektor VIDAA / TV) */}
+      {!audioUnlocked && (
+        <div
+          onClick={() => {
+            setAudioUnlocked(true);
+            toggleFullScreen();
+          }}
+          className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 cursor-pointer animate-fadeIn"
+        >
+          <div className="bg-slate-900/95 border-2 border-emerald-500/80 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-4 shadow-2xl shadow-emerald-500/20 transform hover:scale-105 transition-all">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-3xl flex items-center justify-center mx-auto shadow-inner animate-bounce">
+              🎤
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-xl sm:text-2xl font-black text-white">
+                Aktifkan Layar & Suara Karaoke
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Tekan <strong className="text-emerald-400 font-bold">OK di Remote Proyektor</strong> atau <strong>Klik Layar</strong> ini sekali untuk mengaktifkan audio otomatis & mode layar penuh.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-sm font-extrabold rounded-2xl shadow-lg shadow-emerald-600/40 border border-emerald-400/50 uppercase tracking-wider inline-flex items-center gap-2"
+            >
+              <span>🚀 Mulai Sekarang</span>
+            </button>
+            <div className="text-[11px] text-slate-400 font-mono">
+              AVIEWLUX VIDAA & Cloud Mode Ready
             </div>
           </div>
         </div>

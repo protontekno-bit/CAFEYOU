@@ -17,6 +17,7 @@ import { OperatorLoginView } from './OperatorLoginView';
 import { DeveloperHelpModal } from '../common/DeveloperHelpModal';
 import { DeveloperFooter } from '../common/DeveloperFooter';
 import { useKaraoke } from '../../hooks/useKaraoke';
+import { useWakeLock } from '../../hooks/useWakeLock';
 import { AppRole, PopularPresetSong } from '../../types';
 
 interface OperatorScreenProps {
@@ -24,6 +25,9 @@ interface OperatorScreenProps {
 }
 
 export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
+  // Mencegah layar tablet kasir redup/terkunci otomatis saat beroperasi
+  useWakeLock(true);
+
   // Cek autentikasi sesi operator
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     try {

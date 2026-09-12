@@ -6,6 +6,7 @@ import {
   SettingsIcon,
   HistoryIcon,
   LockIcon,
+  TicketIcon,
 } from '../icons/Icons';
 
 interface HeaderProps {
@@ -15,10 +16,13 @@ interface HeaderProps {
   statusText?: string;
   isCloudConnected?: boolean;
   historyCount?: number;
+  activeVoucherCount?: number;
+  isDailyPinActive?: boolean;
   onOpenSoundBoard?: () => void;
   onOpenPopularSongs?: () => void;
   onOpenProjectorTab?: () => void;
   onOpenHistory?: () => void;
+  onOpenVoucherManager?: () => void;
   onOpenSettings?: () => void;
   onLogout?: () => void;
 }
@@ -29,10 +33,13 @@ export const Header: React.FC<HeaderProps> = ({
   onBack,
   isCloudConnected = false,
   historyCount = 0,
+  activeVoucherCount = 0,
+  isDailyPinActive = false,
   onOpenSoundBoard,
   onOpenPopularSongs,
   onOpenProjectorTab,
   onOpenHistory,
+  onOpenVoucherManager,
   onOpenSettings,
   onLogout,
 }) => {
@@ -137,6 +144,31 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* GRUP 2: ⚙️ PUSAT PENGATURAN & KONTROL SISTEM */}
         <div className="flex items-center gap-1.5">
+          {/* Tombol Akses Cepat Voucher & PIN Tamu */}
+          {onOpenVoucherManager && (
+            <button
+              onClick={onOpenVoucherManager}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all shadow-md active:scale-95 ${
+                activeVoucherCount > 0 || isDailyPinActive
+                  ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border-amber-500/50 text-amber-200 shadow-amber-500/10'
+                  : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700 hover:text-white'
+              }`}
+              title="Kelola Kode Voucher Meja & PIN Akses Harian Tamu"
+            >
+              <TicketIcon className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-extrabold">Voucher & PIN</span>
+              {activeVoucherCount > 0 ? (
+                <span className="text-[9px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.2 rounded-full shadow-sm">
+                  {activeVoucherCount}
+                </span>
+              ) : isDailyPinActive ? (
+                <span className="text-[9px] bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold px-1.5 py-0.2 rounded-full">
+                  PIN
+                </span>
+              ) : null}
+            </button>
+          )}
+
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}

@@ -168,6 +168,9 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onBack={setRole ? () => setRole('landing') : undefined}
           isCloudConnected={isCloudConnected}
           historyCount={history.length}
+          activeVoucherCount={Object.values(vouchers || {}).filter((v) => v?.status === 'active').length}
+          isDailyPinActive={dailyPin?.enabled}
+          onOpenVoucherManager={() => setIsVoucherOpen(true)}
           onOpenProjectorTab={handleOpenProjector}
           onOpenPopularSongs={() => setIsPopularOpen(true)}
           onOpenHistory={() => setIsHistoryOpen(true)}

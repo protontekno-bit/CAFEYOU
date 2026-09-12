@@ -32,6 +32,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     sendLiveReaction,
     fairRotationEnabled,
     cafeSettings,
+    tables,
   } = useKaraoke();
 
   // 1. Deteksi Meja dari URL atau Session
@@ -323,6 +324,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     return (
       <TableSelectorModal
         isOpen={true}
+        tables={tables}
         onSelectTable={handleSelectTable}
         cafeName={cafeSettings?.name || 'CAFEYOU'}
         canClose={false}
@@ -343,6 +345,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         />
         <TableSelectorModal
           isOpen={isTableSelectorOpen}
+          tables={tables}
           onSelectTable={handleSelectTable}
           onClose={() => setIsTableSelectorOpen(false)}
           currentTable={tableNumber}
@@ -746,6 +749,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
       {/* Modal Pemilihan / Penggantian Meja */}
       <TableSelectorModal
         isOpen={isTableSelectorOpen}
+        tables={tables}
         onSelectTable={handleSelectTable}
         onClose={() => setIsTableSelectorOpen(false)}
         currentTable={tableNumber}

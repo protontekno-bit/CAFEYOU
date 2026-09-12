@@ -8,6 +8,7 @@ interface TableSelectorModalProps {
   currentTable?: string;
   canClose?: boolean;
   cafeName?: string;
+  tables?: string[];
 }
 
 export const TableSelectorModal: React.FC<TableSelectorModalProps> = ({
@@ -17,8 +18,10 @@ export const TableSelectorModal: React.FC<TableSelectorModalProps> = ({
   currentTable,
   canClose = false,
   cafeName = 'CAFEYOU',
+  tables,
 }) => {
-  const [selected, setSelected] = useState<string>(currentTable || 'Meja 1');
+  const availableTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
+  const [selected, setSelected] = useState<string>(currentTable || availableTables[0] || 'Meja 1');
   const [customInput, setCustomInput] = useState<string>('');
   const [isCustom, setIsCustom] = useState<boolean>(false);
 
@@ -68,7 +71,7 @@ export const TableSelectorModal: React.FC<TableSelectorModalProps> = ({
             Pilihan Meja Cepat:
           </div>
           <div className="grid grid-cols-3 gap-2.5">
-            {QUICK_TABLES.map((table) => {
+            {availableTables.map((table) => {
               const isCurrent = !isCustom && selected === table;
               return (
                 <button

@@ -87,6 +87,7 @@ export interface KaraokeState {
   liveReaction?: LiveReactionEvent | null;
   fairRotationEnabled?: boolean;
   cafeSettings?: CafeSettings;
+  tables?: string[];
 }
 
 export interface SyncMessage<T> {

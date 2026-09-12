@@ -44,9 +44,20 @@ export const DEFAULT_KARAOKE_STATE: KaraokeState = {
   liveReaction: null,
   fairRotationEnabled: false,
   cafeSettings: DEFAULT_CAFE_SETTINGS,
+  tables: [
+    'Meja 1',
+    'Meja 2',
+    'Meja 3',
+    'Meja 4',
+    'Meja 5',
+    'Meja 6',
+    'VIP 1',
+    'VIP 2',
+    'Bar Area',
+  ],
 };
 
-export const QUICK_TABLES = [
+export const DEFAULT_TABLES = [
   'Meja 1',
   'Meja 2',
   'Meja 3',
@@ -57,3 +68,5 @@ export const QUICK_TABLES = [
   'VIP 2',
   'Bar Area',
 ];
+
+export const QUICK_TABLES = DEFAULT_TABLES;

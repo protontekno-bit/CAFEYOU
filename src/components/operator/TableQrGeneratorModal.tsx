@@ -5,6 +5,7 @@ import { PrinterIcon, TicketIcon } from '../icons/Icons';
 interface TableQrGeneratorModalProps {
   isOpen: boolean;
   cafeName?: string;
+  tables?: string[];
   onClose: () => void;
   onOpenVoucherManager?: () => void;
 }
@@ -12,10 +13,12 @@ interface TableQrGeneratorModalProps {
 export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
   isOpen,
   cafeName = 'CAFEYOU',
+  tables,
   onClose,
   onOpenVoucherManager,
 }) => {
-  const [selectedTable, setSelectedTable] = useState('Meja 1');
+  const activeTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
+  const [selectedTable, setSelectedTable] = useState(() => activeTables[0] || 'Meja 1');
   const [printMode, setPrintMode] = useState(false);
 
   // Deteksi dan Override IP Wi-Fi Lokal untuk QR Code
@@ -160,7 +163,7 @@ export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
                 Pilih Meja untuk Ditampilkan:
               </label>
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                {QUICK_TABLES.map((table) => (
+                {activeTables.map((table) => (
                   <button
                     key={table}
                     type="button"
@@ -263,7 +266,7 @@ export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-96 overflow-y-auto p-2 bg-slate-900/60 rounded-xl border border-slate-700/60 custom-scrollbar print:max-h-none print:overflow-visible">
-              {QUICK_TABLES.map((table) => {
+              {activeTables.map((table) => {
                 const qr = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
                   getGuestUrl(table)
                 )}`;

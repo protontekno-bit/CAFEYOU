@@ -1,5 +1,5 @@
 import { useSyncState } from './useSyncState';
-import { STORAGE_KEY, DEFAULT_KARAOKE_STATE, DEFAULT_CAFE_SETTINGS } from '../constants/karaoke';
+import { STORAGE_KEY, DEFAULT_KARAOKE_STATE, DEFAULT_CAFE_SETTINGS, DEFAULT_TABLES } from '../constants/karaoke';
 import {
   Song,
   KaraokeState,
@@ -549,6 +549,39 @@ export function useKaraoke() {
     });
   };
 
+  const addTable = (tableName: string) => {
+    const trimmed = tableName.trim();
+    if (!trimmed) return;
+    updateAppState((prev) => {
+      const currentTables = Array.isArray(prev?.tables) && prev.tables.length > 0 ? prev.tables : DEFAULT_TABLES;
+      if (currentTables.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
+        return prev;
+      }
+      return {
+        ...prev,
+        tables: [...currentTables, trimmed],
+      };
+    });
+  };
+
+  const removeTable = (tableName: string) => {
+    updateAppState((prev) => {
+      const currentTables = Array.isArray(prev?.tables) && prev.tables.length > 0 ? prev.tables : DEFAULT_TABLES;
+      const updated = currentTables.filter((t) => t.toLowerCase() !== tableName.toLowerCase());
+      return {
+        ...prev,
+        tables: updated.length > 0 ? updated : ['Meja 1'],
+      };
+    });
+  };
+
+  const resetTables = () => {
+    updateAppState((prev) => ({
+      ...prev,
+      tables: DEFAULT_TABLES,
+    }));
+  };
+
   const safeQueue = Array.isArray(appState?.queue) ? appState.queue : [];
   const currentSong = safeQueue[0] || null;
   const nextSongs = safeQueue.slice(1);
@@ -561,6 +594,7 @@ export function useKaraoke() {
   const liveReaction = appState?.liveReaction || null;
   const fairRotationEnabled = !!appState?.fairRotationEnabled;
   const cafeSettings = appState?.cafeSettings || DEFAULT_CAFE_SETTINGS;
+  const tables = Array.isArray(appState?.tables) && appState.tables.length > 0 ? appState.tables : DEFAULT_TABLES;
 
   return {
     state: {
@@ -573,6 +607,7 @@ export function useKaraoke() {
       liveReaction,
       fairRotationEnabled,
       cafeSettings,
+      tables,
     },
     updateState: updateAppState,
     isCloudConnected,
@@ -608,5 +643,9 @@ export function useKaraoke() {
     updateCafeSettings,
     deleteFromLibrary,
     clearLibrary,
+    tables,
+    addTable,
+    removeTable,
+    resetTables,
   };
 }

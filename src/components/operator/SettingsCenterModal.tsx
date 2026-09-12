@@ -36,6 +36,10 @@ interface SettingsCenterModalProps {
   onOpenProjectorTab?: () => void;
   onOpenQrShare?: () => void;
   // Meja & Stiker
+  tables?: string[];
+  onAddTable?: (name: string) => void;
+  onRemoveTable?: (name: string) => void;
+  onResetTables?: () => void;
   onOpenTableQrModal?: () => void;
   // Voucher
   vouchers?: Record<string, Voucher>;
@@ -65,6 +69,10 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   runningText = '',
   onSaveRunningText,
   onOpenProjectorTab,
+  tables,
+  onAddTable,
+  onRemoveTable,
+  onResetTables,
   onOpenTableQrModal,
   vouchers = {},
   dailyPin,
@@ -92,6 +100,12 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   const [rtInput, setRtInput] = useState(runningText);
   const [isRtSaved, setIsRtSaved] = useState(false);
 
+  // Dynamic Tables
+  const activeTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
+  const [newTableName, setNewTableName] = useState('');
+  const [tableError, setTableError] = useState<string | null>(null);
+  const [tableSuccess, setTableSuccess] = useState<string | null>(null);
+
   // State: Ganti Password
   const [oldPass, setOldPass] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -102,7 +116,7 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   const [isPassLoading, setIsPassLoading] = useState(false);
 
   // State: Meja Preview
-  const [previewTable, setPreviewTable] = useState('Meja 1');
+  const [previewTable, setPreviewTable] = useState(() => activeTables[0] || 'Meja 1');
 
   // State: Library Search
   const [librarySearch, setLibrarySearch] = useState('');
@@ -113,7 +127,7 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   const [isPinSaved, setIsPinSaved] = useState(false);
 
   // State: In-line Voucher Creator
-  const [voucherTable, setVoucherTable] = useState('Meja 1');
+  const [voucherTable, setVoucherTable] = useState(() => activeTables[0] || 'Meja 1');
   const [voucherQuota, setVoucherQuota] = useState(3);
   const [lastCreatedVoucher, setLastCreatedVoucher] = useState<Voucher | null>(null);
 
@@ -178,6 +192,62 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
     onSaveRunningText(rtInput.trim());
     setIsRtSaved(true);
     setTimeout(() => setIsRtSaved(false), 2000);
+  };
+
+  // Handlers Pengelolaan Meja
+  const handleAddTableSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setTableError(null);
+    setTableSuccess(null);
+    const trimmed = newTableName.trim();
+    if (!trimmed) {
+      setTableError('Nama meja tidak boleh kosong.');
+      return;
+    }
+    if (activeTables.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
+      setTableError(`Meja "${trimmed}" sudah ada dalam daftar.`);
+      return;
+    }
+    if (onAddTable) {
+      onAddTable(trimmed);
+      setTableSuccess(`Meja "${trimmed}" berhasil ditambahkan!`);
+      setNewTableName('');
+      setPreviewTable(trimmed);
+      setTimeout(() => setTableSuccess(null), 2500);
+    }
+  };
+
+  const handleRemoveTableClick = (tableToRemove: string) => {
+    if (activeTables.length <= 1) {
+      alert('Minimal harus ada 1 meja aktif dalam sistem.');
+      return;
+    }
+    if (confirm(`Apakah Anda yakin ingin menghapus "${tableToRemove}" dari sistem kafe?`)) {
+      if (onRemoveTable) {
+        onRemoveTable(tableToRemove);
+        const remaining = activeTables.filter((t) => t !== tableToRemove);
+        if (previewTable === tableToRemove) {
+          setPreviewTable(remaining[0] || 'Meja 1');
+        }
+        if (voucherTable === tableToRemove) {
+          setVoucherTable(remaining[0] || 'Meja 1');
+        }
+        setTableSuccess(`Meja "${tableToRemove}" telah dihapus.`);
+        setTimeout(() => setTableSuccess(null), 2500);
+      }
+    }
+  };
+
+  const handleResetTablesClick = () => {
+    if (confirm('Kembalikan daftar meja ke bawaan standar (Meja 1 s/d Meja 9)?')) {
+      if (onResetTables) {
+        onResetTables();
+        setPreviewTable('Meja 1');
+        setVoucherTable('Meja 1');
+        setTableSuccess('Daftar meja berhasil direset ke pengaturan bawaan!');
+        setTimeout(() => setTableSuccess(null), 2500);
+      }
+    }
   };
 
   const handleSavePassword = async (e: React.FormEvent) => {
@@ -586,18 +656,107 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
             <div className="space-y-6 animate-fadeIn max-w-2xl">
               <div>
                 <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-                  <span>🪑 Meja & Stiker Barcode QR</span>
+                  <span>🪑 Pengelolaan Meja & Stiker QR</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Cetak stiker barcode untuk masing-masing meja pelanggan agar tamu dapat memesan lagu langsung dari tempat duduknya.
+                  Kelola daftar meja kafe Anda, tambah atau hapus meja sesuai tata letak ruangan, serta cetak stiker barcode QR untuk smartphone pelanggan.
                 </p>
+              </div>
+
+              {/* Status Alert */}
+              {tableSuccess && (
+                <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+                  <CheckIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{tableSuccess}</span>
+                </div>
+              )}
+              {tableError && (
+                <div className="p-3 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-300 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+                  <span className="text-rose-400 font-bold shrink-0">⚠️</span>
+                  <span>{tableError}</span>
+                </div>
+              )}
+
+              {/* SECTION A: FORM TAMBAH MEJA & DAFTAR MEJA */}
+              <div className="p-4 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <span>➕ Tambah Meja Baru</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResetTablesClick}
+                    className="text-[11px] text-slate-400 hover:text-amber-400 px-2.5 py-1 rounded-lg hover:bg-slate-850 transition-colors flex items-center gap-1 font-medium border border-transparent hover:border-slate-700"
+                    title="Kembalikan daftar meja ke bawaan (Meja 1 s/d Meja 9)"
+                  >
+                    <span>↺ Reset ke Default</span>
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddTableSubmit} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTableName}
+                    onChange={(e) => setNewTableName(e.target.value)}
+                    placeholder="Contoh: Meja 10, VIP 1, Outdoor 2, Bar A..."
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-medium"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/30 transition-all flex items-center gap-1.5 shrink-0 active:scale-95"
+                  >
+                    <span>+ Tambah</span>
+                  </button>
+                </form>
+
+                {/* List Meja Aktif */}
+                <div className="pt-2 border-t border-slate-850 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
+                    <span>Daftar Meja Aktif ({activeTables.length} Meja):</span>
+                    <span className="text-[10px] text-slate-500">Klik meja untuk pratinjau stiker, tombol ✕ untuk hapus</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-1 max-h-48 overflow-y-auto custom-scrollbar p-1">
+                    {activeTables.map((t) => {
+                      const isSelected = previewTable === t;
+                      return (
+                        <div
+                          key={t}
+                          className={`group flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                            isSelected
+                              ? 'bg-blue-600/30 border-blue-400 text-blue-200 shadow-sm'
+                              : 'bg-slate-900 border-slate-750 text-slate-300 hover:border-slate-600'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setPreviewTable(t)}
+                            className="flex items-center gap-1 text-left focus:outline-none"
+                            title={`Lihat pratinjau stiker ${t}`}
+                          >
+                            <span className="text-[11px]">🪑</span>
+                            <span>{t}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTableClick(t)}
+                            className="w-5 h-5 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-300 hover:bg-rose-500/20 transition-colors ml-1"
+                            title={`Hapus ${t} dari sistem`}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Action Banner Cetak Massal */}
               <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border border-blue-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="text-center sm:text-left">
                   <div className="text-sm font-extrabold text-white">Lembar Stiker Semua Meja Siap Gunting</div>
-                  <div className="text-xs text-blue-300/80">Format lengkap berjejer untuk dicetak langsung ke printer.</div>
+                  <div className="text-xs text-blue-300/80">Format lengkap ({activeTables.length} meja) untuk dicetak langsung ke printer.</div>
                 </div>
                 {onOpenTableQrModal && (
                   <button
@@ -611,9 +770,9 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
 
               {/* Preview Satu Meja */}
               <div className="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-3">
-                <div className="text-xs font-bold text-slate-300">Pilih Meja untuk Pratinjau:</div>
+                <div className="text-xs font-bold text-slate-300">Pilih Meja untuk Pratinjau Stiker:</div>
                 <div className="flex flex-wrap gap-2">
-                  {QUICK_TABLES.map((t) => (
+                  {activeTables.map((t) => (
                     <button
                       key={t}
                       type="button"
@@ -752,7 +911,7 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                       onChange={(e) => setVoucherTable(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
                     >
-                      {QUICK_TABLES.map((t) => (
+                      {activeTables.map((t) => (
                         <option key={t} value={t}>
                           {t}
                         </option>

@@ -72,6 +72,10 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     rebalanceQueueFairly,
     cafeSettings,
     updateCafeSettings,
+    tables,
+    addTable,
+    removeTable,
+    resetTables,
     deleteFromLibrary,
     clearLibrary,
   } = useKaraoke();
@@ -297,6 +301,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
       <TableQrGeneratorModal
         isOpen={isTableQrOpen}
         cafeName={cafeSettings?.name}
+        tables={tables}
         onClose={() => setIsTableQrOpen(false)}
         onOpenVoucherManager={() => setIsVoucherOpen(true)}
       />
@@ -339,6 +344,10 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         onSaveRunningText={setRunningText}
         onOpenProjectorTab={handleOpenProjector}
         onOpenQrShare={() => setIsQrShareOpen(true)}
+        tables={tables}
+        onAddTable={addTable}
+        onRemoveTable={removeTable}
+        onResetTables={resetTables}
         onOpenTableQrModal={() => setIsTableQrOpen(true)}
         vouchers={vouchers}
         dailyPin={dailyPin}

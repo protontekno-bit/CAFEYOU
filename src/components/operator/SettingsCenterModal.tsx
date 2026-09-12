@@ -631,6 +631,88 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                   </div>
                 </div>
 
+                {/* Integrasi YouTube Data API Key */}
+                <div className="p-4 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-500 text-base">🔴</span>
+                      <span className="text-xs font-bold text-white">
+                        YouTube Data API Key (Google Cloud)
+                      </span>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      youtubeApiKey
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}>
+                      {youtubeApiKey ? 'Aktif (Tamu Bisa Cari Langsung)' : 'Belum Ada (Mode Asisten)'}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Masukkan API Key agar tamu kafe dapat mencari dan memilih lagu YouTube secara langsung di HP mereka tanpa perlu copy-paste link.
+                  </p>
+
+                  {ytKeyStatus && (
+                    <div
+                      className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+                        ytKeyStatus.type === 'success'
+                          ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                          : 'bg-red-500/15 border-red-500/30 text-red-300'
+                      }`}
+                    >
+                      <span>{ytKeyStatus.type === 'success' ? '✅' : '⚠️'}</span>
+                      <span>{ytKeyStatus.message}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-[10px] text-slate-400">
+                      <label className="font-semibold text-slate-300">Google YouTube Data API v3 Key:</label>
+                      <span className="text-emerald-400 font-medium">Gratis 10.000 kuota/hari</span>
+                    </div>
+                    <input
+                      type="password"
+                      value={youtubeApiKey}
+                      onChange={(e) => setYoutubeApiKey(e.target.value)}
+                      placeholder="AIzaSy..."
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs font-mono tracking-wider focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleTestYoutubeApiKey}
+                      disabled={isYtKeyTesting || !youtubeApiKey.trim()}
+                      className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-750 disabled:opacity-50 text-white font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1"
+                    >
+                      <span>{isYtKeyTesting ? '🔄 Menguji...' : '⚡ Tes Koneksi Key'}</span>
+                    </button>
+                    {youtubeApiKey && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setYoutubeApiKey('');
+                          setYtKeyStatus({ type: 'success', message: 'API Key dikosongkan. Klik Simpan Profil Kafe untuk menyimpan.' });
+                        }}
+                        className="px-3 py-1.5 text-slate-500 hover:text-red-400 text-xs font-semibold"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-slate-900/60 rounded-xl border border-slate-800 text-[10px] text-slate-400 space-y-1">
+                    <div className="font-bold text-slate-300">💡 Cara Mendapatkan Kunci YouTube API Gratis:</div>
+                    <ol className="list-decimal pl-4 space-y-0.5 text-slate-400">
+                      <li>Buka <strong>console.cloud.google.com</strong> (gratis).</li>
+                      <li>Aktifkan <strong>YouTube Data API v3</strong> di menu Library.</li>
+                      <li>Buat <strong>Credentials ➔ API Key</strong> dan salin ke sini.</li>
+                    </ol>
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-2"

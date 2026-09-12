@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { RoleCard } from './RoleCard';
 import { OperatorLoginModal } from './OperatorLoginModal';
-import { SplitIcon, TicketIcon, LockIcon } from '../icons/Icons';
+import { TicketIcon } from '../icons/Icons';
 import { AppRole } from '../../types';
 
 import { DeveloperFooter } from '../common/DeveloperFooter';
@@ -92,27 +92,6 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
             onClick={() => setRole('guest')}
             icon={<TicketIcon className="w-8 h-8 text-purple-400" />}
           />
-        </div>
-
-        {/* Simulator & Standalone Login Links */}
-        <div className="max-w-4xl mx-auto space-y-3">
-          <button
-            onClick={() => setRole('split')}
-            className="w-full relative bg-slate-900/80 p-3.5 rounded-2xl border border-cyan-500/40 hover:bg-slate-850 transition-all flex items-center justify-center gap-2.5 text-cyan-300 font-semibold hover:border-cyan-400 shadow-lg shadow-cyan-500/5 text-xs sm:text-sm"
-          >
-            <SplitIcon className="w-4 h-4" />
-            <span>Mode Uji Coba: Simulator Split-Screen Operator & Proyektor 1 Layar</span>
-          </button>
-
-          <div className="text-center pt-2">
-            <a
-              href="login_karaoke_cafeyou.html"
-              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-400 transition-colors font-medium bg-slate-900/40 px-3 py-1.5 rounded-xl border border-slate-800"
-            >
-              <LockIcon className="w-3.5 h-3.5" />
-              <span>Halaman Login Standalone Neumorphism (login_karaoke_cafeyou.html) ↗</span>
-            </a>
-          </div>
         </div>
       </div>
 

@@ -7,6 +7,11 @@ import {
   verifyPassword,
   saveOperatorCredentials,
 } from '../../utils/credentials';
+import {
+  getStoredFirebaseConfig,
+  saveFirebaseConfig,
+  clearFirebaseConfig,
+} from '../../config/firebase';
 import { DEVELOPER_INFO } from '../../constants/developer';
 
 type SettingsTab =
@@ -57,20 +62,20 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   onClose,
   cafeSettings,
   onUpdateCafeSettings,
-  runningText,
+  runningText = '',
   onSaveRunningText,
   onOpenProjectorTab,
-  onOpenQrShare,
   onOpenTableQrModal,
   vouchers = {},
   dailyPin,
+  onCreateVoucher,
+  onRevokeVoucher,
   onSetDailyPin,
   onOpenVoucherModal,
   songLibrary = {},
   onDeleteFromLibrary,
   onClearLibrary,
   isCloudConnected = false,
-  onOpenFirebaseConfig,
   onPasswordChangedLogout,
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('cafe');
@@ -84,7 +89,7 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   const [isCafeSaved, setIsCafeSaved] = useState(false);
 
   // State: Running Text
-  const [rtInput, setRtInput] = useState(runningText || '');
+  const [rtInput, setRtInput] = useState(runningText);
   const [isRtSaved, setIsRtSaved] = useState(false);
 
   // State: Ganti Password
@@ -107,6 +112,20 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   const [dailyPinCode, setDailyPinCode] = useState(dailyPin?.code || '1234');
   const [isPinSaved, setIsPinSaved] = useState(false);
 
+  // State: In-line Voucher Creator
+  const [voucherTable, setVoucherTable] = useState('Meja 1');
+  const [voucherQuota, setVoucherQuota] = useState(3);
+  const [lastCreatedVoucher, setLastCreatedVoucher] = useState<Voucher | null>(null);
+
+  // State: In-line Firebase Config
+  const [fbApiKey, setFbApiKey] = useState('');
+  const [fbDbUrl, setFbDbUrl] = useState('');
+  const [fbProjectId, setFbProjectId] = useState('');
+  const [fbAuthDomain, setFbAuthDomain] = useState('');
+  const [fbStorageBucket, setFbStorageBucket] = useState('');
+  const [fbAppId, setFbAppId] = useState('');
+  const [fbStatusMsg, setFbStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       setCafeName(cafeSettings?.name || DEFAULT_CAFE_SETTINGS.name);
@@ -116,7 +135,7 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
       setWifiPassword(cafeSettings?.wifiPassword || '');
       setIsCafeSaved(false);
 
-      setRtInput(runningText || '');
+      setRtInput(runningText);
       setIsRtSaved(false);
 
       setIsDailyPinActive(dailyPin?.enabled || false);
@@ -125,6 +144,16 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
       loadOperatorCredentials().then((creds) => {
         if (creds?.username) setNewUsername(creds.username);
       });
+
+      const storedFb = getStoredFirebaseConfig();
+      if (storedFb) {
+        setFbApiKey(storedFb.apiKey || '');
+        setFbDbUrl(storedFb.databaseURL || '');
+        setFbProjectId(storedFb.projectId || '');
+        setFbAuthDomain(storedFb.authDomain || '');
+        setFbStorageBucket(storedFb.storageBucket || '');
+        setFbAppId(storedFb.appId || '');
+      }
     }
   }, [isOpen, cafeSettings, runningText, dailyPin]);
 
@@ -209,17 +238,63 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
     }
   };
 
+  const handleCreateVoucherSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (onCreateVoucher) {
+      const v = onCreateVoucher(voucherTable, voucherQuota);
+      setLastCreatedVoucher(v);
+    }
+  };
+
+  const handleSaveFirebase = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fbApiKey.trim() || !fbDbUrl.trim() || !fbProjectId.trim()) {
+      setFbStatusMsg({ type: 'error', text: 'API Key, Database URL, dan Project ID wajib diisi.' });
+      return;
+    }
+    saveFirebaseConfig({
+      apiKey: fbApiKey.trim(),
+      databaseURL: fbDbUrl.trim(),
+      projectId: fbProjectId.trim(),
+      authDomain: fbAuthDomain.trim(),
+      storageBucket: fbStorageBucket.trim(),
+      appId: fbAppId.trim(),
+    });
+    setFbStatusMsg({ type: 'success', text: 'Konfigurasi Firebase berhasil disimpan! Memuat ulang dalam 1 detik...' });
+    setTimeout(() => {
+      window.location.reload();
+    }, 1200);
+  };
+
+  const handleClearFirebase = () => {
+    if (confirm('Apakah Anda yakin ingin menghapus konfigurasi Firebase dan beralih ke mode sinkron lokal?')) {
+      clearFirebaseConfig();
+      setFbApiKey('');
+      setFbDbUrl('');
+      setFbProjectId('');
+      setFbAuthDomain('');
+      setFbStorageBucket('');
+      setFbAppId('');
+      setFbStatusMsg({ type: 'info', text: 'Konfigurasi dibersihkan. Memuat ulang...' });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  };
+
   const filteredLibrary = Object.values(songLibrary).filter((s) => {
     if (!librarySearch.trim()) return true;
     const q = librarySearch.toLowerCase();
     return s.title?.toLowerCase().includes(q) || s.artist?.toLowerCase().includes(q);
   });
 
-  const activeVouchersList = Object.values(vouchers).filter((v) => v.status === 'active');
+  const activeVouchersList = Object.values(vouchers)
+    .filter((v) => v.status === 'active')
+    .sort((a, b) => b.createdAt - a.createdAt);
 
   // Base URL untuk QR Preview
   const baseUrl = typeof window !== 'undefined' ? window.location.href.split('#')[0] : '';
-  const previewQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+  const previewQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
     `${baseUrl}#guest?table=${encodeURIComponent(previewTable)}`
   )}`;
 
@@ -521,22 +596,22 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
               {/* Action Banner Cetak Massal */}
               <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border border-blue-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="text-center sm:text-left">
-                  <div className="text-sm font-extrabold text-white">Cetak Lembar Stiker Semua Meja</div>
-                  <div className="text-xs text-blue-300/80">Format rapi berjejer siap di-print dan digunting.</div>
+                  <div className="text-sm font-extrabold text-white">Lembar Stiker Semua Meja Siap Gunting</div>
+                  <div className="text-xs text-blue-300/80">Format lengkap berjejer untuk dicetak langsung ke printer.</div>
                 </div>
                 {onOpenTableQrModal && (
                   <button
                     onClick={onOpenTableQrModal}
                     className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/30 transition-all shrink-0 flex items-center gap-1.5"
                   >
-                    <span>🖨️ Buka Menu Cetak Lengkap</span>
+                    <span>🖨️ Buka Lembar Cetak Stiker</span>
                   </button>
                 )}
               </div>
 
               {/* Preview Satu Meja */}
               <div className="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-3">
-                <div className="text-xs font-bold text-slate-300">Pratinjau Stiker Per-Meja:</div>
+                <div className="text-xs font-bold text-slate-300">Pilih Meja untuk Pratinjau:</div>
                 <div className="flex flex-wrap gap-2">
                   {QUICK_TABLES.map((t) => (
                     <button
@@ -554,46 +629,75 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                   ))}
                 </div>
 
-                <div className="flex items-center gap-4 pt-2">
-                  <div className="bg-white p-2.5 rounded-xl shadow-md">
-                    <img src={previewQrUrl} alt={previewTable} className="w-24 h-24 object-contain" />
+                <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
+                  <div className="bg-white p-3 rounded-2xl shadow-lg border border-slate-200">
+                    <img src={previewQrUrl} alt={previewTable} className="w-28 h-28 object-contain" />
                   </div>
-                  <div className="text-xs text-slate-400 space-y-1">
-                    <div className="font-bold text-white text-sm">{previewTable}</div>
-                    <div>Link Barcode: <code className="text-[10px] text-blue-400 bg-slate-900 px-1.5 py-0.5 rounded">#guest?table={encodeURIComponent(previewTable)}</code></div>
-                    <div className="text-[11px] text-slate-500">Tamu yang scan QR ini otomatis terkunci ke {previewTable}.</div>
+                  <div className="text-xs text-slate-400 space-y-1.5 text-center sm:text-left">
+                    <div className="font-extrabold text-white text-base">{previewTable}</div>
+                    <div className="text-[11px] text-slate-300">Arahkan kamera smartphone ke QR ini untuk memesan lagu atas nama <strong>{previewTable}</strong>.</div>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const w = window.open('', '_blank');
+                          if (w) {
+                            w.document.write(`
+                              <html>
+                                <head><title>Stiker ${previewTable} - ${cafeSettings?.name || 'CAFEYOU'}</title></head>
+                                <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;margin:0;">
+                                  <div style="border:2px dashed #333;padding:24px;border-radius:16px;text-align:center;max-width:280px;">
+                                    <h2 style="margin:0 0 8px 0;font-size:20px;">${cafeSettings?.name || 'CAFEYOU'}</h2>
+                                    <h3 style="margin:0 0 12px 0;font-size:16px;color:#2563eb;">${previewTable}</h3>
+                                    <img src="${previewQrUrl}" style="width:200px;height:200px;margin-bottom:8px;" />
+                                    <p style="margin:0;font-size:12px;color:#666;">Scan untuk pilih & pesan lagu dari HP</p>
+                                  </div>
+                                  <script>window.onload = function(){ window.print(); };</script>
+                                </body>
+                              </html>
+                            `);
+                            w.document.close();
+                          }
+                        }}
+                        className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 text-xs font-semibold"
+                      >
+                        🖨️ Cetak Stiker {previewTable} Saja
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 4. TAB: VOUCHER & PIN TAMU */}
+          {/* 4. TAB: VOUCHER & PIN TAMU (FULL INLINE INTERACTIVE) */}
           {activeTab === 'vouchers' && (
             <div className="space-y-6 animate-fadeIn max-w-2xl">
               <div>
                 <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-                  <span>🎟️ Voucher & PIN Tamu</span>
+                  <span>🎟️ Voucher & PIN Akses Tamu</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Batasi akses pemesanan lagu dengan sistem voucher per meja atau PIN harian kafe.
+                  Proteksi anti-sabotase: Pelanggan wajib memasukkan kode voucher atau PIN untuk memesan lagu.
                 </p>
               </div>
 
-              {/* PIN Harian Quick Setup */}
+              {/* SECTION A: Mode PIN Harian */}
               <div className="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-xs font-bold text-white flex items-center gap-2">
                       <span>🔑 Mode PIN Harian (Daily PIN)</span>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${
-                        isDailyPinActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500'
-                      }`}>
+                      <span
+                        className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${
+                          isDailyPinActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500'
+                        }`}
+                      >
                         {isDailyPinActive ? 'Aktif' : 'Nonaktif'}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Jika aktif, tamu cukup memasukkan 4-digit PIN ini untuk memesan lagu tanpa voucher satuan.
+                      Jika aktif, semua tamu kafe cukup memasukkan PIN 4-digit yang sama hari ini.
                     </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -628,22 +732,148 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                 )}
               </div>
 
-              {/* Launcher ke Voucher Modal */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-extrabold text-white">Voucher Lagu Satuan Per-Meja</div>
-                  <div className="text-xs text-purple-300/80">
-                    {activeVouchersList.length} voucher aktif saat ini.
+              {/* SECTION B: Buat Voucher Baru Langsung (Inline Form) */}
+              <form
+                onSubmit={handleCreateVoucherSubmit}
+                className="p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/40 rounded-2xl border border-blue-500/30 space-y-3"
+              >
+                <div className="text-xs font-bold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <TicketIcon className="w-4 h-4 text-blue-400" />
+                  <span>Terbitkan Kode Voucher Baru</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                      Pilih Meja / Pelanggan:
+                    </label>
+                    <select
+                      value={voucherTable}
+                      onChange={(e) => setVoucherTable(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                    >
+                      {QUICK_TABLES.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                      Batas Kuota Lagu:
+                    </label>
+                    <select
+                      value={voucherQuota}
+                      onChange={(e) => setVoucherQuota(parseInt(e.target.value, 10))}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                    >
+                      <option value={1}>1 Lagu</option>
+                      <option value={2}>2 Lagu</option>
+                      <option value={3}>3 Lagu (Standar)</option>
+                      <option value={5}>5 Lagu</option>
+                      <option value={10}>10 Lagu</option>
+                      <option value={20}>20 Lagu (VIP)</option>
+                    </select>
                   </div>
                 </div>
-                {onOpenVoucherModal && (
+
+                <div className="pt-1 flex items-center justify-between">
                   <button
-                    onClick={onOpenVoucherModal}
-                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-600/30 transition-all flex items-center gap-1.5 shrink-0"
+                    type="submit"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/30 transition-all flex items-center gap-1.5"
                   >
-                    <TicketIcon className="w-4 h-4" />
-                    <span>Buka Manajemen Voucher</span>
+                    <span>🎟️ Terbitkan Voucher {voucherTable}</span>
                   </button>
+
+                  {onOpenVoucherModal && (
+                    <button
+                      type="button"
+                      onClick={onOpenVoucherModal}
+                      className="text-xs text-slate-400 hover:text-white underline"
+                    >
+                      Buka Layout Cetak Voucher
+                    </button>
+                  )}
+                </div>
+              </form>
+
+              {/* Card Voucher Terbit Baru */}
+              {lastCreatedVoucher && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-600/20 border border-amber-500/40 space-y-2 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-amber-300">VOUCHER BERHASIL DITERBITKAN:</span>
+                    <span className="text-[10px] font-bold text-white bg-amber-600/60 px-2.5 py-0.5 rounded-full">
+                      {lastCreatedVoucher.tableNumber}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="font-mono text-2xl sm:text-3xl font-black text-amber-400 tracking-wider">
+                      {lastCreatedVoucher.code}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(lastCreatedVoucher.code);
+                        alert(`Kode voucher ${lastCreatedVoucher.code} berhasil disalin!`);
+                      }}
+                      className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-colors"
+                    >
+                      Salin Kode
+                    </button>
+                  </div>
+                  <div className="text-[11px] text-amber-200/80">
+                    Kuota: <strong>{lastCreatedVoucher.quotaTotal} Lagu</strong> • Berikan kode ini kepada tamu di {lastCreatedVoucher.tableNumber}.
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION C: Daftar Voucher Aktif */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                  <span>Daftar Voucher Aktif ({activeVouchersList.length}):</span>
+                </div>
+                {activeVouchersList.length === 0 ? (
+                  <div className="p-4 bg-slate-950/40 rounded-2xl border border-slate-800 text-center text-xs text-slate-500">
+                    Belum ada voucher aktif saat ini.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-52 overflow-y-auto custom-scrollbar pr-1">
+                    {activeVouchersList.map((v) => (
+                      <div
+                        key={v.code}
+                        className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-black text-xs text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-xl border border-blue-500/20">
+                            {v.code}
+                          </span>
+                          <div>
+                            <div className="text-xs font-bold text-white">{v.tableNumber}</div>
+                            <div className="text-[10px] text-slate-400">
+                              Terpakai: <strong>{v.quotaUsed}</strong> / {v.quotaTotal} Lagu
+                            </div>
+                          </div>
+                        </div>
+
+                        {onRevokeVoucher && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Cabut voucher ${v.code} untuk ${v.tableNumber}?`)) {
+                                onRevokeVoucher(v.code);
+                              }
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-xs"
+                            title="Cabut voucher ini"
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -652,15 +882,13 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
           {/* 5. TAB: DATABASE KOLEKSI LAGU */}
           {activeTab === 'library' && (
             <div className="space-y-6 animate-fadeIn max-w-2xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-                    <span>📚 Database Koleksi Lagu Kafe</span>
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Kelola daftar lagu tersimpan ({Object.keys(songLibrary).length} judul lagu).
-                  </p>
-                </div>
+              <div>
+                <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                  <span>📚 Database Koleksi Lagu Kafe</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Kelola daftar lagu tersimpan ({Object.keys(songLibrary).length} judul lagu).
+                </p>
               </div>
 
               <div className="flex gap-2">
@@ -690,7 +918,9 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                         />
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-white truncate">{song.title}</div>
-                          <div className="text-[10px] text-slate-400 truncate">{song.artist || 'Artis Kafe'} • Diputar {song.playCount || 0}x</div>
+                          <div className="text-[10px] text-slate-400 truncate">
+                            {song.artist || 'Artis Kafe'} • Diputar {song.playCount || 0}x
+                          </div>
                         </div>
                       </div>
 
@@ -718,7 +948,11 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm('PERINGATAN: Apakah Anda yakin ingin menghapus SELURUH koleksi lagu kafe? Tindakan ini tidak dapat dibatalkan.')) {
+                      if (
+                        confirm(
+                          'PERINGATAN: Apakah Anda yakin ingin menghapus SELURUH koleksi lagu kafe? Tindakan ini tidak dapat dibatalkan.'
+                        )
+                      ) {
                         onClearLibrary();
                       }
                     }}
@@ -731,7 +965,7 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
             </div>
           )}
 
-          {/* 6. TAB: KONEKSI CLOUD FIREBASE */}
+          {/* 6. TAB: KONEKSI CLOUD FIREBASE (FULL INLINE FORM) */}
           {activeTab === 'cloud' && (
             <div className="space-y-6 animate-fadeIn max-w-2xl">
               <div>
@@ -744,34 +978,119 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3.5 h-3.5 rounded-full ${isCloudConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                    <div>
-                      <div className="text-xs font-bold text-white">
-                        {isCloudConnected ? 'Tersambung ke Firebase Realtime Database' : 'Mode Sinkron Lokal (Tanpa Cloud)'}
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        {isCloudConnected
-                          ? 'Perubahan antrean lagu dan reaksi tamu tersinkronisasi otomatis dalam hitungan milidetik.'
-                          : 'Aplikasi berjalan menggunakan sinkronisasi tab lokal (BroadcastChannel).'}
-                      </div>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-3.5 h-3.5 rounded-full ${
+                      isCloudConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                    }`}
+                  />
+                  <div>
+                    <div className="text-xs font-bold text-white">
+                      {isCloudConnected
+                        ? 'Tersambung ke Firebase Realtime Database'
+                        : 'Mode Sinkron Lokal (Tanpa Cloud)'}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {isCloudConnected
+                        ? 'Antrean lagu dan reaksi tamu tersinkronisasi otomatis dalam hitungan milidetik.'
+                        : 'Aplikasi berjalan menggunakan sinkronisasi tab lokal browser.'}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {onOpenFirebaseConfig && (
-                <div className="flex justify-start">
+              {/* Form Konfigurasi Firebase Langsung Inline */}
+              <form onSubmit={handleSaveFirebase} className="space-y-3.5">
+                {fbStatusMsg && (
+                  <div
+                    className={`p-3 rounded-xl border text-xs font-semibold ${
+                      fbStatusMsg.type === 'error'
+                        ? 'bg-red-500/15 border-red-500/30 text-red-300'
+                        : fbStatusMsg.type === 'success'
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                        : 'bg-blue-500/15 border-blue-500/30 text-blue-300'
+                    }`}
+                  >
+                    {fbStatusMsg.text}
+                  </div>
+                )}
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-300">API Key:</label>
+                    <input
+                      type="text"
+                      value={fbApiKey}
+                      onChange={(e) => setFbApiKey(e.target.value)}
+                      placeholder="AIzaSy..."
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-300">Project ID:</label>
+                    <input
+                      type="text"
+                      value={fbProjectId}
+                      onChange={(e) => setFbProjectId(e.target.value)}
+                      placeholder="cafeyou-karaoke"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300">Database URL:</label>
+                  <input
+                    type="text"
+                    value={fbDbUrl}
+                    onChange={(e) => setFbDbUrl(e.target.value)}
+                    placeholder="https://cafeyou-default-rtdb.firebaseio.com"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-300">Auth Domain (opsional):</label>
+                    <input
+                      type="text"
+                      value={fbAuthDomain}
+                      onChange={(e) => setFbAuthDomain(e.target.value)}
+                      placeholder="cafeyou.firebaseapp.com"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-300">App ID (opsional):</label>
+                    <input
+                      type="text"
+                      value={fbAppId}
+                      onChange={(e) => setFbAppId(e.target.value)}
+                      placeholder="1:123456789:web:abcdef"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/30 transition-all"
+                  >
+                    Simpan & Sambungkan Cloud
+                  </button>
+
                   <button
                     type="button"
-                    onClick={onOpenFirebaseConfig}
-                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-2"
+                    onClick={handleClearFirebase}
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700 rounded-xl text-xs font-semibold transition-colors"
                   >
-                    <span>⚙️ Atur Kredensial & Kunci Firebase Kafe</span>
+                    Reset ke Mode Lokal
                   </button>
                 </div>
-              )}
+              </form>
             </div>
           )}
 
@@ -884,7 +1203,9 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                   </div>
                   <div>
                     <div className="text-base font-black text-white">{DEVELOPER_INFO.name}</div>
-                    <div className="text-xs text-emerald-400 font-semibold">{DEVELOPER_INFO.brandName} • {DEVELOPER_INFO.tagline}</div>
+                    <div className="text-xs text-emerald-400 font-semibold">
+                      {DEVELOPER_INFO.brandName} • {DEVELOPER_INFO.tagline}
+                    </div>
                   </div>
                 </div>
 

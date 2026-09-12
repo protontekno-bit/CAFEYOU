@@ -15,6 +15,7 @@ interface GuestVoucherGateProps {
     message?: string;
   }>;
   onBackToLanding?: () => void;
+  onChangeTable?: () => void;
 }
 
 export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
@@ -22,6 +23,7 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
   onSuccess,
   validateVoucher,
   onBackToLanding,
+  onChangeTable,
 }) => {
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -110,9 +112,21 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
           /* Voucher Form Content */
           <form onSubmit={handleSubmit} className="w-[76%] max-w-[290px] flex flex-col gap-3 z-10 -mt-1">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-purple-500/15 border border-purple-500/30 rounded-full text-purple-300 text-[10px] font-extrabold uppercase tracking-wider mb-1">
-                <span>📍 {tableNumber || 'Meja Kafe'}</span>
-              </div>
+              {onChangeTable ? (
+                <button
+                  type="button"
+                  onClick={onChangeTable}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 rounded-full text-purple-300 text-[10px] font-extrabold uppercase tracking-wider mb-1 transition-colors group cursor-pointer"
+                  title="Klik untuk mengganti nomor meja"
+                >
+                  <span>📍 {tableNumber || 'Pilih Meja'}</span>
+                  <span className="text-[9px] text-purple-400 group-hover:text-purple-200 underline">Ganti</span>
+                </button>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-purple-500/15 border border-purple-500/30 rounded-full text-purple-300 text-[10px] font-extrabold uppercase tracking-wider mb-1">
+                  <span>📍 {tableNumber || 'Meja Kafe'}</span>
+                </div>
+              )}
               <h2 className="text-xl font-black text-white tracking-tight uppercase">
                 PORTAL TAMU
               </h2>

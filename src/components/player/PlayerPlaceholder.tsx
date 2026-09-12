@@ -131,7 +131,7 @@ export const PlayerPlaceholder: React.FC<PlayerPlaceholderProps> = ({ cafeSettin
               <span>📱 Scan untuk Request Lagu dari HP</span>
             </div>
             <p className="text-[11px] sm:text-xs text-slate-400 leading-relaxed">
-              Arahkan kamera smartphone Anda ke QR code ini untuk membuka katalog lagu dan kirim pesanan langsung ke kasir.
+              Arahkan kamera smartphone Anda ke QR code ini, pilih nomor meja Anda, dan pesan lagu langsung dari HP.
             </p>
 
             {/* Wi-Fi Info Badge jika disetting */}

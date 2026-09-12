@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { GuestVoucherGate } from './GuestVoucherGate';
+import { TableSelectorModal } from './TableSelectorModal';
 import { AppRole, Voucher } from '../../types';
 import { POPULAR_KARAOKE_SONGS, extractYouTubeID, fetchYouTubeInfo, getYouTubeThumbnail } from '../../utils/youtube';
 import {
@@ -33,8 +34,8 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     cafeSettings,
   } = useKaraoke();
 
-  // 1. Ambil nomor meja dari props atau URL hash/search query
-  const tableNumber = useMemo(() => {
+  // 1. Deteksi Meja dari URL atau Session
+  const urlTable = useMemo(() => {
     if (defaultTable) return defaultTable;
     try {
       const hash = window.location.hash;
@@ -50,11 +51,27 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     } catch {
       // ignore
     }
-    return 'Meja 1';
+    return null;
   }, [defaultTable]);
+
+  const isDirectQr = Boolean(urlTable);
+
+  const [tableNumber, setTableNumber] = useState<string>(() => {
+    if (urlTable) return urlTable;
+    try {
+      const saved = sessionStorage.getItem('cafeyou_guest_table');
+      if (saved) return saved;
+    } catch {}
+    return '';
+  });
+
+  const [isTableSelectorOpen, setIsTableSelectorOpen] = useState<boolean>(
+    !isDirectQr && !tableNumber
+  );
 
   // 2. Status autentikasi voucher (Per-Meja)
   const [activeVoucher, setActiveVoucher] = useState<Voucher | null>(() => {
+    if (!tableNumber) return null;
     try {
       const saved = sessionStorage.getItem(`cafeyou_voucher_${tableNumber}`);
       if (saved) return JSON.parse(saved);
@@ -63,6 +80,24 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     }
     return null;
   });
+
+  const handleSelectTable = (selected: string) => {
+    setTableNumber(selected);
+    try {
+      sessionStorage.setItem('cafeyou_guest_table', selected);
+    } catch {}
+    setIsTableSelectorOpen(false);
+
+    // Coba restore voucher untuk meja baru
+    try {
+      const saved = sessionStorage.getItem(`cafeyou_voucher_${selected}`);
+      if (saved) {
+        setActiveVoucher(JSON.parse(saved));
+      } else {
+        setActiveVoucher(null);
+      }
+    } catch {}
+  };
 
   // Re-sync voucher data dari state jika berubah (dengan case-insensitive lookup)
   const currentVoucherData = useMemo(() => {
@@ -283,15 +318,38 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     setActiveVoucher(null);
   };
 
+  // Jika nomor meja belum ada sama sekali, wajibkan pilih meja terlebih dahulu
+  if (!tableNumber) {
+    return (
+      <TableSelectorModal
+        isOpen={true}
+        onSelectTable={handleSelectTable}
+        cafeName={cafeSettings?.name || 'CAFEYOU'}
+        canClose={false}
+      />
+    );
+  }
+
   // Jika belum login voucher, tampilkan Voucher Gate
   if (!activeVoucher) {
     return (
-      <GuestVoucherGate
-        tableNumber={tableNumber}
-        onSuccess={(v) => setActiveVoucher(v)}
-        validateVoucher={validateVoucher}
-        onBackToLanding={setRole ? () => setRole('landing') : undefined}
-      />
+      <>
+        <GuestVoucherGate
+          tableNumber={tableNumber}
+          onSuccess={(v) => setActiveVoucher(v)}
+          validateVoucher={validateVoucher}
+          onBackToLanding={setRole ? () => setRole('landing') : undefined}
+          onChangeTable={!isDirectQr ? () => setIsTableSelectorOpen(true) : undefined}
+        />
+        <TableSelectorModal
+          isOpen={isTableSelectorOpen}
+          onSelectTable={handleSelectTable}
+          onClose={() => setIsTableSelectorOpen(false)}
+          currentTable={tableNumber}
+          canClose={Boolean(tableNumber)}
+          cafeName={cafeSettings?.name || 'CAFEYOU'}
+        />
+      </>
     );
   }
 
@@ -310,7 +368,19 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
               {cafeSettings?.name || 'CAFEYOU'} Portal
             </div>
             <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
-              <span className="text-purple-300 font-bold">{tableNumber}</span>
+              {!isDirectQr ? (
+                <button
+                  type="button"
+                  onClick={() => setIsTableSelectorOpen(true)}
+                  className="text-purple-300 hover:text-purple-200 underline underline-offset-2 flex items-center gap-1 font-bold group cursor-pointer"
+                  title="Klik untuk mengganti nomor meja"
+                >
+                  <span>{tableNumber}</span>
+                  <span className="text-[8px] bg-purple-500/25 text-purple-300 px-1 py-0.2 rounded group-hover:bg-purple-500/40">Ganti</span>
+                </button>
+              ) : (
+                <span className="text-purple-300 font-bold">{tableNumber}</span>
+              )}
               <span className={`flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
                 isCloudConnected
                   ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30'
@@ -672,6 +742,16 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           </div>
         )}
       </footer>
+
+      {/* Modal Pemilihan / Penggantian Meja */}
+      <TableSelectorModal
+        isOpen={isTableSelectorOpen}
+        onSelectTable={handleSelectTable}
+        onClose={() => setIsTableSelectorOpen(false)}
+        currentTable={tableNumber}
+        canClose={Boolean(tableNumber)}
+        cafeName={cafeSettings?.name || 'CAFEYOU'}
+      />
     </div>
   );
 };

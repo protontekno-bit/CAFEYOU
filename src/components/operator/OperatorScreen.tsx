@@ -89,6 +89,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     deleteMenuItem,
     resetMenuToDefault,
     clearFinishedOrders,
+    updateLocalServerIp,
   } = useKaraoke();
 
   const [isSoundBoardOpen, setIsSoundBoardOpen] = useState(false);
@@ -319,6 +320,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
 
       <QrShareModal
         isOpen={isQrShareOpen}
+        initialIp={cafeSettings?.localServerIp}
+        onSaveIp={updateLocalServerIp}
         onClose={() => setIsQrShareOpen(false)}
       />
 
@@ -349,6 +352,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         isOpen={isTableQrOpen}
         cafeName={cafeSettings?.name}
         tables={tables}
+        initialIp={cafeSettings?.localServerIp}
+        onSaveIp={updateLocalServerIp}
         onClose={() => setIsTableQrOpen(false)}
         onOpenVoucherManager={() => setIsVoucherOpen(true)}
       />

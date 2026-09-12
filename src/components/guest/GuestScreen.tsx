@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useKaraoke } from '../../hooks/useKaraoke';
+import { useKaraoke, isSameTable } from '../../hooks/useKaraoke';
 import { GuestVoucherGate } from './GuestVoucherGate';
 import { TableSelectorModal } from './TableSelectorModal';
 import { AppRole, Voucher, YouTubeSearchResult, MenuItem, MenuCategory, OrderItem, TableOrder } from '../../types';
@@ -82,6 +82,9 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
   // Digital Receipt Modal for Guests (E-Billing)
   const [selectedDigitalReceipt, setSelectedDigitalReceipt] = useState<TableOrder | null>(null);
 
+  // Notifikasi Pindah Meja Otomatis dari Kasir
+  const [relocationNotice, setRelocationNotice] = useState<string | null>(null);
+
   // 2. Status autentikasi voucher (Per-Meja)
   const [activeVoucher, setActiveVoucher] = useState<Voucher | null>(() => {
     if (!tableNumber) return null;
@@ -127,6 +130,36 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     );
     return found || activeVoucher;
   }, [activeVoucher, vouchers, state?.dailyPin]);
+
+  // Auto-sync jika kasir memindahkan pesanan meja dari POS
+  useEffect(() => {
+    if (!tableNumber) return;
+    const orders = Object.values(tableOrders || {});
+    for (const ord of orders) {
+      if (ord.tableMoveHistory && ord.tableMoveHistory.length > 0) {
+        const latestMove = ord.tableMoveHistory[ord.tableMoveHistory.length - 1];
+        if (
+          isSameTable(latestMove.from, tableNumber) &&
+          !isSameTable(latestMove.to, tableNumber) &&
+          Date.now() - latestMove.movedAt < 3600000
+        ) {
+          const newT = latestMove.to;
+          setTableNumber(newT);
+          try {
+            sessionStorage.setItem('cafeyou_guest_table', newT);
+            const oldV = sessionStorage.getItem(`cafeyou_voucher_${tableNumber}`);
+            if (oldV) {
+              sessionStorage.setItem(`cafeyou_voucher_${newT}`, oldV);
+            }
+          } catch {}
+
+          setRelocationNotice(`Meja Anda telah dialihkan ke ${newT} oleh kasir.`);
+          setTimeout(() => setRelocationNotice(null), 8000);
+          break;
+        }
+      }
+    }
+  }, [tableOrders, tableNumber]);
 
   // Auto-login jika URL membawa parameter voucher/pin (misal: #guest?table=Meja%201&voucher=1234)
   useEffect(() => {
@@ -313,13 +346,34 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
   const cartItemsCount = Object.values(cart).reduce((sum, c) => sum + c.quantity, 0);
   const cartTotalPrice = Object.values(cart).reduce((sum, c) => sum + ((c.unitPrice || c.item.price) * c.quantity), 0);
 
-  // Table Orders filter for this table
+  const [showAllHistory, setShowAllHistory] = useState<boolean>(false);
+  const [sessionStartTime] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem('cafeyou_guest_session_start');
+      if (saved) return Number(saved);
+      const now = Date.now();
+      sessionStorage.setItem('cafeyou_guest_session_start', String(now));
+      return now;
+    } catch {
+      return Date.now();
+    }
+  });
+
+  // Table Orders filter for this table with Table Turnover isolation
   const myTableOrders = useMemo(() => {
     if (!tableNumber) return [];
     return Object.values(tableOrders || {})
-      .filter((o) => o.tableNumber === tableNumber)
+      .filter((o) => {
+        if (!isSameTable(o.tableNumber, tableNumber)) return false;
+        const s = o.status?.toLowerCase();
+        // Selalu tampilkan pesanan aktif (belum lunas)
+        if (s !== 'paid' && s !== 'cancelled') return true;
+        // Jika lunas / batal, tampilkan jika dibuat pada sesi saat ini atau user klik tampilkan semua
+        if (showAllHistory) return true;
+        return o.createdAt >= sessionStartTime - 300000; // toleransi 5 menit sebelum scan QR
+      })
       .sort((a, b) => b.createdAt - a.createdAt);
-  }, [tableOrders, tableNumber]);
+  }, [tableOrders, tableNumber, showAllHistory, sessionStartTime]);
 
   const activeTableOrdersCount = myTableOrders.filter((o) => {
     const s = o.status?.toLowerCase();
@@ -788,6 +842,20 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-lg mx-auto w-full p-4 space-y-4">
+        {/* Banner Notifikasi Pindah Meja Otomatis dari Kasir */}
+        {relocationNotice && (
+          <div className="p-3.5 bg-blue-500/20 border border-blue-500/40 rounded-2xl flex items-center gap-2.5 text-xs font-semibold text-blue-200 animate-fadeIn shadow-lg shadow-blue-500/10">
+            <span className="text-base">🔀</span>
+            <span className="flex-1">{relocationNotice}</span>
+            <button
+              onClick={() => setRelocationNotice(null)}
+              className="text-blue-300 hover:text-white text-xs px-1 font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {orderSuccessBanner && (
           <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-2xl flex items-center gap-2 text-xs font-semibold text-emerald-300 animate-fadeIn">
             <CheckIcon className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -1478,9 +1546,18 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
 
             {/* List of orders */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Rincian Pesanan Meja Ini:
-              </h4>
+              <div className="flex justify-between items-center">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Rincian Pesanan Meja Ini:
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowAllHistory((prev) => !prev)}
+                  className="text-[10px] text-slate-400 hover:text-amber-400 font-medium underline transition-colors"
+                >
+                  {showAllHistory ? 'Sembunyikan Riwayat Lama' : 'Lihat Riwayat Sebelumnya'}
+                </button>
+              </div>
 
               {myTableOrders.length === 0 ? (
                 <div className="py-12 text-center text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">

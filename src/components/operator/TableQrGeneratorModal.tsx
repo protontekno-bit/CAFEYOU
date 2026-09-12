@@ -6,27 +6,32 @@ interface TableQrGeneratorModalProps {
   isOpen: boolean;
   cafeName?: string;
   tables?: string[];
+  initialIp?: string;
   onClose: () => void;
   onOpenVoucherManager?: () => void;
+  onSaveIp?: (ip: string) => void;
 }
 
 export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
   isOpen,
   cafeName = 'CAFEYOU',
   tables,
+  initialIp,
   onClose,
   onOpenVoucherManager,
+  onSaveIp,
 }) => {
   const activeTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
   const [selectedTable, setSelectedTable] = useState(() => activeTables[0] || 'Meja 1');
   const [printMode, setPrintMode] = useState(false);
 
-  // Deteksi dan Override IP Wi-Fi Lokal untuk QR Code
+  // Deteksi dan Override IP Wi-Fi Lokal untuk QR Code (Prioritas: Firebase Cloud cafeSettings -> LocalStorage -> Fallback)
   const isLocalhost =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
   const [customLocalIp, setCustomLocalIp] = useState(() => {
+    if (initialIp && initialIp.trim()) return initialIp.trim();
     try {
       return (
         localStorage.getItem('cafeyou_server_local_ip') ||
@@ -36,6 +41,13 @@ export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
       return '192.168.1.50:3000';
     }
   });
+
+  // Sinkronkan jika initialIp dari cloud berubah
+  React.useEffect(() => {
+    if (initialIp && initialIp.trim()) {
+      setCustomLocalIp(initialIp.trim());
+    }
+  }, [initialIp]);
 
   const [showIpEditor, setShowIpEditor] = useState(false);
 
@@ -55,10 +67,14 @@ export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
   )}`;
 
   const handleSaveIp = (ip: string) => {
-    setCustomLocalIp(ip);
+    const trimmed = ip.trim();
+    setCustomLocalIp(trimmed);
     try {
-      localStorage.setItem('cafeyou_server_local_ip', ip);
+      localStorage.setItem('cafeyou_server_local_ip', trimmed);
     } catch {}
+    if (onSaveIp) {
+      onSaveIp(trimmed);
+    }
   };
 
   const handlePrint = () => {

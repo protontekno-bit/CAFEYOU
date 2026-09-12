@@ -2,19 +2,27 @@ import React, { useState } from 'react';
 
 interface QrShareModalProps {
   isOpen: boolean;
+  initialIp?: string;
   onClose: () => void;
+  onSaveIp?: (ip: string) => void;
 }
 
-export const QrShareModal: React.FC<QrShareModalProps> = ({ isOpen, onClose }) => {
+export const QrShareModal: React.FC<QrShareModalProps> = ({
+  isOpen,
+  initialIp,
+  onClose,
+  onSaveIp,
+}) => {
   const [activeTab, setActiveTab] = useState<'player' | 'operator'>('player');
   const [copied, setCopied] = useState(false);
 
-  // Deteksi dan Override IP Wi-Fi Lokal
+  // Deteksi dan Override IP Wi-Fi Lokal (Prioritas: Firebase Cloud cafeSettings -> LocalStorage -> Fallback)
   const isLocalhost =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
   const [customLocalIp, setCustomLocalIp] = useState(() => {
+    if (initialIp && initialIp.trim()) return initialIp.trim();
     try {
       return (
         localStorage.getItem('cafeyou_server_local_ip') ||
@@ -24,6 +32,13 @@ export const QrShareModal: React.FC<QrShareModalProps> = ({ isOpen, onClose }) =
       return '192.168.1.50:3000';
     }
   });
+
+  // Sinkronkan jika initialIp dari cloud berubah
+  React.useEffect(() => {
+    if (initialIp && initialIp.trim()) {
+      setCustomLocalIp(initialIp.trim());
+    }
+  }, [initialIp]);
 
   const [showIpEditor, setShowIpEditor] = useState(false);
 
@@ -44,10 +59,14 @@ export const QrShareModal: React.FC<QrShareModalProps> = ({ isOpen, onClose }) =
   )}&bgcolor=1e293b&color=ffffff&margin=10`;
 
   const handleSaveIp = (ip: string) => {
-    setCustomLocalIp(ip);
+    const trimmed = ip.trim();
+    setCustomLocalIp(trimmed);
     try {
-      localStorage.setItem('cafeyou_server_local_ip', ip);
+      localStorage.setItem('cafeyou_server_local_ip', trimmed);
     } catch {}
+    if (onSaveIp) {
+      onSaveIp(trimmed);
+    }
   };
 
   const handleCopy = () => {

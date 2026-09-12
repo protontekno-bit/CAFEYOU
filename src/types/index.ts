@@ -74,6 +74,9 @@ export interface CafeSettings {
   taxPercentage?: number;
   isTaxIncluded?: boolean;
   servicePercentage?: number;
+  posPassword?: string;
+  operatorPassword?: string;
+  localServerIp?: string;
 }
 
 export interface YouTubeSearchResult {

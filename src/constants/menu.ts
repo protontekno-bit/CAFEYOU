@@ -214,7 +214,7 @@ export const DEFAULT_MENU_ITEMS: Record<string, MenuItem> = {
     isAvailable: true,
   },
 
-  // Paket Karaoke Combo
+  // Paket Karaoke Combo & Sewa Ruang
   'menu-15': {
     id: 'menu-15',
     name: 'Paket Nongkrong 4 Orang',
@@ -224,5 +224,34 @@ export const DEFAULT_MENU_ITEMS: Record<string, MenuItem> = {
     image: '🍱',
     isAvailable: true,
     isBestSeller: true,
+  },
+  'menu-16': {
+    id: 'menu-16',
+    name: 'Sewa Room Karaoke 1 Jam (Reguler)',
+    category: 'Paket',
+    price: 50000,
+    description: 'Sewa ruang karaoke 1 jam penuh dengan sound system profesional dan layar TV ganda.',
+    image: '🎤',
+    isAvailable: true,
+    isBestSeller: true,
+  },
+  'menu-17': {
+    id: 'menu-17',
+    name: 'Paket Karaoke 2 Jam + Snack & Pitcher Tea',
+    category: 'Paket',
+    price: 125000,
+    description: 'Sewa karaoke 2 jam + 1 French Fries Keju + 1 Pitcher Teh Manis Dingin untuk 4 orang.',
+    image: '🎉',
+    isAvailable: true,
+    isPromo: true,
+  },
+  'menu-18': {
+    id: 'menu-18',
+    name: 'Voucher Ekstra Karaoke (5 Lagu)',
+    category: 'Paket',
+    price: 20000,
+    description: 'Tambahan kuota 5 lagu bebas pilih untuk request lagu di antrean karaoke meja.',
+    image: '🎟️',
+    isAvailable: true,
   },
 };

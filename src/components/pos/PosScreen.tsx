@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TableOrder, OrderStatus, AppRole } from '../../types';
-import { useKaraoke } from '../../hooks/useKaraoke';
+import { useKaraoke, isSameTable } from '../../hooks/useKaraoke';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { ReceiptPrintView } from '../operator/ReceiptPrintView';
 import { DeveloperFooter } from '../common/DeveloperFooter';
@@ -39,7 +39,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
   // 1. Status Autentikasi Kasir / Staff Security Gate
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      return Boolean(sessionStorage.getItem('cafeyou_operator_auth'));
+      return Boolean(sessionStorage.getItem('cafeyou_pos_auth'));
     } catch {
       return false;
     }
@@ -112,13 +112,13 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const expectedPassword =
-      (cafeSettings as any)?.operatorPassword ||
-      localStorage.getItem('cafeyou_operator_password') ||
+      cafeSettings?.posPassword?.trim() ||
+      cafeSettings?.operatorPassword?.trim() ||
       '1234';
 
-    if (authPin.trim() === expectedPassword.trim()) {
+    if (authPin.trim() === expectedPassword) {
       try {
-        sessionStorage.setItem('cafeyou_operator_auth', 'true');
+        sessionStorage.setItem('cafeyou_pos_auth', 'true');
       } catch {}
       setIsAuthenticated(true);
       setAuthError('');
@@ -129,7 +129,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
 
   const handleLogout = () => {
     try {
-      sessionStorage.removeItem('cafeyou_operator_auth');
+      sessionStorage.removeItem('cafeyou_pos_auth');
     } catch {}
     setIsAuthenticated(false);
   };
@@ -190,9 +190,10 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     return s === 'paid' || s === 'cancelled';
   });
 
-  // Group active orders by tableNumber
+  // Group active orders by tableNumber with normalized master table matching
   const ordersByTable = activeOrders.reduce<Record<string, TableOrder[]>>((acc, order) => {
-    const table = order.tableNumber || 'Tanpa Meja';
+    const matchedMasterTable = tables?.find((t) => isSameTable(t, order.tableNumber));
+    const table = matchedMasterTable || (order.tableNumber ? order.tableNumber.trim() : 'Tanpa Meja');
     if (!acc[table]) acc[table] = [];
     acc[table].push(order);
     return acc;

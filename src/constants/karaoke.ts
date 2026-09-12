@@ -12,6 +12,9 @@ export const DEFAULT_CAFE_SETTINGS: CafeSettings = {
   wifiName: 'CAFEYOU_Free_WiFi',
   wifiPassword: 'karaokecafeyou',
   youtubeApiKey: '',
+  posPassword: '1234',
+  operatorPassword: '1234',
+  localServerIp: '',
 };
 
 // Inisialisasi library awal dari katalog lagu populer

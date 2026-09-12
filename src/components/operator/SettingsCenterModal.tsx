@@ -111,6 +111,7 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   const [welcomeMsg, setWelcomeMsg] = useState(cafeSettings?.welcomeMessage || '');
   const [wifiName, setWifiName] = useState(cafeSettings?.wifiName || '');
   const [wifiPassword, setWifiPassword] = useState(cafeSettings?.wifiPassword || '');
+  const [posPin, setPosPin] = useState(cafeSettings?.posPassword || '1234');
   const [isCafeSaved, setIsCafeSaved] = useState(false);
 
   // State: YouTube Data API v3
@@ -235,6 +236,7 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
       setWelcomeMsg(cafeSettings?.welcomeMessage || '');
       setWifiName(cafeSettings?.wifiName || '');
       setWifiPassword(cafeSettings?.wifiPassword || '');
+      setPosPin(cafeSettings?.posPassword || '1234');
       setYoutubeApiKey(cafeSettings?.youtubeApiKey || '');
       setYtKeyStatus(null);
       setIsYtKeySaved(false);
@@ -268,12 +270,14 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   const handleSaveCafe = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateCafeSettings({
+      ...(cafeSettings || DEFAULT_CAFE_SETTINGS),
       name: cafeName.trim() || 'CAFEYOU',
       tagline: tagline.trim(),
       welcomeMessage: welcomeMsg.trim(),
       wifiName: wifiName.trim(),
       wifiPassword: wifiPassword.trim(),
       youtubeApiKey: youtubeApiKey.trim(),
+      posPassword: posPin.trim() || '1234',
     });
     setIsCafeSaved(true);
     setTimeout(() => setIsCafeSaved(false), 2000);
@@ -372,7 +376,11 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
     }
     if (confirm(`Apakah Anda yakin ingin menghapus "${tableToRemove}" dari sistem kafe?`)) {
       if (onRemoveTable) {
-        onRemoveTable(tableToRemove);
+        const res = onRemoveTable(tableToRemove) as any;
+        if (res && res.success === false) {
+          alert(`❌ Gagal Menghapus Meja:\n${res.reason}`);
+          return;
+        }
         const remaining = activeTables.filter((t) => t !== tableToRemove);
         if (previewTable === tableToRemove) {
           setPreviewTable(remaining[0] || 'Meja 1');
@@ -711,6 +719,26 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* PIN Kasir & POS */}
+                <div className="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-3">
+                  <div className="text-xs font-bold text-amber-300 flex items-center gap-2">
+                    <span>🍽️ Keamanan Workstation Kasir (POS)</span>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-slate-400">PIN / Kata Sandi Kasir (Cloud):</label>
+                    <input
+                      type="password"
+                      value={posPin}
+                      onChange={(e) => setPosPin(e.target.value)}
+                      placeholder="1234"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-mono tracking-widest"
+                    />
+                    <p className="text-[10px] text-slate-500">
+                      PIN ini tersimpan di Firebase Cloud dan digunakan staf untuk membuka dasbor POS (<code>#/pos</code>) di komputer/tablet kasir.
+                    </p>
                   </div>
                 </div>
 

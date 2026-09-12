@@ -21,6 +21,11 @@ import { rebalanceFairQueue } from '../utils/queue';
 import { initFirebaseDatabase, ref, get } from '../config/firebase';
 
 
+export const isSameTable = (a?: string | null, b?: string | null): boolean => {
+  if (!a || !b) return false;
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+};
+
 export function useKaraoke() {
   const [appState, updateAppState, isCloudConnected] = useSyncState<KaraokeState>(
     STORAGE_KEY,
@@ -569,7 +574,7 @@ export function useKaraoke() {
     if (!trimmed) return;
     updateAppState((prev) => {
       const currentTables = Array.isArray(prev?.tables) && prev.tables.length > 0 ? prev.tables : DEFAULT_TABLES;
-      if (currentTables.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
+      if (currentTables.some((t) => isSameTable(t, trimmed))) {
         return prev;
       }
       return {
@@ -579,13 +584,68 @@ export function useKaraoke() {
     });
   };
 
-  const removeTable = (tableName: string) => {
+  const removeTable = (tableName: string): { success: boolean; reason?: string } => {
+    const trimmed = tableName.trim();
+    // Cek apakah ada pesanan belum lunas di meja ini
+    const currentOrders = Object.values(appState?.tableOrders || {});
+    const hasUnpaidOrders = currentOrders.some((o) => {
+      const s = o.status?.toLowerCase();
+      return isSameTable(o.tableNumber, trimmed) && s !== 'paid' && s !== 'cancelled';
+    });
+
+    if (hasUnpaidOrders) {
+      return {
+        success: false,
+        reason: `Meja "${trimmed}" tidak dapat dihapus karena masih memiliki pesanan F&B aktif di kasir.`,
+      };
+    }
+
+    // Cek apakah ada voucher aktif
+    const currentVouchers = Object.values(appState?.vouchers || {});
+    const hasActiveVouchers = currentVouchers.some(
+      (v) => isSameTable(v.tableNumber, trimmed) && v.status === 'active' && v.quotaUsed < v.quotaTotal
+    );
+
+    if (hasActiveVouchers) {
+      return {
+        success: false,
+        reason: `Meja "${trimmed}" masih memiliki kuota voucher karaoke aktif.`,
+      };
+    }
+
     updateAppState((prev) => {
       const currentTables = Array.isArray(prev?.tables) && prev.tables.length > 0 ? prev.tables : DEFAULT_TABLES;
-      const updated = currentTables.filter((t) => t.toLowerCase() !== tableName.toLowerCase());
+      const updated = currentTables.filter((t) => !isSameTable(t, trimmed));
       return {
         ...prev,
         tables: updated.length > 0 ? updated : ['Meja 1'],
+      };
+    });
+
+    return { success: true };
+  };
+
+  const updateLocalServerIp = (ip: string) => {
+    const cleanIp = ip.trim();
+    updateAppState((prev) => ({
+      ...prev,
+      cafeSettings: {
+        ...(prev?.cafeSettings || DEFAULT_CAFE_SETTINGS),
+        localServerIp: cleanIp,
+      },
+    }));
+  };
+
+  const updateRolePasswords = (operatorPass?: string, posPass?: string) => {
+    updateAppState((prev) => {
+      const current = prev?.cafeSettings || DEFAULT_CAFE_SETTINGS;
+      return {
+        ...prev,
+        cafeSettings: {
+          ...current,
+          ...(operatorPass !== undefined ? { operatorPassword: operatorPass.trim() } : {}),
+          ...(posPass !== undefined ? { posPassword: posPass.trim() } : {}),
+        },
       };
     });
   };
@@ -958,5 +1018,7 @@ export function useKaraoke() {
     toggleMenuItemAvailability,
     quickUpdateMenuPrice,
     clearFinishedOrders,
+    updateLocalServerIp,
+    updateRolePasswords,
   };
 }

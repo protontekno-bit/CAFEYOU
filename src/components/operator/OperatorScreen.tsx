@@ -224,6 +224,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
             onOpenPopularModal={() => setIsPopularOpen(true)}
             songLibrary={songLibrary}
             history={history}
+            tables={tables}
           />
         </div>
 
@@ -292,6 +293,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         isOpen={isVoucherOpen}
         vouchers={vouchers}
         dailyPin={dailyPin}
+        tables={tables}
         onClose={() => setIsVoucherOpen(false)}
         onCreateVoucher={createVoucher}
         onRevokeVoucher={revokeVoucher}

@@ -7,6 +7,7 @@ interface VoucherManagerModalProps {
   isOpen: boolean;
   vouchers: Record<string, Voucher>;
   dailyPin: DailyPinConfig;
+  tables?: string[];
   onClose: () => void;
   onCreateVoucher: (tableNumber: string, quota: number) => Voucher;
   onRevokeVoucher: (code: string) => void;
@@ -17,12 +18,14 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
   isOpen,
   vouchers = {},
   dailyPin,
+  tables,
   onClose,
   onCreateVoucher,
   onRevokeVoucher,
   onSetDailyPin,
 }) => {
-  const [selectedTable, setSelectedTable] = useState('Meja 1');
+  const activeTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
+  const [selectedTable, setSelectedTable] = useState(() => activeTables[0] || 'Meja 1');
   const [quota, setQuota] = useState(3);
   const [lastCreatedVoucher, setLastCreatedVoucher] = useState<Voucher | null>(null);
 
@@ -99,7 +102,7 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                 onChange={(e) => setSelectedTable(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
               >
-                {QUICK_TABLES.map((t) => (
+                {activeTables.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>

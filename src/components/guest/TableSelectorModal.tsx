@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QUICK_TABLES } from '../../constants/karaoke';
 
 interface TableSelectorModalProps {
@@ -24,6 +24,17 @@ export const TableSelectorModal: React.FC<TableSelectorModalProps> = ({
   const [selected, setSelected] = useState<string>(currentTable || availableTables[0] || 'Meja 1');
   const [customInput, setCustomInput] = useState<string>('');
   const [isCustom, setIsCustom] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (currentTable) {
+        setSelected(currentTable);
+        setIsCustom(false);
+      } else if (!isCustom && !availableTables.includes(selected)) {
+        setSelected(availableTables[0] || 'Meja 1');
+      }
+    }
+  }, [isOpen, currentTable, availableTables]);
 
   if (!isOpen) return null;
 

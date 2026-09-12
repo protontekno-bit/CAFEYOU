@@ -47,6 +47,14 @@ function sanitizeState<T>(val: any, fallback: T): T {
         ? { ...(fallback as any).cafeSettings, ...val.cafeSettings }
         : (fallback as any).cafeSettings;
   }
+  if ('tables' in (fallback as any)) {
+    merged.tables =
+      Array.isArray(val.tables) && val.tables.length > 0
+        ? val.tables
+        : typeof val.tables === 'object' && val.tables !== null
+        ? Object.values(val.tables)
+        : (fallback as any).tables || [];
+  }
   return merged as T;
 }
 

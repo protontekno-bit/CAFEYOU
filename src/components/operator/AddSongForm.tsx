@@ -14,6 +14,7 @@ interface AddSongFormProps {
   onOpenPopularModal?: () => void;
   songLibrary?: Record<string, SavedLibrarySong>;
   history?: SongHistoryItem[];
+  tables?: string[];
 }
 
 export const AddSongForm: React.FC<AddSongFormProps> = ({
@@ -21,7 +22,9 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
   onOpenPopularModal,
   songLibrary = {},
   history = [],
+  tables,
 }) => {
+  const activeTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
   const [activeTab, setActiveTab] = useState<'search' | 'url'>('search');
   const [searchInput, setSearchInput] = useState('');
   const [linkInput, setLinkInput] = useState('');
@@ -223,7 +226,7 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
 
         {/* Quick Table Chips */}
         <div className="flex flex-wrap gap-1.5 mt-2">
-          {QUICK_TABLES.map((table) => (
+          {activeTables.map((table) => (
             <button
               key={table}
               type="button"

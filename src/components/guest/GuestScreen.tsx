@@ -81,6 +81,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
 
   // Digital Receipt Modal for Guests (E-Billing)
   const [selectedDigitalReceipt, setSelectedDigitalReceipt] = useState<TableOrder | null>(null);
+  const [isGroupedReceiptOpen, setIsGroupedReceiptOpen] = useState<boolean>(false);
 
   // QRIS & DANA Self-Payment View
   const [showGuestQris, setShowGuestQris] = useState<boolean>(false);
@@ -384,16 +385,31 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     return s !== 'paid' && s !== 'cancelled';
   }).length;
 
-  const tableAccumulatedBill = myTableOrders
-    .filter((o) => o.status?.toLowerCase() !== 'cancelled')
-    .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  // Tarif Pajak PB1 & Service Charge
+  const isTaxPlus = cafeSettings?.isTaxIncluded === false && (cafeSettings?.taxPercentage || 0) > 0;
+  const guestTaxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
+  const guestServiceRate = cafeSettings?.servicePercentage || 0;
 
-  const tableUnpaidBill = myTableOrders
+  // Subtotal riil pesanan belum lunas (sebelum pajak tambahan)
+  const tableUnpaidSubtotal = myTableOrders
     .filter((o) => {
       const s = o.status?.toLowerCase();
       return s !== 'paid' && s !== 'cancelled';
     })
+    .reduce((sum, o) => sum + (o.subtotal || o.totalAmount || 0), 0);
+
+  // Estimasi Pajak & Layanan jika belum termasuk di harga menu
+  const tableUnpaidEstimatedTax = Math.round((tableUnpaidSubtotal * guestTaxRate) / 100);
+  const tableUnpaidEstimatedService = Math.round((tableUnpaidSubtotal * guestServiceRate) / 100);
+  const tableUnpaidBill = tableUnpaidSubtotal + tableUnpaidEstimatedTax + tableUnpaidEstimatedService;
+
+  // Total yang sudah pernah lunas
+  const tablePaidTotal = myTableOrders
+    .filter((o) => o.status?.toLowerCase() === 'paid')
     .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+
+  // Total akumulasi seluruh pesanan non-batal
+  const tableAccumulatedBill = tablePaidTotal + tableUnpaidBill;
 
   // Checkout Handler
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
@@ -1524,27 +1540,77 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         {mainTab === 'my_orders' && (
           <div className="space-y-4 animate-fadeIn">
             {/* Table Bill Summary Card */}
-            <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 shadow-xl space-y-2">
+            <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 shadow-xl space-y-2.5">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-semibold">Tagihan Meja ({tableNumber})</span>
-                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
+                <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                  <span>🧾</span>
+                  <span>Rincian Tagihan Meja ({tableNumber})</span>
+                </span>
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-bold">
                   {myTableOrders.length} Pesanan
                 </span>
               </div>
-              <div className="flex justify-between items-baseline">
-                <span className="text-xs text-slate-300">Total Belum Lunas:</span>
-                <span className="text-xl font-black text-amber-400">
+
+              {/* Rincian Subtotal & Pajak jika PB1 belum termasuk */}
+              {tableUnpaidSubtotal > 0 && (guestTaxRate > 0 || guestServiceRate > 0) && (
+                <div className="space-y-1 text-xs pt-1 border-t border-slate-800/80">
+                  <div className="flex justify-between text-slate-400 text-[11px]">
+                    <span>Subtotal Makanan & Minuman:</span>
+                    <span className="font-mono text-slate-300">Rp {tableUnpaidSubtotal.toLocaleString('id-ID')}</span>
+                  </div>
+                  {guestTaxRate > 0 && (
+                    <div className="flex justify-between text-amber-400 text-[11px]">
+                      <span>Pajak Restoran (PB1 {guestTaxRate}%):</span>
+                      <span className="font-mono">+Rp {tableUnpaidEstimatedTax.toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
+                  {guestServiceRate > 0 && (
+                    <div className="flex justify-between text-blue-400 text-[11px]">
+                      <span>Biaya Layanan ({guestServiceRate}%):</span>
+                      <span className="font-mono">+Rp {tableUnpaidEstimatedService.toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-between items-baseline pt-1 border-t border-slate-800/60">
+                <div>
+                  <span className="text-xs text-slate-300 block font-bold">
+                    {guestTaxRate > 0 ? 'Total Belum Lunas (+PB1):' : 'Total Tagihan Belum Lunas:'}
+                  </span>
+                  {cafeSettings?.isTaxIncluded && (
+                    <span className="text-[10px] text-emerald-400 font-medium">
+                      ✓ Termasuk PB1 ({cafeSettings?.taxPercentage || 10}%)
+                    </span>
+                  )}
+                </div>
+                <span className="text-xl font-black text-amber-400 font-mono">
                   Rp {tableUnpaidBill.toLocaleString('id-ID')}
                 </span>
               </div>
-              {tableAccumulatedBill > tableUnpaidBill && (
-                <div className="flex justify-between items-center text-[11px] text-slate-400 pt-1 border-t border-slate-800">
+
+              {tablePaidTotal > 0 && (
+                <div className="flex justify-between items-center text-[11px] text-slate-400 pt-1.5 border-t border-slate-800">
                   <span>Total Sudah Pernah Lunas:</span>
-                  <span>Rp {(tableAccumulatedBill - tableUnpaidBill).toLocaleString('id-ID')}</span>
+                  <span className="text-emerald-400 font-mono font-bold">
+                    Rp {tablePaidTotal.toLocaleString('id-ID')}
+                  </span>
                 </div>
               )}
-              <p className="text-[10px] text-slate-500 pt-1">
-                💡 Silakan minta tagihan / bayar ke kasir saat selesai menikmati pesanan di kafe.
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsGroupedReceiptOpen(true)}
+                  className="w-full py-2 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow"
+                >
+                  <span>🧾</span>
+                  <span>Lihat E-Nota Konsolidasi Meja</span>
+                </button>
+              </div>
+
+              <p className="text-[10px] text-slate-500 pt-0.5 text-center">
+                💡 Silakan minta tagihan / bayar ke kasir atau scan QRIS di bawah saat selesai menikmati pesanan di kafe.
               </p>
             </div>
 
@@ -1964,12 +2030,49 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
 
             {/* Total & Submit Button */}
             <div className="pt-2 border-t border-slate-800 space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-semibold">Total Pembayaran Meja:</span>
-                <span className="text-base font-black text-amber-400">
-                  Rp {cartTotalPrice.toLocaleString('id-ID')}
-                </span>
-              </div>
+              {(() => {
+                const estTax = Math.round((cartTotalPrice * guestTaxRate) / 100);
+                const estServ = Math.round((cartTotalPrice * guestServiceRate) / 100);
+                const estTotal = cartTotalPrice + estTax + estServ;
+
+                return (
+                  <div className="space-y-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                    {isTaxPlus && (
+                      <div className="flex justify-between items-center text-[11px] text-slate-400">
+                        <span>Subtotal Makanan & Minuman:</span>
+                        <span className="font-mono text-slate-300">Rp {cartTotalPrice.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {estTax > 0 && (
+                      <div className="flex justify-between items-center text-[11px] text-amber-400">
+                        <span>Pajak Restoran (PB1 {guestTaxRate}%):</span>
+                        <span className="font-mono">+Rp {estTax.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {estServ > 0 && (
+                      <div className="flex justify-between items-center text-[11px] text-blue-400">
+                        <span>Biaya Layanan ({guestServiceRate}%):</span>
+                        <span className="font-mono">+Rp {estServ.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-800">
+                      <div>
+                        <span className="text-slate-300 font-bold block">
+                          {isTaxPlus ? 'Estimasi Total Pembayaran:' : 'Total Pembayaran Meja (Nett):'}
+                        </span>
+                        {cafeSettings?.isTaxIncluded && (
+                          <span className="text-[10px] text-emerald-400 font-medium">
+                            ✓ Termasuk PB1 ({cafeSettings?.taxPercentage || 10}%)
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-base font-black text-amber-400 font-mono">
+                        Rp {estTotal.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex gap-2">
                 <button
@@ -1993,7 +2096,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         </div>
       )}
 
-      {/* Modal Struk Digital Tamu (E-Billing) */}
+      {/* Modal Struk Digital Tamu (E-Billing Per Pesanan) */}
       {selectedDigitalReceipt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
           <div className="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 animate-scaleUp text-slate-200 text-left">
@@ -2007,7 +2110,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                 <p className="text-[11px] text-slate-400 italic">{cafeSettings.tagline}</p>
               )}
               <div className="pt-2 text-[10px] text-slate-400 font-mono space-y-0.5">
-                <div>No: #{selectedDigitalReceipt.id.slice(-8).toUpperCase()}</div>
+                <div>No. Order: #{selectedDigitalReceipt.id.slice(-8).toUpperCase()}</div>
                 <div>
                   {new Date(selectedDigitalReceipt.createdAt).toLocaleDateString('id-ID', {
                     day: 'numeric',
@@ -2027,7 +2130,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
             </div>
 
             {/* List Item */}
-            <div className="space-y-2 max-h-48 overflow-y-auto py-1 text-xs">
+            <div className="space-y-2 max-h-48 overflow-y-auto py-1 text-xs custom-scrollbar">
               {selectedDigitalReceipt.items.map((it, idx) => {
                 const count = it.quantity ?? it.qty ?? 1;
                 return (
@@ -2053,37 +2156,98 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
               })}
             </div>
 
-            {/* Summary & Stempel */}
-            <div className="border-t border-dashed border-slate-750 pt-3 space-y-2 text-xs">
-              <div className="flex justify-between items-center font-bold">
-                <span className="text-slate-400">TOTAL:</span>
-                <span className="text-emerald-400 font-mono text-base font-black">
-                  Rp {selectedDigitalReceipt.totalAmount.toLocaleString('id-ID')}
-                </span>
-              </div>
+            {/* Rincian Finansial & Stempel */}
+            {(() => {
+              const isPaid = selectedDigitalReceipt.status?.toLowerCase() === 'paid';
+              const rawSubtotal = selectedDigitalReceipt.items.reduce(
+                (sum, it) => sum + (it.isVoided ? 0 : it.price * (it.quantity ?? it.qty ?? 1)),
+                0
+              );
+              const subtotal = selectedDigitalReceipt.subtotal || rawSubtotal;
+              const isTaxPlus = cafeSettings?.isTaxIncluded === false && (cafeSettings?.taxPercentage || 0) > 0;
+              const taxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
+              const serviceRate = cafeSettings?.servicePercentage || 0;
 
-              {selectedDigitalReceipt.status?.toLowerCase() === 'paid' ? (
-                <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-2.5 text-center">
-                  <span className="text-xs font-black text-emerald-300 tracking-widest uppercase block">
-                    [ ✅ LUNAS / PAID ]
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    Metode: {selectedDigitalReceipt.paymentMethod?.toUpperCase() || 'TUNAI'}
-                  </span>
+              const taxAmount = selectedDigitalReceipt.taxAmount !== undefined
+                ? selectedDigitalReceipt.taxAmount
+                : (isTaxPlus ? Math.round((subtotal * taxRate) / 100) : 0);
+
+              const serviceAmount = selectedDigitalReceipt.serviceAmount !== undefined
+                ? selectedDigitalReceipt.serviceAmount
+                : Math.round((subtotal * serviceRate) / 100);
+
+              const roundingAmount = selectedDigitalReceipt.roundingAmount || 0;
+              const finalTotal = selectedDigitalReceipt.totalAmount || (subtotal + taxAmount + serviceAmount + roundingAmount);
+
+              return (
+                <div className="border-t border-dashed border-slate-750 pt-3 space-y-2 text-xs">
+                  <div className="space-y-1 text-[11px]">
+                    <div className="flex justify-between text-slate-400">
+                      <span>Subtotal Menu:</span>
+                      <span className="font-mono text-slate-300">Rp {subtotal.toLocaleString('id-ID')}</span>
+                    </div>
+                    {taxAmount > 0 && (
+                      <div className="flex justify-between text-amber-400/90">
+                        <span>Pajak Restoran (PB1 {taxRate > 0 ? `${taxRate}%` : ''}):</span>
+                        <span className="font-mono">+Rp {taxAmount.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {serviceAmount > 0 && (
+                      <div className="flex justify-between text-blue-400/90">
+                        <span>Biaya Layanan ({serviceRate > 0 ? `${serviceRate}%` : ''}):</span>
+                        <span className="font-mono">+Rp {serviceAmount.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {roundingAmount !== 0 && (
+                      <div className="flex justify-between text-slate-400">
+                        <span>Pembulatan:</span>
+                        <span className="font-mono">Rp {roundingAmount.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {cafeSettings?.isTaxIncluded && (
+                      <div className="text-[10px] text-slate-500 italic">
+                        *Harga menu sudah termasuk PB1 ({cafeSettings?.taxPercentage || 10}%)
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center font-bold pt-1.5 border-t border-slate-800">
+                    <span className="text-slate-300 text-xs">TOTAL:</span>
+                    <span className="text-emerald-400 font-mono text-base font-black">
+                      Rp {finalTotal.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+
+                  {isPaid ? (
+                    <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-2.5 text-center space-y-0.5">
+                      <span className="text-xs font-black text-emerald-300 tracking-widest uppercase block">
+                        [ ✅ LUNAS / PAID ]
+                      </span>
+                      <div className="flex justify-center gap-2 text-[10px] text-slate-400">
+                        <span>Metode: <strong className="text-slate-200 uppercase">{selectedDigitalReceipt.paymentMethod || 'TUNAI'}</strong></span>
+                        {selectedDigitalReceipt.paidAt && (
+                          <span>• {new Date(selectedDigitalReceipt.paidAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-2.5 text-center text-xs font-bold text-amber-300 space-y-0.5">
+                      <div>⏳ Menunggu Pembayaran di Kasir</div>
+                      <div className="text-[10px] text-slate-400 font-normal">
+                        Bisa bayar langsung via QRIS / DANA atau di kasir
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-2.5 text-center text-xs font-bold text-amber-300">
-                  ⏳ Menunggu Pembayaran di Kasir
-                </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Tombol Aksi */}
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1"
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1 border border-slate-700"
               >
                 <span>🖨️</span>
                 <span>Cetak / PDF</span>
@@ -2096,6 +2260,321 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                 Tutup ✕
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal E-Nota Konsolidasi Meja (Grouped Table Bill) */}
+      {isGroupedReceiptOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 animate-scaleUp text-slate-200 text-left">
+            {/* Header Nota */}
+            <div className="text-center border-b border-dashed border-slate-750 pb-4 space-y-1">
+              <span className="text-2xl">☕</span>
+              <h3 className="text-base font-black text-white tracking-wide uppercase">
+                {cafeSettings?.name || 'CAFEYOU'}
+              </h3>
+              <p className="text-[11px] text-emerald-400 font-bold tracking-wider uppercase">
+                E-NOTA GABUNGAN MEJA ({tableNumber})
+              </p>
+              {cafeSettings?.tagline && (
+                <p className="text-[10px] text-slate-400 italic">{cafeSettings.tagline}</p>
+              )}
+              <div className="pt-2 text-[10px] text-slate-400 font-mono space-y-0.5">
+                <div>Total Tiket: {myTableOrders.filter((o) => o.status?.toLowerCase() !== 'cancelled').length} Pesanan</div>
+                <div>Waktu Cetak: {new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</div>
+                <div>Status Meja: <strong className="text-white">{tableUnpaidBill > 0 ? 'Sebagian Belum Lunas' : 'Seluruhnya LUNAS'}</strong></div>
+              </div>
+            </div>
+
+            {/* List Gabungan Seluruh Menu */}
+            <div className="space-y-2 max-h-48 overflow-y-auto py-1 text-xs custom-scrollbar">
+              {myTableOrders
+                .filter((o) => o.status?.toLowerCase() !== 'cancelled')
+                .map((ord, oIdx) => (
+                  <div key={ord.id} className="pb-2 border-b border-slate-800/60 last:border-0 last:pb-0 space-y-1">
+                    <div className="flex justify-between items-center text-[10px] text-slate-400">
+                      <span className="font-mono font-bold">#{ord.id.slice(-6).toUpperCase()} ({new Date(ord.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})</span>
+                      <span className={`px-1.5 py-0.2 rounded font-bold ${ord.status?.toLowerCase() === 'paid' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                        {ord.status?.toLowerCase() === 'paid' ? 'LUNAS' : 'BELUM LUNAS'}
+                      </span>
+                    </div>
+                    {ord.items.map((it, idx) => {
+                      const count = it.quantity ?? it.qty ?? 1;
+                      return (
+                        <div key={idx} className={`flex justify-between items-start text-[11px] pl-1.5 ${it.isVoided ? 'line-through text-red-400 opacity-50' : 'text-slate-300'}`}>
+                          <div>
+                            <span>{count}x {it.name}</span>
+                            {it.selectedOptions && it.selectedOptions.length > 0 && (
+                              <span className="text-[9px] text-amber-400 ml-1">({it.selectedOptions.join(', ')})</span>
+                            )}
+                          </div>
+                          <span className="font-mono text-slate-400">
+                            Rp {(it.price * count).toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+            </div>
+
+            {/* Rincian Finansial Gabungan */}
+            <div className="border-t border-dashed border-slate-750 pt-3 space-y-2 text-xs">
+              <div className="space-y-1 text-[11px]">
+                <div className="flex justify-between text-slate-400">
+                  <span>Subtotal Seluruh Pesanan:</span>
+                  <span className="font-mono text-slate-300">
+                    Rp {myTableOrders
+                      .filter((o) => o.status?.toLowerCase() !== 'cancelled')
+                      .reduce((sum, o) => sum + (o.subtotal || o.totalAmount || 0), 0)
+                      .toLocaleString('id-ID')}
+                  </span>
+                </div>
+                {tableUnpaidEstimatedTax > 0 && (
+                  <div className="flex justify-between text-amber-400/90">
+                    <span>Estimasi Pajak Restoran (PB1 {guestTaxRate}%):</span>
+                    <span className="font-mono">+Rp {tableUnpaidEstimatedTax.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                {tableUnpaidEstimatedService > 0 && (
+                  <div className="flex justify-between text-blue-400/90">
+                    <span>Estimasi Biaya Layanan ({guestServiceRate}%):</span>
+                    <span className="font-mono">+Rp {tableUnpaidEstimatedService.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-slate-300 font-bold pt-1 border-t border-slate-800">
+                  <span>TOTAL AKUMULASI MEJA:</span>
+                  <span className="font-mono text-emerald-400 text-sm font-black">
+                    Rp {tableAccumulatedBill.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                {tablePaidTotal > 0 && (
+                  <div className="flex justify-between text-emerald-400 text-[11px]">
+                    <span>Sudah Pernah Lunas:</span>
+                    <span className="font-mono">Rp {tablePaidTotal.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                {tableUnpaidBill > 0 && (
+                  <div className="flex justify-between text-amber-400 text-xs font-bold pt-0.5">
+                    <span>SISA TAGIHAN BELUM LUNAS:</span>
+                    <span className="font-mono text-sm">Rp {tableUnpaidBill.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+              </div>
+
+              {tableUnpaidBill === 0 ? (
+                <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-2.5 text-center">
+                  <span className="text-xs font-black text-emerald-300 tracking-widest uppercase block">
+                    [ ✅ SELURUH TAGIHAN LUNAS ]
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Terima kasih telah berkunjung di {cafeSettings?.name || 'CAFEYOU'}!
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-2.5 text-center text-xs font-bold text-amber-300 space-y-0.5">
+                  <div>⏳ Ada Tagihan Menunggu Pembayaran</div>
+                  <div className="text-[10px] text-slate-400 font-normal">
+                    Silakan selesaikan di kasir atau scan QRIS di meja.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Tombol Aksi */}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1 border border-slate-700"
+              >
+                <span>🖨️</span>
+                <span>Cetak / PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsGroupedReceiptOpen(false)}
+                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all"
+              >
+                Tutup ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Komponen Cetak Struk Terisolasi untuk Tamu (Print View 58mm/80mm) */}
+      {(selectedDigitalReceipt || isGroupedReceiptOpen) && (
+        <div id="guest-print-receipt-area" className="hidden print:block text-black bg-white font-mono text-xs w-[58mm] sm:w-[80mm] mx-auto p-2">
+          <style>{`
+            @media print {
+              body * {
+                visibility: hidden !important;
+              }
+              #guest-print-receipt-area, #guest-print-receipt-area * {
+                visibility: visible !important;
+              }
+              #guest-print-receipt-area {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 8px !important;
+                background: white !important;
+                color: black !important;
+              }
+              @page {
+                margin: 0;
+                size: auto;
+              }
+            }
+          `}</style>
+
+          {/* Header Thermal Struk */}
+          <div className="text-center pb-2 border-b border-dashed border-gray-400 mb-2">
+            <h2 className="font-bold text-sm uppercase tracking-wide">{cafeSettings?.name || 'CAFEYOU KARAOKE & CAFE'}</h2>
+            {cafeSettings?.tagline && (
+              <p className="text-[10px] text-gray-600 line-clamp-1">{cafeSettings.tagline}</p>
+            )}
+            <p className="text-[10px] text-gray-500 mt-0.5">
+              {isGroupedReceiptOpen ? 'E-NOTA KONSOLIDASI MEJA' : 'STRUK PEMESANAN F&B (E-RECEIPT)'}
+            </p>
+          </div>
+
+          {/* Info Meja & Waktu */}
+          <div className="text-[11px] mb-2 space-y-0.5 border-b border-dashed border-gray-400 pb-2">
+            <div className="flex justify-between">
+              <span>Meja: <strong className="text-xs">{tableNumber}</strong></span>
+              <span>{customerName || `Tamu ${tableNumber}`}</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-gray-600">
+              <span>Waktu:</span>
+              <span>{new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</span>
+            </div>
+            {selectedDigitalReceipt && (
+              <div className="flex justify-between text-[10px] text-gray-600">
+                <span>No. Order:</span>
+                <span>#{selectedDigitalReceipt.id.slice(-8).toUpperCase()}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Item yang Dicetak */}
+          <div className="space-y-1.5 mb-2 border-b border-dashed border-gray-400 pb-2">
+            {(isGroupedReceiptOpen
+              ? myTableOrders.filter((o) => o.status?.toLowerCase() !== 'cancelled').flatMap((o) => o.items)
+              : (selectedDigitalReceipt ? selectedDigitalReceipt.items : [])
+            ).map((item, idx) => {
+              const qty = item.quantity ?? item.qty ?? 1;
+              return (
+                <div key={idx} className={item.isVoided ? 'line-through opacity-50' : ''}>
+                  <div className="flex justify-between font-semibold">
+                    <span className="truncate pr-1">{item.name}</span>
+                    <span>Rp {(item.price * qty).toLocaleString('id-ID')}</span>
+                  </div>
+                  {item.selectedOptions && item.selectedOptions.length > 0 && (
+                    <div className="text-[9px] text-gray-600 pl-2">
+                      • {item.selectedOptions.join(', ')}
+                    </div>
+                  )}
+                  <div className="flex justify-between text-[10px] text-gray-600 pl-2">
+                    <span>{qty} x Rp {item.price.toLocaleString('id-ID')}</span>
+                    {item.notes && <span className="italic truncate max-w-[120px]">({item.notes})</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Ringkasan Finansial Thermal */}
+          {(() => {
+            if (isGroupedReceiptOpen) {
+              const subtotal = myTableOrders
+                .filter((o) => o.status?.toLowerCase() !== 'cancelled')
+                .reduce((sum, o) => sum + (o.subtotal || o.totalAmount || 0), 0);
+              return (
+                <div className="space-y-1 mb-3 text-[10px]">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>Rp {subtotal.toLocaleString('id-ID')}</span>
+                  </div>
+                  {tableUnpaidEstimatedTax > 0 && (
+                    <div className="flex justify-between">
+                      <span>PB1 Resto ({guestTaxRate}%):</span>
+                      <span>+Rp {tableUnpaidEstimatedTax.toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
+                  {tableUnpaidEstimatedService > 0 && (
+                    <div className="flex justify-between">
+                      <span>Layanan ({guestServiceRate}%):</span>
+                      <span>+Rp {tableUnpaidEstimatedService.toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-xs pt-1 border-t border-black">
+                    <span>TOTAL AKHIR:</span>
+                    <span>Rp {tableAccumulatedBill.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Status Meja:</span>
+                    <span className="font-semibold">{tableUnpaidBill === 0 ? 'LUNAS' : 'SEBAGIAN BELUM LUNAS'}</span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (selectedDigitalReceipt) {
+              const subtotal = selectedDigitalReceipt.subtotal || selectedDigitalReceipt.totalAmount;
+              const tax = selectedDigitalReceipt.taxAmount || 0;
+              const serv = selectedDigitalReceipt.serviceAmount || 0;
+              const total = selectedDigitalReceipt.totalAmount;
+              const isPaid = selectedDigitalReceipt.status?.toLowerCase() === 'paid';
+
+              return (
+                <div className="space-y-1 mb-3 text-[10px]">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>Rp {subtotal.toLocaleString('id-ID')}</span>
+                  </div>
+                  {tax > 0 && (
+                    <div className="flex justify-between">
+                      <span>PB1 Resto:</span>
+                      <span>+Rp {tax.toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
+                  {serv > 0 && (
+                    <div className="flex justify-between">
+                      <span>Layanan:</span>
+                      <span>+Rp {serv.toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-xs pt-1 border-t border-black">
+                    <span>TOTAL:</span>
+                    <span>Rp {total.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Status:</span>
+                    <span className="font-semibold">{isPaid ? 'LUNAS' : 'BELUM LUNAS'}</span>
+                  </div>
+                  {isPaid && (
+                    <div className="flex justify-between">
+                      <span>Metode:</span>
+                      <span className="font-semibold uppercase">{selectedDigitalReceipt.paymentMethod || 'TUNAI'}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return null;
+          })()}
+
+          {/* Footer Thermal Struk */}
+          <div className="text-center pt-2 border-t border-dashed border-gray-400 text-[10px] text-gray-500 space-y-0.5">
+            <p>Terima kasih atas kunjungannya!</p>
+            <p>Simpan e-struk ini sebagai bukti pembayaran sah.</p>
+            <p className="text-[8px] text-gray-400 pt-1">Powered by CAFEYOU Smart Lounge</p>
           </div>
         </div>
       )}

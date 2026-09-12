@@ -82,6 +82,10 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
   // Digital Receipt Modal for Guests (E-Billing)
   const [selectedDigitalReceipt, setSelectedDigitalReceipt] = useState<TableOrder | null>(null);
 
+  // QRIS & DANA Self-Payment View
+  const [showGuestQris, setShowGuestQris] = useState<boolean>(false);
+  const [guestCopiedDana, setGuestCopiedDana] = useState<boolean>(false);
+
   // Notifikasi Pindah Meja Otomatis dari Kasir
   const [relocationNotice, setRelocationNotice] = useState<string | null>(null);
 
@@ -1543,6 +1547,99 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                 💡 Silakan minta tagihan / bayar ke kasir saat selesai menikmati pesanan di kafe.
               </p>
             </div>
+
+            {/* Tombol & Panel Pembayaran Mandiri QRIS / DANA */}
+            {(cafeSettings?.qrisImageUrl || cafeSettings?.danaPhoneNumber) && (
+              <div className="bg-slate-900/90 border border-emerald-500/30 rounded-2xl overflow-hidden shadow-lg transition-all">
+                <button
+                  type="button"
+                  onClick={() => setShowGuestQris((prev) => !prev)}
+                  className="w-full p-3.5 flex items-center justify-between bg-slate-900 hover:bg-slate-850 text-left transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-slate-950 font-black text-sm">
+                      📱
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-white flex items-center gap-1.5">
+                        <span>Bayar via QRIS / DANA</span>
+                        <span className="text-[10px] text-emerald-400 font-bold font-mono">
+                          {showGuestQris ? '▲ Tutup' : '▼ Buka Barcode'}
+                        </span>
+                      </h4>
+                      <p className="text-[10px] text-slate-400">
+                        Scan QRIS atau transfer DANA langsung dari tempat duduk Anda
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-amber-400">
+                    Rp {tableUnpaidBill.toLocaleString('id-ID')}
+                  </span>
+                </button>
+
+                {showGuestQris && (
+                  <div className="p-4 border-t border-slate-800/80 bg-slate-950/80 space-y-3.5 text-center animate-fadeIn">
+                    <div className="flex items-center justify-between text-[11px] pb-1 border-b border-slate-800">
+                      <span className="text-slate-400">Merchant QRIS:</span>
+                      <span className="font-bold text-white">
+                        {cafeSettings?.qrisMerchantName || cafeSettings?.name || 'CAFEYOU LOUNGE'}
+                      </span>
+                    </div>
+
+                    {cafeSettings?.qrisImageUrl && (
+                      <div className="space-y-2">
+                        <div className="bg-white p-3 rounded-2xl inline-block shadow-2xl mx-auto border-4 border-emerald-500/30">
+                          <img
+                            src={cafeSettings.qrisImageUrl}
+                            alt="QRIS Barcode"
+                            className="w-48 h-48 sm:w-56 sm:h-56 object-contain rounded-lg mx-auto"
+                          />
+                        </div>
+                        <div className="bg-slate-900 py-1 px-3 rounded-xl inline-block border border-slate-800 text-xs">
+                          <span className="text-slate-400">Total Tagihan: </span>
+                          <span className="text-emerald-400 font-bold font-mono">
+                            Rp {tableUnpaidBill.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {cafeSettings?.danaPhoneNumber && (
+                      <div className="bg-slate-900/90 p-3 rounded-xl border border-blue-500/30 text-left space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] text-slate-400 font-semibold">
+                            Transfer ke Dompet DANA:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (cafeSettings.danaPhoneNumber) {
+                                navigator.clipboard.writeText(cafeSettings.danaPhoneNumber);
+                                setGuestCopiedDana(true);
+                                setTimeout(() => setGuestCopiedDana(false), 2000);
+                              }
+                            }}
+                            className="text-[10px] font-bold px-2 py-0.5 bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 rounded-lg border border-blue-500/30 transition-colors"
+                          >
+                            {guestCopiedDana ? '✅ Nomor Tersalin' : '📋 Salin Nomor'}
+                          </button>
+                        </div>
+                        <p className="text-sm font-black font-mono text-white tracking-wider">
+                          {cafeSettings.danaPhoneNumber}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          a/n {cafeSettings?.qrisMerchantName || cafeSettings?.name || 'Kasir CAFEYOU'}
+                        </p>
+                      </div>
+                    )}
+
+                    <p className="text-[10px] text-slate-400 leading-relaxed bg-slate-900/60 p-2.5 rounded-xl border border-slate-850">
+                      ℹ️ <strong className="text-slate-200">Penting:</strong> Setelah melakukan pembayaran, harap konfirmasikan bukti transfer kepada waiter atau kasir kami agar status tagihan meja {tableNumber} dapat diperbarui menjadi <strong className="text-emerald-400">LUNAS</strong>.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* List of orders */}
             <div className="space-y-3">

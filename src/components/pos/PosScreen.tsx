@@ -74,6 +74,8 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
   const [payingOrders, setPayingOrders] = useState<TableOrder[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qris' | 'transfer' | 'debit'>('cash');
   const [cashReceived, setCashReceived] = useState<number>(0);
+  const [copiedDana, setCopiedDana] = useState<boolean>(false);
+  const [isQrisZoomed, setIsQrisZoomed] = useState<boolean>(false);
 
   // 5. Modal Pindah Meja (Move Table)
   const [movingOrder, setMovingOrder] = useState<TableOrder | null>(null);
@@ -1386,15 +1388,147 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
                     </div>
                   )}
 
-                  {/* Jika QRIS: Tampilan Petunjuk */}
+                  {/* Jika QRIS: Tampilan Barcode & Merchant */}
                   {paymentMethod === 'qris' && (
-                    <div className="bg-slate-950 p-4 rounded-2xl border border-purple-500/30 text-center space-y-2">
-                      <span className="text-3xl">📱</span>
-                      <p className="text-xs text-purple-300 font-bold">
-                        Arahkan pelanggan untuk scan QRIS Kafe senilai {formatRupiah(totalDue)}.
-                      </p>
-                      <p className="text-[11px] text-slate-500">
-                        Pastikan notifikasi dana masuk telah terverifikasi sebelum menyelesaikan.
+                    <div className="bg-slate-950 p-4 rounded-2xl border border-emerald-500/30 text-center space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-xs">
+                        <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                          <span>📱</span> QRIS Pembayaran Kafe
+                        </span>
+                        <span className="text-[11px] font-mono font-bold text-slate-300">
+                          {cafeSettings?.qrisMerchantName || cafeSettings?.name || 'CAFEYOU'}
+                        </span>
+                      </div>
+
+                      {cafeSettings?.qrisImageUrl ? (
+                        <div className="space-y-2.5">
+                          <div
+                            onClick={() => setIsQrisZoomed(true)}
+                            className="bg-white p-3 rounded-2xl inline-block shadow-xl mx-auto cursor-pointer hover:scale-102 transition-transform border-4 border-emerald-500/30 group relative"
+                            title="Klik untuk memperbesar barcode"
+                          >
+                            <img
+                              src={cafeSettings.qrisImageUrl}
+                              alt="Barcode QRIS"
+                              className="w-48 h-48 sm:w-52 sm:h-52 object-contain rounded-lg mx-auto"
+                            />
+                            <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                              <span className="bg-slate-900/90 text-white text-[10px] font-bold px-2 py-1 rounded-lg">
+                                🔍 Klik Perbesar
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-slate-900/80 py-1.5 px-3 rounded-xl inline-block border border-slate-800">
+                            <span className="text-xs text-slate-400">Total Tagihan: </span>
+                            <span className="text-emerald-400 font-mono font-black text-sm">{formatRupiah(totalDue)}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400">
+                            Arahkan kamera smartphone atau aplikasi perbankan/e-wallet pelanggan ke barcode di atas.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-slate-900/80 rounded-2xl border border-dashed border-amber-500/40 text-center space-y-2">
+                          <span className="text-2xl">⚠️</span>
+                          <p className="text-xs text-amber-300 font-bold">
+                            Barcode QRIS Kafe Belum Diunggah
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            Silakan unggah gambar barcode QRIS Anda di menu Pengaturan Kasir agar tampil di layar ini.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setIsPosSettingsOpen(true)}
+                            className="px-3 py-1.5 bg-amber-500 text-slate-950 font-black text-xs rounded-xl hover:bg-amber-400 transition-all"
+                          >
+                            ⚙️ Buka Pengaturan Kasir
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Info Tambahan DANA jika ada */}
+                      {cafeSettings?.danaPhoneNumber && (
+                        <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs bg-slate-900/60 p-2 rounded-xl">
+                          <div className="flex items-center gap-1.5 text-slate-300">
+                            <span className="text-blue-400 font-bold">DANA:</span>
+                            <span className="font-mono font-bold">{cafeSettings.danaPhoneNumber}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (cafeSettings.danaPhoneNumber) {
+                                navigator.clipboard.writeText(cafeSettings.danaPhoneNumber);
+                                setCopiedDana(true);
+                                setTimeout(() => setCopiedDana(false), 2000);
+                              }
+                            }}
+                            className="text-[10px] font-bold px-2 py-0.5 bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 rounded-lg border border-blue-500/30 transition-colors"
+                          >
+                            {copiedDana ? '✅ Tersalin' : '📋 Salin'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Jika TRANSFER: Tampilan Akun DANA & Bank */}
+                  {paymentMethod === 'transfer' && (
+                    <div className="bg-slate-950 p-4 rounded-2xl border border-blue-500/30 text-center space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-xs">
+                        <span className="font-bold text-blue-400 flex items-center gap-1.5">
+                          <span>🏦</span> Transfer Dompet Digital / Bank
+                        </span>
+                        <span className="text-[11px] font-mono font-bold text-slate-300">
+                          {cafeSettings?.qrisMerchantName || cafeSettings?.name || 'Kasir CAFEYOU'}
+                        </span>
+                      </div>
+
+                      {cafeSettings?.danaPhoneNumber ? (
+                        <div className="space-y-2 bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-left">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-slate-400 font-medium">Nomor Akun DANA:</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (cafeSettings.danaPhoneNumber) {
+                                  navigator.clipboard.writeText(cafeSettings.danaPhoneNumber);
+                                  setCopiedDana(true);
+                                  setTimeout(() => setCopiedDana(false), 2000);
+                                }
+                              }}
+                              className="text-[10px] font-bold px-2.5 py-1 bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 rounded-lg border border-blue-500/30 transition-colors"
+                            >
+                              {copiedDana ? '✅ Nomor Tersalin' : '📋 Salin Nomor'}
+                            </button>
+                          </div>
+                          <p className="text-base font-black font-mono text-white tracking-wider">
+                            {cafeSettings.danaPhoneNumber}
+                          </p>
+                          <div className="flex justify-between items-center text-[11px] text-slate-400 pt-1 border-t border-slate-800">
+                            <span>Atas Nama:</span>
+                            <span className="font-bold text-slate-200">
+                              {cafeSettings?.qrisMerchantName || cafeSettings?.name || 'Kasir'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs font-bold pt-1 text-emerald-400">
+                            <span>Nominal Transfer Pas:</span>
+                            <span className="font-mono text-sm">{formatRupiah(totalDue)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-center text-xs text-slate-400 space-y-1.5">
+                          <p>Nomor akun DANA belum dikonfigurasi.</p>
+                          <button
+                            type="button"
+                            onClick={() => setIsPosSettingsOpen(true)}
+                            className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 font-bold text-xs rounded-xl border border-blue-500/30"
+                          >
+                            ⚙️ Masukkan Nomor DANA di Pengaturan
+                          </button>
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-slate-400">
+                        Pastikan bukti transfer telah diperiksa kasir dan dana terverifikasi masuk.
                       </p>
                     </div>
                   )}
@@ -1550,6 +1684,61 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         onAddExpense={addExpense}
         onDeleteExpense={deleteExpense}
       />
+
+      {/* 9. MODAL ZOOM BARCODE QRIS (FULLSCREEN HIGH-RES DISPLAY) */}
+      {isQrisZoomed && cafeSettings?.qrisImageUrl && (
+        <div
+          onClick={() => setIsQrisZoomed(false)}
+          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-750 p-6 rounded-3xl max-w-sm w-full text-center space-y-4 shadow-2xl animate-scaleUp cursor-default"
+          >
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+              <span className="text-xs font-black text-emerald-400 uppercase tracking-wider">
+                📱 SCAN UNTUK BAYAR (QRIS)
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsQrisZoomed(false)}
+                className="text-slate-400 hover:text-white text-base font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="bg-white p-3 rounded-2xl shadow-2xl inline-block border-4 border-slate-200">
+              <img
+                src={cafeSettings.qrisImageUrl}
+                alt="QRIS Zoom"
+                className="w-64 h-64 sm:w-72 sm:h-72 object-contain mx-auto"
+              />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-black text-white">
+                {cafeSettings.qrisMerchantName || cafeSettings.name || 'CAFEYOU'}
+              </h4>
+              {payingTable && (
+                <p className="text-xs text-slate-400">
+                  Meja: <span className="font-bold text-slate-200">{payingTable}</span>
+                </p>
+              )}
+              {cafeSettings.danaPhoneNumber && (
+                <p className="text-xs text-blue-400 font-mono font-semibold">
+                  DANA: {cafeSettings.danaPhoneNumber}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsQrisZoomed(false)}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-200 rounded-xl text-xs font-bold transition-all"
+            >
+              Tutup Pratinjau
+            </button>
+          </div>
+        </div>
+      )}
 
       <DeveloperFooter className="px-4 mt-auto" />
     </div>

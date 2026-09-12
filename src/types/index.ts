@@ -77,6 +77,9 @@ export interface CafeSettings {
   posPassword?: string;
   operatorPassword?: string;
   localServerIp?: string;
+  qrisImageUrl?: string;
+  qrisMerchantName?: string;
+  danaPhoneNumber?: string;
 }
 
 export interface YouTubeSearchResult {

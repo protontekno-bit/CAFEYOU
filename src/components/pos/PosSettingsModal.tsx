@@ -21,6 +21,12 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
   const [isTaxIncluded, setIsTaxIncluded] = useState<boolean>(cafeSettings?.isTaxIncluded ?? true);
   const [servicePercentage, setServicePercentage] = useState<number>(cafeSettings?.servicePercentage ?? 0);
 
+  // State: QRIS & DANA
+  const [qrisImageUrl, setQrisImageUrl] = useState<string>(cafeSettings?.qrisImageUrl || '');
+  const [qrisMerchantName, setQrisMerchantName] = useState<string>(cafeSettings?.qrisMerchantName || '');
+  const [danaPhoneNumber, setDanaPhoneNumber] = useState<string>(cafeSettings?.danaPhoneNumber || '');
+  const [qrisSuccess, setQrisSuccess] = useState<boolean>(false);
+
   // State: PIN Kasir
   const [currentPin, setCurrentPin] = useState<string>('');
   const [newPin, setNewPin] = useState<string>('');
@@ -36,6 +42,10 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
       setTaxPercentage(cafeSettings?.taxPercentage ?? 10);
       setIsTaxIncluded(cafeSettings?.isTaxIncluded ?? true);
       setServicePercentage(cafeSettings?.servicePercentage ?? 0);
+      setQrisImageUrl(cafeSettings?.qrisImageUrl || '');
+      setQrisMerchantName(cafeSettings?.qrisMerchantName || '');
+      setDanaPhoneNumber(cafeSettings?.danaPhoneNumber || '');
+      setQrisSuccess(false);
       setCurrentPin('');
       setNewPin('');
       setConfirmPin('');
@@ -45,6 +55,34 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
   }, [isOpen, cafeSettings]);
 
   if (!isOpen) return null;
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran berkas gambar maksimal 2MB agar sinkronisasi cloud lancar.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setQrisImageUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveQrisSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdateCafeSettings({
+      ...cafeSettings,
+      qrisImageUrl: qrisImageUrl.trim(),
+      qrisMerchantName: qrisMerchantName.trim(),
+      danaPhoneNumber: danaPhoneNumber.trim(),
+    });
+    setQrisSuccess(true);
+    setTimeout(() => setQrisSuccess(false), 2500);
+  };
 
   const handleSaveTaxSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,7 +266,132 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
           </div>
         </form>
 
-        {/* 2. Pengaturan Keamanan PIN Kasir (Cloud Sync) */}
+        {/* 2. Pengaturan QRIS & Dompet Digital (DANA) */}
+        <form onSubmit={handleSaveQrisSettings} className="space-y-4 bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80">
+          <div className="flex items-center gap-2 text-xs font-black text-emerald-400 uppercase tracking-wider">
+            <span>📱</span>
+            <span>Pengaturan QRIS & Dompet Digital (DANA)</span>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Barcode QRIS dan nomor DANA akan ditampilkan di layar kasir saat pelanggan memilih metode non-tunai serta di portal pesanan tamu.
+          </p>
+
+          {qrisSuccess && (
+            <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs font-bold text-emerald-300 flex items-center gap-2 animate-fadeIn">
+              <span>✅</span>
+              <span>Pengaturan QRIS & DANA berhasil disimpan ke Cloud!</span>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-300">
+                Nama Merchant / Akun QRIS:
+              </label>
+              <input
+                type="text"
+                value={qrisMerchantName}
+                onChange={(e) => setQrisMerchantName(e.target.value)}
+                placeholder="Contoh: CAFEYOU LOUNGE & KARAOKE"
+                className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+              />
+              <span className="text-[10px] text-slate-500">
+                Ditampilkan ke pelanggan agar memastikan nama tujuan transfer benar.
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-300">
+                Nomor HP DANA / e-Wallet (Transfer):
+              </label>
+              <input
+                type="text"
+                value={danaPhoneNumber}
+                onChange={(e) => setDanaPhoneNumber(e.target.value)}
+                placeholder="Contoh: 0812-3456-7890 (a/n Kasir Cafe)"
+                className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+              />
+              <span className="text-[10px] text-slate-500">
+                Nomor DANA yang dapat disalin satu klik oleh tamu atau kasir jika QR bermasalah.
+              </span>
+            </div>
+
+            <div className="space-y-2 pt-1 border-t border-slate-800">
+              <label className="text-xs font-semibold text-slate-300 block">
+                Gambar Barcode QRIS Kafe (DANA / BCA / GoPay / ShopeePay):
+              </label>
+
+              {/* Upload File Box */}
+              <div className="flex items-center gap-3">
+                <label className="flex-1 cursor-pointer bg-slate-900 hover:bg-slate-850 border border-dashed border-slate-700 hover:border-emerald-500 p-3 rounded-xl text-center transition-all">
+                  <span className="text-xs font-bold text-emerald-400 block">
+                    📁 Pilih / Unggah Gambar QRIS dari Galeri
+                  </span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    Format JPG, PNG, WEBP (Maksimal 2MB)
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* URL alternatif */}
+              <div className="space-y-1">
+                <span className="text-[10px] text-slate-400">Atau masukkan URL gambar langsung:</span>
+                <input
+                  type="text"
+                  value={qrisImageUrl}
+                  onChange={(e) => setQrisImageUrl(e.target.value)}
+                  placeholder="https://.../qris.jpg atau data:image/..."
+                  className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              {/* Pratinjau Barcode */}
+              {qrisImageUrl ? (
+                <div className="p-3 bg-slate-900/90 rounded-2xl border border-slate-750 text-center space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
+                    Pratinjau Tampilan Barcode:
+                  </span>
+                  <div className="bg-white p-2.5 rounded-xl inline-block shadow-lg mx-auto max-w-[180px]">
+                    <img
+                      src={qrisImageUrl}
+                      alt="Pratinjau QRIS"
+                      className="w-36 h-36 object-contain rounded-lg"
+                      onError={() => alert('Gagal memuat pratinjau gambar QRIS. Pastikan file valid.')}
+                    />
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setQrisImageUrl('')}
+                      className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[10px] font-bold rounded-lg border border-red-500/40 transition-colors"
+                    >
+                      🗑️ Hapus Gambar Barcode
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-900/40 rounded-xl border border-dashed border-slate-800 text-center text-slate-500 text-[11px]">
+                  <span>ℹ️ Belum ada gambar QRIS. Silakan unggah barcode QRIS agar pelanggan bisa langsung scan.</span>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all active:scale-98"
+            >
+              Simpan Konfigurasi QRIS & DANA
+            </button>
+          </div>
+        </form>
+
+        {/* 3. Pengaturan Keamanan PIN Kasir (Cloud Sync) */}
         <form onSubmit={handleSavePin} className="space-y-4 bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80">
           <div className="flex items-center gap-2 text-xs font-black text-blue-400 uppercase tracking-wider">
             <span>🔒</span>

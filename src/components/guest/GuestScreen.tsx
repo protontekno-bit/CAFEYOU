@@ -22,6 +22,7 @@ interface GuestScreenProps {
 export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable }) => {
   const {
     state,
+    isCloudConnected,
     currentSong,
     nextSongs,
     songLibrary,
@@ -64,7 +65,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     return null;
   });
 
-  // Re-sync voucher data dari state jika berubah
+  // Re-sync voucher data dari state jika berubah (dengan case-insensitive lookup)
   const currentVoucherData = useMemo(() => {
     if (!activeVoucher) return null;
     if (activeVoucher.code === state?.dailyPin?.code) {
@@ -74,13 +75,47 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         quotaUsed: 0,
       };
     }
-    return vouchers[activeVoucher.code] || activeVoucher;
+    const found = Object.values(vouchers || {}).find(
+      (v) => v && v.code && v.code.trim().toUpperCase() === activeVoucher.code.trim().toUpperCase()
+    );
+    return found || activeVoucher;
   }, [activeVoucher, vouchers, state?.dailyPin]);
+
+  // Auto-login jika URL membawa parameter voucher/pin (misal: #guest?table=Meja%201&voucher=1234)
+  useEffect(() => {
+    if (activeVoucher) return;
+    try {
+      const hash = window.location.hash;
+      const queryIdx = hash.indexOf('?');
+      let vCode: string | null = null;
+      if (queryIdx !== -1) {
+        const params = new URLSearchParams(hash.substring(queryIdx));
+        vCode = params.get('voucher') || params.get('pin') || params.get('code');
+      }
+      if (!vCode) {
+        const searchParams = new URLSearchParams(window.location.search);
+        vCode = searchParams.get('voucher') || searchParams.get('pin') || searchParams.get('code');
+      }
+
+      if (vCode) {
+        validateVoucher(vCode.trim(), tableNumber).then((res) => {
+          if (res.valid && res.voucher) {
+            setActiveVoucher(res.voucher);
+            try {
+              sessionStorage.setItem(`cafeyou_voucher_${tableNumber}`, JSON.stringify(res.voucher));
+            } catch {}
+          }
+        });
+      }
+    } catch {}
+  }, [activeVoucher, tableNumber, validateVoucher]);
+
 
   const [activeTab, setActiveTab] = useState<'search' | 'url' | 'queue'>('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [requesterName, setRequesterName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // YouTube Link Form
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -205,19 +240,26 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
   }, [youtubeUrl]);
 
   const handleAddSong = async (videoId: string, title: string, rawUrl?: string) => {
-    if (isQuotaExhausted) return;
+    if (isQuotaExhausted || isSubmitting) return;
 
+    setIsSubmitting(true);
     const nickname = requesterName.trim() || `${tableNumber}`;
     const url = rawUrl || `https://www.youtube.com/watch?v=${videoId}`;
 
-    await addSong(videoId, url, nickname, title, {
-      tableNumber,
-      source: 'guest',
-      voucherCode: activeVoucher?.code,
-    });
+    try {
+      await addSong(videoId, url, nickname, title, {
+        tableNumber,
+        source: 'guest',
+        voucherCode: activeVoucher?.code,
+      });
 
-    setSuccessAddMsg(`"${title}" berhasil dimasukkan ke antrean!`);
-    setTimeout(() => setSuccessAddMsg(null), 3000);
+      setSuccessAddMsg(`"${title}" berhasil dikirim ke antrean kafe! 🎤`);
+      setTimeout(() => setSuccessAddMsg(null), 3500);
+    } catch (err) {
+      console.warn('Gagal menambahkan lagu:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReactionClick = (emoji: string) => {
@@ -259,6 +301,14 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
             </div>
             <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
               <span>{tableNumber}</span>
+              <span className={`flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
+                isCloudConnected
+                  ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30'
+                  : 'text-amber-400 bg-amber-500/15 border-amber-500/30'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                <span>{isCloudConnected ? 'Tersambung' : 'Lokal'}</span>
+              </span>
               {cafeSettings?.wifiName && (
                 <span className="text-[9px] text-cyan-400/80 font-normal">
                   • Wi-Fi: {cafeSettings.wifiName}
@@ -292,6 +342,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           </button>
         </div>
       </header>
+
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-lg mx-auto w-full p-4 space-y-4">

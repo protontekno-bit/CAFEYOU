@@ -134,21 +134,47 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
 
           {/* Banner Hasil Generate */}
           {lastCreatedVoucher && (
-            <div className="p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs animate-fadeIn">
-              <div>
-                <div className="text-emerald-300 font-semibold">
-                  Voucher Berhasil Dibuat untuk <strong>{lastCreatedVoucher.tableNumber}</strong>:
+            <div className="p-3.5 bg-emerald-500/15 border border-emerald-500/40 rounded-xl space-y-2.5 text-xs animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-emerald-300 font-bold">
+                    Voucher Berhasil Dibuat untuk <strong>{lastCreatedVoucher.tableNumber}</strong>:
+                  </div>
+                  <div className="text-slate-300 text-[11px] mt-0.5">
+                    Kuota: {lastCreatedVoucher.quotaTotal === 999 ? 'Unlimited' : `${lastCreatedVoucher.quotaTotal} Lagu`}
+                  </div>
                 </div>
-                <div className="text-slate-300 text-[11px] mt-0.5">
-                  Berikan kode ini ke pelanggan di meja.
+                <div className="px-3.5 py-1.5 bg-emerald-500/25 text-emerald-200 border border-emerald-500/50 rounded-lg font-mono font-black text-lg tracking-widest shadow">
+                  {lastCreatedVoucher.code}
                 </div>
               </div>
-              <div className="px-3 py-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-lg font-mono font-extrabold text-base tracking-widest shadow">
-                {lastCreatedVoucher.code}
+
+              <div className="flex gap-2 pt-1 border-t border-emerald-500/30">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(lastCreatedVoucher.code);
+                    alert(`Kode voucher ${lastCreatedVoucher.code} berhasil disalin!`);
+                  }}
+                  className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg transition-all text-center"
+                >
+                  📋 Salin Kode
+                </button>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(
+                    `Halo! Berikut adalah Kode Voucher Karaoke untuk ${lastCreatedVoucher.tableNumber}:\n\n🎟️ KODE: ${lastCreatedVoucher.code}\n📊 KUOTA: ${lastCreatedVoucher.quotaTotal} Lagu\n\nSilakan masukkan kode ini di portal karaoke meja Anda. Selamat bernyanyi! 🎤`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-all text-center"
+                >
+                  📱 Kirim ke WA
+                </a>
               </div>
             </div>
           )}
         </form>
+
 
         {/* Section 2: Master PIN Harian (Opsional Cepat) */}
         <form

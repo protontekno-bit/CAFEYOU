@@ -5,12 +5,15 @@ import { Voucher } from '../../types';
 interface GuestVoucherGateProps {
   tableNumber: string;
   onSuccess: (voucher: Voucher) => void;
-  validateVoucher: (code: string) => {
+  validateVoucher: (
+    code: string,
+    targetTable?: string
+  ) => Promise<{
     valid: boolean;
     voucher?: Voucher;
     isDailyPin?: boolean;
     message?: string;
-  };
+  }>;
   onBackToLanding?: () => void;
 }
 
@@ -25,7 +28,7 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin.trim()) {
       setErrorMsg('Silakan masukkan 4-digit Kode Voucher / PIN.');
@@ -35,27 +38,33 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    const result = validateVoucher(pin.trim());
-    if (result.valid && result.voucher) {
-      setIsSuccess(true);
-      // Simpan voucher ke sessionStorage
-      try {
-        sessionStorage.setItem(
-          `cafeyou_voucher_${tableNumber}`,
-          JSON.stringify(result.voucher)
-        );
-      } catch (err) {
-        console.warn('Cannot write to sessionStorage:', err);
-      }
+    try {
+      const result = await validateVoucher(pin.trim(), tableNumber);
+      if (result.valid && result.voucher) {
+        setIsSuccess(true);
+        // Simpan voucher ke sessionStorage
+        try {
+          sessionStorage.setItem(
+            `cafeyou_voucher_${tableNumber}`,
+            JSON.stringify(result.voucher)
+          );
+        } catch (err) {
+          console.warn('Cannot write to sessionStorage:', err);
+        }
 
-      setTimeout(() => {
-        onSuccess(result.voucher!);
-      }, 900);
-    } else {
-      setErrorMsg(result.message || 'Kode voucher tidak valid. Hubungi kasir kafe.');
+        setTimeout(() => {
+          onSuccess(result.voucher!);
+        }, 900);
+      } else {
+        setErrorMsg(result.message || 'Kode voucher tidak valid. Hubungi kasir kafe.');
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      setErrorMsg('Terjadi kesalahan saat memeriksa voucher. Coba lagi.');
       setIsSubmitting(false);
     }
   };
+
 
   return (
     <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 font-sans relative overflow-hidden select-none selection:bg-purple-500 selection:text-white">

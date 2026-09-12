@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Song } from '../../types';
 import {
   TrashIcon,
@@ -33,6 +33,21 @@ export const QueueList: React.FC<QueueListProps> = ({
   onRebalanceFairly,
 }) => {
   const safeQueue = Array.isArray(queue) ? queue : [];
+  const [filterSource, setFilterSource] = useState<'all' | 'guest' | 'operator'>('all');
+
+  const guestCount = useMemo(() => {
+    return safeQueue.filter((s) => s.source === 'guest' || s.tableNumber).length;
+  }, [safeQueue]);
+
+  const filteredQueue = useMemo(() => {
+    if (filterSource === 'guest') {
+      return safeQueue.filter((s) => s.source === 'guest' || s.tableNumber);
+    }
+    if (filterSource === 'operator') {
+      return safeQueue.filter((s) => s.source !== 'guest' && !s.tableNumber);
+    }
+    return safeQueue;
+  }, [safeQueue, filterSource]);
 
   return (
     <div className="bg-slate-800/95 rounded-2xl p-5 shadow-xl border border-slate-700/60 flex-1 flex flex-col">
@@ -45,6 +60,11 @@ export const QueueList: React.FC<QueueListProps> = ({
           <span className="text-xs font-bold text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-500/30 font-mono">
             {safeQueue.length} Lagu
           </span>
+          {guestCount > 0 && (
+            <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono animate-pulse">
+              {guestCount} dari Meja Tamu
+            </span>
+          )}
         </div>
 
         {/* Smart Fair Rotation Controls */}
@@ -77,6 +97,42 @@ export const QueueList: React.FC<QueueListProps> = ({
         </div>
       </div>
 
+      {/* Filter Tabs & Fair Rotation Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 text-xs">
+          <button
+            onClick={() => setFilterSource('all')}
+            className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+              filterSource === 'all'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Semua ({safeQueue.length})
+          </button>
+          <button
+            onClick={() => setFilterSource('guest')}
+            className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ${
+              filterSource === 'guest'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>📱 Meja Tamu ({guestCount})</span>
+          </button>
+          <button
+            onClick={() => setFilterSource('operator')}
+            className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+              filterSource === 'operator'
+                ? 'bg-slate-700 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Kasir/Operator ({safeQueue.length - guestCount})
+          </button>
+        </div>
+      </div>
+
       {/* Info Banner when Fair Rotation is ON */}
       {fairRotationEnabled && safeQueue.length > 0 && (
         <div className="mb-2.5 px-3 py-1.5 bg-purple-500/10 border border-purple-500/25 rounded-xl flex items-center gap-2 text-[11px] text-purple-300">
@@ -88,14 +144,19 @@ export const QueueList: React.FC<QueueListProps> = ({
       )}
 
       {/* Song Queue List */}
-      {safeQueue.length > 0 ? (
+      {filteredQueue.length > 0 ? (
         <div className="space-y-2.5 overflow-y-auto max-h-[500px] pr-1 custom-scrollbar">
-          {safeQueue.map((song, idx) => {
+          {filteredQueue.map((song, idx) => {
             const round = calculateTableRound(song.id, safeQueue);
+            const isGuest = song.source === 'guest' || song.tableNumber;
             return (
               <div
                 key={song.id}
-                className="flex items-center gap-3 p-3 bg-slate-900/80 rounded-xl border border-slate-700/70 hover:border-slate-600 transition-all group"
+                className={`flex items-center gap-3 p-3 rounded-xl border transition-all group ${
+                  isGuest
+                    ? 'bg-slate-900/90 border-emerald-500/30 hover:border-emerald-500/60 shadow-sm'
+                    : 'bg-slate-900/80 border-slate-700/70 hover:border-slate-600'
+                }`}
               >
                 {/* Nomor Urut */}
                 <div className="w-6 text-center font-bold text-xs text-slate-400 font-mono">
@@ -115,11 +176,17 @@ export const QueueList: React.FC<QueueListProps> = ({
                   <p className="text-sm font-semibold text-slate-100 truncate" title={song.title}>
                     {song.title}
                   </p>
-                  <div className="text-xs text-emerald-400 truncate mt-0.5 flex items-center gap-2">
-                    <span className="flex items-center gap-1">
-                      <span>👤</span>
+                  <div className="text-xs text-emerald-400 truncate mt-0.5 flex flex-wrap items-center gap-2">
+                    <span className="flex items-center gap-1 font-medium">
+                      <span>{isGuest ? '📱' : '👤'}</span>
                       <span>{song.requester}</span>
                     </span>
+
+                    {song.tableNumber && (
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.2 rounded-md font-bold">
+                        {song.tableNumber}
+                      </span>
+                    )}
 
                     {/* Badge Giliran Meja jika pemesan memiliki lebih dari 1 lagu */}
                     {round.totalInQueue > 1 && (
@@ -149,7 +216,7 @@ export const QueueList: React.FC<QueueListProps> = ({
                   </button>
                   <button
                     onClick={() => onMoveDown(song.id)}
-                    disabled={idx === safeQueue.length - 1}
+                    disabled={idx === filteredQueue.length - 1}
                     className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors"
                     title="Geser Turun"
                   >
@@ -192,3 +259,4 @@ export const QueueList: React.FC<QueueListProps> = ({
     </div>
   );
 };
+

@@ -78,6 +78,37 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isCafeSettingsOpen, setIsCafeSettingsOpen] = useState(false);
   const [isDeveloperHelpOpen, setIsDeveloperHelpOpen] = useState(false);
 
+  // Notifikasi Pesanan Meja Baru
+  const [newOrderAlert, setNewOrderAlert] = useState<{
+    table: string;
+    requester: string;
+    title: string;
+  } | null>(null);
+  const prevQueueLengthRef = React.useRef<number>(state.queue?.length || 0);
+
+  // Pantau penambahan antrean dari Meja Tamu
+  React.useEffect(() => {
+    const currentLen = state.queue?.length || 0;
+    if (currentLen > prevQueueLengthRef.current && currentLen > 0) {
+      // Ambil lagu paling baru masuk
+      const newestSong = state.queue[state.queue.length - 1];
+      if (newestSong && (newestSong.source === 'guest' || newestSong.tableNumber)) {
+        try {
+          triggerSoundEffect('chime');
+        } catch {}
+        setNewOrderAlert({
+          table: newestSong.tableNumber || 'Meja Tamu',
+          requester: newestSong.requester || 'Pelanggan',
+          title: newestSong.title,
+        });
+        setTimeout(() => {
+          setNewOrderAlert(null);
+        }, 6000);
+      }
+    }
+    prevQueueLengthRef.current = currentLen;
+  }, [state.queue, triggerSoundEffect]);
+
   // Jika belum login, tampilkan OperatorLoginView Neumorphism
   if (!isLoggedIn) {
     return (
@@ -135,9 +166,35 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onLogout={handleLogout}
         />
 
+        {/* Floating Toast Alert Pesanan Meja Baru */}
+        {newOrderAlert && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3">
+            <div className="p-3.5 bg-gradient-to-r from-emerald-600/90 via-emerald-700 to-teal-800 border border-emerald-400/50 rounded-2xl shadow-xl flex items-center justify-between text-white animate-bounce">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🔔</span>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-wider text-emerald-200">
+                    Pesanan Lagu Baru Masuk dari {newOrderAlert.table}!
+                  </div>
+                  <div className="text-sm font-extrabold text-white">
+                    {newOrderAlert.title} <span className="text-xs font-normal text-emerald-100">(oleh {newOrderAlert.requester})</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setNewOrderAlert(null)}
+                className="px-3 py-1 bg-black/30 hover:bg-black/50 text-xs font-bold rounded-xl transition-all"
+              >
+                Tutup ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         <main className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Kolom Kiri: Dek Kendali & Tambah Lagu */}
         <div className="lg:col-span-5 space-y-6">
+
           <PlaybackControls
             playbackStatus={state.playbackStatus}
             volume={state.volume}

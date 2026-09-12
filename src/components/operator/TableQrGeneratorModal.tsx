@@ -138,6 +138,27 @@ export const TableQrGeneratorModal: React.FC<TableQrGeneratorModalProps> = ({
                     <span>↗</span>
                   </a>
 
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(
+                      `Halo! Silakan scan atau klik link ini untuk request lagu karaoke dari ${selectedTable} di ${cafeName}:\n${getGuestUrl(
+                        selectedTable
+                      )}`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <span>📱 Kirim WA</span>
+                  </a>
+
+                  <button
+                    onClick={handlePrint}
+                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold rounded-xl border border-slate-600 transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <PrinterIcon className="w-3.5 h-3.5" />
+                    <span>Cetak Meja Ini</span>
+                  </button>
+
                   {onOpenVoucherManager && (
                     <button
                       onClick={() => {

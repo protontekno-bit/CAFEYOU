@@ -52,9 +52,10 @@ function sanitizeState<T>(val: any, fallback: T): T {
 
 /**
  * Custom Hook Hybrid Real-time State Synchronization:
- * 1. Menghubungkan ke Firebase Realtime Database (jika konfigurasi terpasang).
- * 2. Menyinkronkan ke BroadcastChannel (untuk instan multi-tab di perangkat yang sama).
- * 3. Menyimpan ke LocalStorage (sebagai offline cache & fallback anti-hilang saat reload).
+ * 1. Menghubungkan ke Firebase Realtime Database secara bidirectional.
+ * 2. Memantau `.info/connected` untuk status online/offline nirkabel akurat.
+ * 3. Menyinkronkan ke BroadcastChannel (untuk instan multi-tab di perangkat yang sama).
+ * 4. Menyimpan ke LocalStorage (sebagai offline cache & fallback anti-hilang saat reload).
  */
 export function useSyncState<T>(
   key: string,
@@ -72,8 +73,10 @@ export function useSyncState<T>(
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const isSettingFromCloudRef = useRef<boolean>(false);
+  const stateRef = useRef<T>(state);
+  stateRef.current = state;
 
-  // 1. Inisialisasi Firebase Listener jika tersedia
+  // 1. Inisialisasi Firebase Listener & Connection Status
   useEffect(() => {
     const db = initFirebaseDatabase();
     if (!db) {
@@ -82,10 +85,15 @@ export function useSyncState<T>(
     }
 
     try {
-      const dbRef = ref(db, `cafeyou/${key}`);
-      setIsCloudConnected(true);
+      // Pantau status koneksi socket real-time Firebase
+      const connectedRef = ref(db, '.info/connected');
+      const unsubConnected = onValue(connectedRef, (snap) => {
+        setIsCloudConnected(snap.val() === true);
+      });
 
-      const unsubscribe = onValue(
+      // Pantau data state kafe
+      const dbRef = ref(db, `cafeyou/${key}`);
+      const unsubData = onValue(
         dbRef,
         (snapshot) => {
           if (snapshot.exists()) {
@@ -101,7 +109,7 @@ export function useSyncState<T>(
 
             setTimeout(() => {
               isSettingFromCloudRef.current = false;
-            }, 50);
+            }, 60);
           }
         },
         (error) => {
@@ -111,7 +119,8 @@ export function useSyncState<T>(
       );
 
       return () => {
-        unsubscribe();
+        unsubConnected();
+        unsubData();
       };
     } catch (err) {
       console.warn('Gagal memasang Firebase listener:', err);
@@ -119,7 +128,7 @@ export function useSyncState<T>(
     }
   }, [key]);
 
-  // 2. BroadcastChannel Listener (untuk sinkronisasi multi-tab lokal)
+  // 2. BroadcastChannel Listener (untuk sinkronisasi multi-tab lokal pada perangkat yang sama)
   useEffect(() => {
     try {
       const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
@@ -162,7 +171,7 @@ export function useSyncState<T>(
         } catch (error) {}
       }
 
-      // Update Firebase Cloud (Nirkabel)
+      // Update Firebase Cloud (Nirkabel ke semua perangkat)
       if (!isSettingFromCloudRef.current) {
         const db = initFirebaseDatabase();
         if (db) {
@@ -181,3 +190,4 @@ export function useSyncState<T>(
 
   return [state, updateState, isCloudConnected];
 }
+

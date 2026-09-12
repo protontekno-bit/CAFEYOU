@@ -13,6 +13,8 @@ import {
 import { fetchYouTubeInfo, getYouTubeThumbnail } from '../utils/youtube';
 import { playSoundEffect } from '../utils/soundfx';
 import { rebalanceFairQueue } from '../utils/queue';
+import { initFirebaseDatabase, ref, get } from '../config/firebase';
+
 
 export function useKaraoke() {
   const [appState, updateAppState, isCloudConnected] = useSyncState<KaraokeState>(
@@ -373,19 +375,27 @@ export function useKaraoke() {
     }));
   };
 
-  const validateVoucher = (
-    code: string
-  ): { valid: boolean; voucher?: Voucher; isDailyPin?: boolean; message?: string } => {
+  const validateVoucher = async (
+    code: string,
+    targetTable?: string
+  ): Promise<{ valid: boolean; voucher?: Voucher; isDailyPin?: boolean; message?: string }> => {
     const trimmed = code.trim();
+    if (!trimmed) {
+      return { valid: false, message: 'Kode voucher tidak boleh kosong.' };
+    }
 
     // 1. Cek Master Daily PIN
-    if (appState?.dailyPin?.enabled && appState.dailyPin.code === trimmed) {
+    if (
+      appState?.dailyPin?.enabled &&
+      (appState.dailyPin.code === trimmed ||
+        appState.dailyPin.code.toLowerCase() === trimmed.toLowerCase())
+    ) {
       return {
         valid: true,
         isDailyPin: true,
         voucher: {
           code: trimmed,
-          tableNumber: 'Master PIN',
+          tableNumber: targetTable || 'Master PIN',
           quotaTotal: 999,
           quotaUsed: 0,
           createdAt: Date.now(),
@@ -394,21 +404,72 @@ export function useKaraoke() {
       };
     }
 
-    // 2. Cek Voucher Spesifik
-    const currentVouchers =
-      appState?.vouchers && typeof appState.vouchers === 'object' ? appState.vouchers : {};
-    const v = currentVouchers[trimmed];
+    // 2. Cek Voucher di Local React State (Case-Insensitive & Trimmed)
+    const currentVouchers: Record<string, Voucher> =
+      appState?.vouchers && typeof appState.vouchers === 'object' ? { ...appState.vouchers } : {};
 
-    if (!v) {
-      return { valid: false, message: 'Kode voucher tidak ditemukan atau salah.' };
+    let foundVoucher = Object.values(currentVouchers).find(
+      (v) => v && v.code && v.code.trim().toUpperCase() === trimmed.toUpperCase()
+    );
+
+    // 3. Fallback: Jika belum ada di state, cek LocalStorage
+    if (!foundVoucher) {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.vouchers) {
+            foundVoucher = Object.values(parsed.vouchers as Record<string, Voucher>).find(
+              (v) => v && v.code && v.code.trim().toUpperCase() === trimmed.toUpperCase()
+            );
+          }
+        }
+      } catch {}
     }
 
-    if (v.status === 'exhausted' || v.quotaUsed >= v.quotaTotal) {
+    // 4. Fallback Cloud: Jika belum tersinkron di HP tamu, fetch live langsung ke Firebase Realtime Database
+    if (!foundVoucher) {
+      const db = initFirebaseDatabase();
+      if (db) {
+        try {
+          const vouchersRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers`);
+          const snap = await get(vouchersRef);
+          if (snap.exists()) {
+            const cloudVouchers = snap.val() as Record<string, Voucher>;
+            foundVoucher = Object.values(cloudVouchers).find(
+              (v) => v && v.code && v.code.trim().toUpperCase() === trimmed.toUpperCase()
+            );
+            // Sinkronkan ke local state agar tersimpan
+            if (foundVoucher) {
+              updateAppState((prev) => ({
+                ...prev,
+                vouchers: {
+                  ...(prev?.vouchers || {}),
+                  ...cloudVouchers,
+                },
+              }));
+            }
+          }
+        } catch (err) {
+          console.warn('Cloud voucher check error:', err);
+        }
+      }
+    }
+
+    if (!foundVoucher) {
+      return {
+        valid: false,
+        message: `Kode voucher "${trimmed}" tidak ditemukan. Pastikan kode sudah benar atau dibuat oleh kasir.`,
+      };
+    }
+
+    if (foundVoucher.status === 'exhausted' || foundVoucher.quotaUsed >= foundVoucher.quotaTotal) {
       return { valid: false, message: 'Kuota lagu untuk voucher ini sudah habis.' };
     }
 
-    return { valid: true, voucher: v };
+    return { valid: true, voucher: foundVoucher };
   };
+
 
   const sendLiveReaction = (emoji: string, tableNumber: string) => {
     const event: LiveReactionEvent = {

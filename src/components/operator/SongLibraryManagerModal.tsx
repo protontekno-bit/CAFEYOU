@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { SavedLibrarySong } from '../../types';
+import { DEFAULT_SONG_THUMBNAIL } from '../../utils/youtube';
 
 interface SongLibraryManagerModalProps {
   isOpen: boolean;
@@ -166,7 +167,7 @@ export const SongLibraryManagerModal: React.FC<SongLibraryManagerModalProps> = (
                 alt={song.title}
                 className="w-14 h-10 object-cover rounded-lg shrink-0 bg-slate-800"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${song.videoId}/hqdefault.jpg`;
+                  (e.target as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
                 }}
               />
 

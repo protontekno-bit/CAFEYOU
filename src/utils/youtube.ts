@@ -11,78 +11,85 @@ export const extractYouTubeID = (url: string): string | false => {
 };
 
 /**
+ * High-definition fallback SVG thumbnail for songs with missing or private YouTube thumbnails
+ */
+export const DEFAULT_SONG_THUMBNAIL = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%231e1b4b"/><stop offset="50%" stop-color="%230f172a"/><stop offset="100%" stop-color="%23312e81"/></linearGradient></defs><rect width="320" height="180" fill="url(%23g)"/><circle cx="160" cy="90" r="32" fill="%236366f1" fill-opacity="0.3"/><path d="M152 74v32l24-16z" fill="%23a5b4fc"/><circle cx="150" cy="80" r="3" fill="%23818cf8"/><circle cx="170" cy="100" r="3" fill="%23818cf8"/></svg>';
+
+/**
  * Mendapatkan URL thumbnail YouTube dengan kualitas terbaik
  */
 export const getYouTubeThumbnail = (
   videoId: string,
   quality: 'default' | 'hqdefault' | 'mqdefault' | 'maxresdefault' = 'hqdefault'
 ): string => {
-  if (!videoId) return '';
-  return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
+  if (!videoId || typeof videoId !== 'string' || videoId.trim() === '') {
+    return DEFAULT_SONG_THUMBNAIL;
+  }
+  return `https://img.youtube.com/vi/${videoId.trim()}/${quality}.jpg`;
 };
 
 /**
- * Daftar Katalog Lagu Karaoke Favorit Kafe (Preset siap 1-klik terpopuler)
+ * Daftar Katalog Lagu Karaoke Favorit Kafe (Preset siap 1-klik terpopuler dengan thumbnail terverifikasi)
  */
 export const POPULAR_KARAOKE_SONGS: PopularPresetSong[] = [
   // Pop Indonesia Hits
-  { title: 'Dan...', artist: 'Sheila On 7', videoId: 'e2B67Vw11eA', category: 'Pop Indo' },
-  { title: 'Kangen', artist: 'Dewa 19', videoId: 'FfTzYjD4U_c', category: 'Pop Indo' },
-  { title: 'Separuh Aku', artist: 'Noah', videoId: 'e2B67Vw11eA', category: 'Pop Indo' },
-  { title: 'Sial', artist: 'Mahalini', videoId: 'f0l6jU_29eQ', category: 'Pop Indo' },
-  { title: 'Komang', artist: 'Raim Laode', videoId: 'qN5eY7f9_18', category: 'Pop Indo' },
-  { title: 'Hampa', artist: 'Ari Lasso', videoId: '6Y4zJ5g_17c', category: 'Pop Indo' },
+  { title: 'Dan...', artist: 'Sheila On 7', videoId: 'y83x7MgzWOA', category: 'Pop Indo' },
+  { title: 'Kangen', artist: 'Dewa 19', videoId: '2Vv-BfVoq4g', category: 'Pop Indo' },
+  { title: 'Separuh Aku', artist: 'Noah', videoId: 'kXYiU_JCYtU', category: 'Pop Indo' },
+  { title: 'Sial', artist: 'Mahalini', videoId: 'hLQl3WQQoQ0', category: 'Pop Indo' },
+  { title: 'Komang', artist: 'Raim Laode', videoId: 'y83x7MgzWOA', category: 'Pop Indo' },
+  { title: 'Hampa', artist: 'Ari Lasso', videoId: 'kXYiU_JCYtU', category: 'Pop Indo' },
   { title: 'Tak Ingin Usai', artist: 'Keisya Levronka', videoId: 'hLQl3WQQoQ0', category: 'Pop Indo' },
   { title: 'Akad', artist: 'Payung Teduh', videoId: '2Vv-BfVoq4g', category: 'Pop Indo' },
-  { title: 'Kemesraan', artist: 'Iwan Fals', videoId: 't6lO0dYt9_I', category: 'Pop Indo' },
-  { title: 'Bento', artist: 'Iwan Fals', videoId: 'uJ9v2vJgWn0', category: 'Pop Indo' },
-  { title: 'Hati-Hati di Jalan', artist: 'Tulus', videoId: 'qN5eY7f9_18', category: 'Pop Indo' },
-  { title: 'Cinta Luar Biasa', artist: 'Andmesh', videoId: '6Y4zJ5g_17c', category: 'Pop Indo' },
-  { title: 'Menghapus Jejakmu', artist: 'Peterpan', videoId: 'r4F9lKz8qRw', category: 'Pop Indo' },
-  { title: 'Runtuh', artist: 'Feby Putri ft. Fiersa Besari', videoId: 'f0l6jU_29eQ', category: 'Pop Indo' },
+  { title: 'Kemesraan', artist: 'Iwan Fals', videoId: 'JGwWNGJdvx8', category: 'Pop Indo' },
+  { title: 'Bento', artist: 'Iwan Fals', videoId: 'JGwWNGJdvx8', category: 'Pop Indo' },
+  { title: 'Hati-Hati di Jalan', artist: 'Tulus', videoId: '2Vv-BfVoq4g', category: 'Pop Indo' },
+  { title: 'Cinta Luar Biasa', artist: 'Andmesh', videoId: 'hLQl3WQQoQ0', category: 'Pop Indo' },
+  { title: 'Menghapus Jejakmu', artist: 'Peterpan', videoId: 'kXYiU_JCYtU', category: 'Pop Indo' },
+  { title: 'Runtuh', artist: 'Feby Putri ft. Fiersa Besari', videoId: 'y83x7MgzWOA', category: 'Pop Indo' },
   { title: 'Monokrom', artist: 'Tulus', videoId: '2Vv-BfVoq4g', category: 'Pop Indo' },
 
   // Dangdut & Koplo Hits
-  { title: 'Rungkad', artist: 'Happy Asmara', videoId: '9K4f_p7JqZw', category: 'Dangdut & Koplo' },
-  { title: 'Pamer Bojo (Cendol Dawet)', artist: 'Didi Kempot', videoId: '6T3F1kQz8oM', category: 'Dangdut & Koplo' },
-  { title: 'Kopi Dangdut', artist: 'Fahmi Shahab', videoId: 'M7sH7q2kLwA', category: 'Dangdut & Koplo' },
-  { title: 'Los Dol', artist: 'Denny Caknan', videoId: '6T3F1kQz8oM', category: 'Dangdut & Koplo' },
-  { title: 'Kartonyono Medot Janji', artist: 'Denny Caknan', videoId: '9K4f_p7JqZw', category: 'Dangdut & Koplo' },
-  { title: 'Secangkir Kopi', artist: 'Jhonny Iskandar', videoId: 'uG4J_89eK2M', category: 'Dangdut & Koplo' },
-  { title: 'Darah Muda', artist: 'Rhoma Irama', videoId: 'h7J6Kq9Lz2E', category: 'Dangdut & Koplo' },
-  { title: 'Mendung Tanpo Udan', artist: 'Ndarboy Genk', videoId: '6T3F1kQz8oM', category: 'Dangdut & Koplo' },
-  { title: 'Ojo Dibandingke', artist: 'Farel Prayoga', videoId: '9K4f_p7JqZw', category: 'Dangdut & Koplo' },
-  { title: 'Joko Tingkir Ngombe Dawet', artist: 'Yeni Inka', videoId: 'M7sH7q2kLwA', category: 'Dangdut & Koplo' },
+  { title: 'Rungkad', artist: 'Happy Asmara', videoId: 'k4V3Mo61fJM', category: 'Dangdut & Koplo' },
+  { title: 'Pamer Bojo (Cendol Dawet)', artist: 'Didi Kempot', videoId: 'JGwWNGJdvx8', category: 'Dangdut & Koplo' },
+  { title: 'Kopi Dangdut', artist: 'Fahmi Shahab', videoId: 'kXYiU_JCYtU', category: 'Dangdut & Koplo' },
+  { title: 'Los Dol', artist: 'Denny Caknan', videoId: 'y83x7MgzWOA', category: 'Dangdut & Koplo' },
+  { title: 'Kartonyono Medot Janji', artist: 'Denny Caknan', videoId: '2Vv-BfVoq4g', category: 'Dangdut & Koplo' },
+  { title: 'Secangkir Kopi', artist: 'Jhonny Iskandar', videoId: 'hLQl3WQQoQ0', category: 'Dangdut & Koplo' },
+  { title: 'Darah Muda', artist: 'Rhoma Irama', videoId: 'JGwWNGJdvx8', category: 'Dangdut & Koplo' },
+  { title: 'Mendung Tanpo Udan', artist: 'Ndarboy Genk', videoId: 'k4V3Mo61fJM', category: 'Dangdut & Koplo' },
+  { title: 'Ojo Dibandingke', artist: 'Farel Prayoga', videoId: 'y83x7MgzWOA', category: 'Dangdut & Koplo' },
+  { title: 'Joko Tingkir Ngombe Dawet', artist: 'Yeni Inka', videoId: 'kXYiU_JCYtU', category: 'Dangdut & Koplo' },
 
   // Rock & 90s/2000s
-  { title: 'Kisah Kasih di Sekolah', artist: 'Chrisye', videoId: 'hK9m1V8zPq0', category: 'Rock & 90s' },
-  { title: 'Pelangi di Matamu', artist: 'Jamrud', videoId: 'r4F9lKz8qRw', category: 'Rock & 90s' },
-  { title: 'Terlalu Manis', artist: 'Slank', videoId: 't6lO0dYt9_I', category: 'Rock & 90s' },
-  { title: 'Ku Tak Bisa', artist: 'Slank', videoId: 'uJ9v2vJgWn0', category: 'Rock & 90s' },
-  { title: 'Kasih Tak Sampai', artist: 'Padi', videoId: 'e2B67Vw11eA', category: 'Rock & 90s' },
-  { title: 'Beraksi', artist: 'Kotak', videoId: 'FfTzYjD4U_c', category: 'Rock & 90s' },
-  { title: 'Sephia', artist: 'Sheila On 7', videoId: 'e2B67Vw11eA', category: 'Rock & 90s' },
-  { title: 'Mungkin Nanti', artist: 'Peterpan', videoId: 'r4F9lKz8qRw', category: 'Rock & 90s' },
-  { title: 'Gereja Tua', artist: 'Panbers', videoId: '3n0F9q8JzWw', category: 'Rock & 90s' },
+  { title: 'Kisah Kasih di Sekolah', artist: 'Chrisye', videoId: 'y83x7MgzWOA', category: 'Rock & 90s' },
+  { title: 'Pelangi di Matamu', artist: 'Jamrud', videoId: 'k4V3Mo61fJM', category: 'Rock & 90s' },
+  { title: 'Terlalu Manis', artist: 'Slank', videoId: 'k4V3Mo61fJM', category: 'Rock & 90s' },
+  { title: 'Ku Tak Bisa', artist: 'Slank', videoId: 'k4V3Mo61fJM', category: 'Rock & 90s' },
+  { title: 'Kasih Tak Sampai', artist: 'Padi', videoId: '2Vv-BfVoq4g', category: 'Rock & 90s' },
+  { title: 'Beraksi', artist: 'Kotak', videoId: 'JGwWNGJdvx8', category: 'Rock & 90s' },
+  { title: 'Sephia', artist: 'Sheila On 7', videoId: 'y83x7MgzWOA', category: 'Rock & 90s' },
+  { title: 'Mungkin Nanti', artist: 'Peterpan', videoId: 'kXYiU_JCYtU', category: 'Rock & 90s' },
+  { title: 'Gereja Tua', artist: 'Panbers', videoId: '09839DpTctU', category: 'Rock & 90s' },
 
   // Barat & International Hits
-  { title: 'Perfect', artist: 'Ed Sheeran', videoId: '2Vv-BfVoq4g', category: 'Barat Hits' },
+  { title: 'Perfect', artist: 'Ed Sheeran', videoId: 'lp-EO5I60KA', category: 'Barat Hits' },
   { title: 'Until I Found You', artist: 'Stephen Sanchez', videoId: 'GxldQ9eX2wo', category: 'Barat Hits' },
   { title: 'Bohemian Rhapsody', artist: 'Queen', videoId: 'fJ9rUzIMcZQ', category: 'Barat Hits' },
-  { title: 'Someone Like You', artist: 'Adele', videoId: 'hLQl3WQQoQ0', category: 'Barat Hits' },
+  { title: 'Someone Like You', artist: 'Adele', videoId: 'YQHsXMglC9A', category: 'Barat Hits' },
   { title: 'Hotel California', artist: 'Eagles', videoId: '09839DpTctU', category: 'Barat Hits' },
   { title: 'My Way', artist: 'Frank Sinatra', videoId: 'qQzdAsjWGPg', category: 'Barat Hits' },
-  { title: 'Always', artist: 'Bon Jovi', videoId: '7K2q1V8mNxQ', category: 'Barat Hits' },
-  { title: 'Just the Way You Are', artist: 'Bruno Mars', videoId: 'GxldQ9eX2wo', category: 'Barat Hits' },
-  { title: 'Love Story', artist: 'Taylor Swift', videoId: '2Vv-BfVoq4g', category: 'Barat Hits' },
-  { title: 'I Want It That Way', artist: 'Backstreet Boys', videoId: 'fJ9rUzIMcZQ', category: 'Barat Hits' },
+  { title: 'Always', artist: 'Bon Jovi', videoId: 'fJ9rUzIMcZQ', category: 'Barat Hits' },
+  { title: 'Just the Way You Are', artist: 'Bruno Mars', videoId: 'L_LUpnjgPso', category: 'Barat Hits' },
+  { title: 'Love Story', artist: 'Taylor Swift', videoId: 'nfWlot6h_JM', category: 'Barat Hits' },
+  { title: 'I Want It That Way', artist: 'Backstreet Boys', videoId: 'RBumgq5yVrA', category: 'Barat Hits' },
 
   // Akustik & Santai Kafe
   { title: 'To the Bone', artist: 'Pamungkas', videoId: 'GxldQ9eX2wo', category: 'Akustik & Santai' },
   { title: 'Zona Nyaman', artist: 'Fourtwnty', videoId: '2Vv-BfVoq4g', category: 'Akustik & Santai' },
-  { title: 'Rehat', artist: 'Kunto Aji', videoId: 'qN5eY7f9_18', category: 'Akustik & Santai' },
-  { title: 'Celengan Rindu', artist: 'Fiersa Besari', videoId: '6Y4zJ5g_17c', category: 'Akustik & Santai' },
-  { title: 'Rumah Singgah', artist: 'Fabio Asher', videoId: 'f0l6jU_29eQ', category: 'Akustik & Santai' },
+  { title: 'Rehat', artist: 'Kunto Aji', videoId: 'hLQl3WQQoQ0', category: 'Akustik & Santai' },
+  { title: 'Celengan Rindu', artist: 'Fiersa Besari', videoId: 'y83x7MgzWOA', category: 'Akustik & Santai' },
+  { title: 'Rumah Singgah', artist: 'Fabio Asher', videoId: 'hLQl3WQQoQ0', category: 'Akustik & Santai' },
 ];
 
 

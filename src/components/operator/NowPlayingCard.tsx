@@ -1,6 +1,6 @@
 import React from 'react';
 import { Song } from '../../types';
-import { getYouTubeThumbnail } from '../../utils/youtube';
+import { getYouTubeThumbnail, DEFAULT_SONG_THUMBNAIL } from '../../utils/youtube';
 
 interface NowPlayingCardProps {
   currentSong: Song | null;
@@ -37,6 +37,9 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({
               alt="Thumbnail"
               className="w-36 sm:w-32 h-20 sm:h-20 object-cover rounded-lg shadow-md border border-slate-700 bg-slate-800"
               loading="lazy"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+              }}
             />
             <div className="absolute bottom-1 right-1 bg-black/80 text-[10px] text-white px-1.5 py-0.5 rounded font-mono">
               ON AIR

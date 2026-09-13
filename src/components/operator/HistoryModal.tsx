@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SongHistoryItem, SavedLibrarySong } from '../../types';
-import { getYouTubeThumbnail } from '../../utils/youtube';
+import { getYouTubeThumbnail, DEFAULT_SONG_THUMBNAIL } from '../../utils/youtube';
 
 interface HistoryModalProps {
   isOpen: boolean;
@@ -149,6 +149,9 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                       alt="Thumbnail"
                       className="w-14 h-9 object-cover rounded-lg bg-slate-800 border border-slate-700 shrink-0"
                       loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                      }}
                     />
                     <div className="min-w-0">
                       <div className="font-semibold text-white text-xs sm:text-sm truncate" title={item.title}>

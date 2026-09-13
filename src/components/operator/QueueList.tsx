@@ -6,7 +6,7 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
 } from '../icons/Icons';
-import { getYouTubeThumbnail } from '../../utils/youtube';
+import { getYouTubeThumbnail, DEFAULT_SONG_THUMBNAIL } from '../../utils/youtube';
 import { calculateAllTableRounds } from '../../utils/queue';
 
 interface QueueListProps {
@@ -174,6 +174,9 @@ export const QueueList: React.FC<QueueListProps> = ({
                   alt="Thumbnail"
                   className="w-14 h-9 object-cover rounded-md bg-slate-800 border border-slate-700/80 shrink-0"
                   loading="lazy"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                  }}
                 />
 
                 {/* Judul & Pemesan */}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SavedLibrarySong } from '../../../types';
+import { DEFAULT_SONG_THUMBNAIL } from '../../../utils/youtube';
 
 interface SettingsLibraryTabProps {
   songLibrary?: Record<string, SavedLibrarySong>;
@@ -92,9 +93,12 @@ export const SettingsLibraryTab: React.FC<SettingsLibraryTabProps> = ({
             >
               <div className="flex items-center gap-3 min-w-0">
                 <img
-                  src={song.thumbnail}
+                  src={song.thumbnail || DEFAULT_SONG_THUMBNAIL}
                   alt={song.title}
                   className="w-12 h-9 object-cover rounded-lg shrink-0"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                  }}
                 />
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-white truncate">{song.title}</div>

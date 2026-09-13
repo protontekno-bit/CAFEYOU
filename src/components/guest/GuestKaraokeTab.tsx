@@ -1,7 +1,7 @@
 import React from 'react';
 import { Song, YouTubeSearchResult, CafeSettings } from '../../types';
 import { SearchIcon, SparklesIcon, PlayIcon, CheckIcon } from '../icons/Icons';
-import { getYouTubeThumbnail } from '../../utils/youtube';
+import { getYouTubeThumbnail, DEFAULT_SONG_THUMBNAIL } from '../../utils/youtube';
 
 export interface GuestKaraokeTabProps {
   fairRotationEnabled: boolean;
@@ -237,6 +237,9 @@ export const GuestKaraokeTab: React.FC<GuestKaraokeTabProps> = ({
                   src={detectedYtVideo.thumbnail}
                   alt={detectedYtVideo.title}
                   className="w-16 h-12 object-cover rounded-xl shrink-0 border border-purple-500/30"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                  }}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-bold text-white line-clamp-2">
@@ -293,6 +296,9 @@ export const GuestKaraokeTab: React.FC<GuestKaraokeTabProps> = ({
                           alt={song.title}
                           className="w-12 h-12 object-cover rounded-xl shrink-0 border border-slate-800"
                           loading="lazy"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                          }}
                         />
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-white truncate">{song.title}</div>
@@ -409,6 +415,9 @@ export const GuestKaraokeTab: React.FC<GuestKaraokeTabProps> = ({
                               alt={video.title}
                               className="w-14 h-10 object-cover rounded-xl shrink-0 border border-slate-800 bg-slate-950"
                               loading="lazy"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                              }}
                             />
                             <div className="min-w-0">
                               <div className="text-xs font-bold text-white line-clamp-2 leading-tight">

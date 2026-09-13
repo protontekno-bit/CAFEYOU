@@ -6,6 +6,7 @@ import {
   fetchYouTubeInfo,
   searchYouTubeVideos,
   POPULAR_KARAOKE_SONGS,
+  DEFAULT_SONG_THUMBNAIL,
 } from '../../utils/youtube';
 import { QUICK_TABLES } from '../../constants/karaoke';
 import { SavedLibrarySong, SongHistoryItem, YouTubeSearchResult } from '../../types';
@@ -289,6 +290,9 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
                       alt="Thumbnail"
                       className="w-12 h-8 object-cover rounded bg-slate-800 border border-slate-700 shrink-0"
                       loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                      }}
                     />
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-slate-100 truncate" title={song.title}>
@@ -385,6 +389,9 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
                         alt="Thumbnail"
                         className="w-12 h-8 object-cover rounded bg-slate-800 border border-slate-700 shrink-0"
                         loading="lazy"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                        }}
                       />
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-slate-100 truncate" title={video.title}>
@@ -456,6 +463,9 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
                   src={getYouTubeThumbnail(detectedVideoId, 'hqdefault')}
                   alt="Thumbnail"
                   className="w-16 h-10 object-cover rounded-lg bg-slate-800 border border-slate-700 shrink-0"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                  }}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] uppercase font-bold text-emerald-400">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { TableOrder, OrderStatus, AppRole } from '../../types';
 import { useKaraoke, isSameTable } from '../../hooks/useKaraoke';
 import { useWakeLock } from '../../hooks/useWakeLock';
+import { formatRupiah, calculateTaxAndService } from '../../utils/billing';
 import { ReceiptPrintView } from '../operator/ReceiptPrintView';
 import { DeveloperFooter } from '../common/DeveloperFooter';
 import { PosMenuManager } from './PosMenuManager';
@@ -163,11 +164,6 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     setIsAuthenticated(false);
   };
 
-  // Format Angka Rupiah
-  const formatRupiah = (amount: number) => {
-    return 'Rp ' + (amount || 0).toLocaleString('id-ID');
-  };
-
   const renderOrderBadge = (ord: TableOrder) => {
     const isTakeaway =
       ord.orderType === 'TAKEAWAY' ||
@@ -229,23 +225,21 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
 
     targetOrders.forEach((ord) => {
       const ordSub = ord.subtotal || ord.totalAmount;
-      const taxAmt = Math.round((ordSub * taxRateVal) / 100);
-      const servAmt = Math.round((ordSub * serviceRateVal) / 100);
-      let finalAmt = ordSub + taxAmt + servAmt;
-
-      let roundAmt = 0;
-      if (isCashRounding && paymentMethod === 'cash') {
-        const rounded = Math.round(finalAmt / 100) * 100;
-        roundAmt = rounded - finalAmt;
-        finalAmt = rounded;
-      }
+      const calc = calculateTaxAndService(
+        ordSub,
+        false,
+        taxRateVal,
+        serviceRateVal,
+        isCashRounding && paymentMethod === 'cash',
+        true
+      );
 
       updateTableOrderStatus(ord.id, 'PAID', paymentMethod, undefined, {
-        finalTotal: finalAmt,
-        subtotal: ordSub,
-        taxAmount: taxAmt,
-        serviceAmount: servAmt,
-        roundingAmount: roundAmt,
+        finalTotal: calc.totalAmount,
+        subtotal: calc.subtotal,
+        taxAmount: calc.taxAmount,
+        serviceAmount: calc.serviceAmount,
+        roundingAmount: calc.roundingAmount,
       });
     });
 

@@ -1,7 +1,6 @@
 import React from 'react';
 import { TableOrder, OrderStatus, KitchenStationFilter } from '../../types';
 import { isDrinkItem } from '../../utils/billing';
-export { isDrinkItem };
 
 interface KitchenOrderCardProps {
   order: TableOrder;

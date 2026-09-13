@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { AppRole, TableOrder, KitchenStationFilter } from '../../types';
 import { DeveloperFooter } from '../common/DeveloperFooter';
-import { KitchenOrderCard, isDrinkItem } from './KitchenOrderCard';
+import { KitchenOrderCard } from './KitchenOrderCard';
+import { isDrinkItem } from '../../utils/billing';
 import { PosDirectOrderModal } from '../pos/PosDirectOrderModal';
 import { KitchenStockModal } from './KitchenStockModal';
 

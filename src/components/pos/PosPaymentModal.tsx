@@ -1,5 +1,6 @@
 import React from 'react';
 import { TableOrder, CafeSettings } from '../../types';
+import { calculateTaxAndService } from '../../utils/billing';
 
 export interface PosPaymentModalProps {
   payingTable: string | null;
@@ -59,8 +60,18 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
   const isTaxEnabled = cafeSettings?.enableTax !== false && (cafeSettings?.taxPercentage || 0) > 0;
   const isTaxPlus = isTaxEnabled && cafeSettings?.isTaxIncluded === false;
   const taxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
-  const taxAmount = Math.round((subtotalDue * taxRate) / 100);
-  const totalDue = subtotalDue + taxAmount;
+  const serviceRate = cafeSettings?.servicePercentage || 0;
+
+  const billing = calculateTaxAndService(
+    subtotalDue,
+    cafeSettings?.isTaxIncluded ?? false,
+    taxRate,
+    serviceRate,
+    false,
+    isTaxEnabled
+  );
+  const taxAmount = billing.taxAmount;
+  const totalDue = billing.totalAmount;
   const changeAmount = cashReceived > totalDue ? cashReceived - totalDue : 0;
 
   return (

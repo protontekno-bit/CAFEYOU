@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { MenuItem, OrderItem, OrderType, DeliveryPlatform, CafeSettings, TableOrder } from '../../types';
+import { calculateTaxAndService, formatRupiah } from '../../utils/billing';
 
 interface PosDirectOrderModalProps {
   isOpen: boolean;
@@ -78,15 +79,18 @@ export const PosDirectOrderModal: React.FC<PosDirectOrderModalProps> = ({
   const isTaxIncluded = isTaxEnabled && (cafeSettings?.isTaxIncluded ?? false);
   const servicePercentage = cafeSettings?.servicePercentage || 0;
 
-  const estimatedTax = isTaxEnabled && !isTaxIncluded && taxPercentage > 0
-    ? Math.round(rawSubtotal * (taxPercentage / 100))
-    : 0;
+  const billing = calculateTaxAndService(
+    rawSubtotal,
+    isTaxIncluded,
+    taxPercentage,
+    servicePercentage,
+    false,
+    isTaxEnabled
+  );
 
-  const estimatedService = servicePercentage > 0
-    ? Math.round(rawSubtotal * (servicePercentage / 100))
-    : 0;
-
-  const finalTotalAmount = rawSubtotal + estimatedTax + estimatedService;
+  const estimatedTax = billing.taxAmount;
+  const estimatedService = billing.serviceAmount;
+  const finalTotalAmount = billing.totalAmount;
 
   // Tambah item ke keranjang
   const handleAddToCart = (item: MenuItem) => {

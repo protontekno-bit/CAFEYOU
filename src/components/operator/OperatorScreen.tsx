@@ -12,12 +12,8 @@ import { QrShareModal } from './QrShareModal';
 import { HistoryModal } from './HistoryModal';
 import { VoucherManagerModal } from './VoucherManagerModal';
 import { TableQrGeneratorModal } from './TableQrGeneratorModal';
-import { CafeSettingsModal } from './CafeSettingsModal';
-import { SongLibraryManagerModal } from './SongLibraryManagerModal';
-import { ChangePasswordModal } from './ChangePasswordModal';
 import { SettingsCenterModal } from './SettingsCenterModal';
 import { OperatorLoginView } from './OperatorLoginView';
-import { DeveloperHelpModal } from '../common/DeveloperHelpModal';
 import { DeveloperFooter } from '../common/DeveloperFooter';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { useWakeLock } from '../../hooks/useWakeLock';
@@ -89,12 +85,10 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     saveSongToLibrary,
     menuItems,
     tableOrders,
-    updateTableOrderStatus,
     addMenuItem,
     updateMenuItem,
     deleteMenuItem,
     resetMenuToDefault,
-    clearFinishedOrders,
     updateLocalServerIp,
   } = useKaraoke();
 
@@ -106,10 +100,6 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isVoucherOpen, setIsVoucherOpen] = useState(false);
   const [isTableQrOpen, setIsTableQrOpen] = useState(false);
-  const [isCafeSettingsOpen, setIsCafeSettingsOpen] = useState(false);
-  const [isDeveloperHelpOpen, setIsDeveloperHelpOpen] = useState(false);
-  const [isLibraryManagerOpen, setIsLibraryManagerOpen] = useState(false);
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSettingsCenterOpen, setIsSettingsCenterOpen] = useState(false);
 
   // Notifikasi Pesanan Meja Baru (Lagu & F&B)
@@ -471,34 +461,6 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         onSaveIp={updateLocalServerIp}
         onClose={() => setIsTableQrOpen(false)}
         onOpenVoucherManager={() => setIsVoucherOpen(true)}
-      />
-
-      <CafeSettingsModal
-        isOpen={isCafeSettingsOpen}
-        settings={cafeSettings}
-        onClose={() => setIsCafeSettingsOpen(false)}
-        onSave={updateCafeSettings}
-      />
-
-      <ChangePasswordModal
-        isOpen={isChangePasswordOpen}
-        onClose={() => setIsChangePasswordOpen(false)}
-        onSuccess={handleLogout}
-      />
-
-      <SongLibraryManagerModal
-        isOpen={isLibraryManagerOpen}
-        songLibrary={songLibrary}
-        onClose={() => setIsLibraryManagerOpen(false)}
-        onDeleteSong={deleteFromLibrary}
-        onClearLibrary={clearLibrary}
-        onAddToQueue={(videoId, url, title) => addSong(videoId, url, 'Diputar Ulang', title)}
-      />
-
-      {/* Developer Help Modal & Footer */}
-      <DeveloperHelpModal
-        isOpen={isDeveloperHelpOpen}
-        onClose={() => setIsDeveloperHelpOpen(false)}
       />
 
       {/* Pusat Pengaturan Kafe (Sidebar Layout) */}

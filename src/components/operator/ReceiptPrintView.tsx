@@ -1,5 +1,6 @@
 import React from 'react';
 import { CafeSettings, TableOrder } from '../../types';
+import { formatRupiah } from '../../utils/billing';
 
 interface ReceiptPrintViewProps {
   cafeSettings: CafeSettings;
@@ -26,10 +27,6 @@ export const ReceiptPrintView: React.FC<ReceiptPrintViewProps> = ({
   const allItems = ordersToPrint.flatMap(o => o.items);
   const totalAmount = ordersToPrint.reduce((acc, o) => acc + o.totalAmount, 0);
   const paymentMethod = ordersToPrint[ordersToPrint.length - 1]?.paymentMethod || 'TUNAI';
-
-  const formatRupiah = (val: number) => {
-    return 'Rp ' + val.toLocaleString('id-ID');
-  };
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleString('id-ID', {

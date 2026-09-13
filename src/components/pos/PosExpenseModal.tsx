@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ExpenseCategory, ExpenseItem } from '../../types';
+import { formatRupiah } from '../../utils/billing';
 
 interface PosExpenseModalProps {
   isOpen: boolean;
@@ -72,8 +73,6 @@ export const PosExpenseModal: React.FC<PosExpenseModalProps> = ({
     setFeedback('Pengeluaran berhasil dicatat!');
     setTimeout(() => setFeedback(null), 3000);
   };
-
-  const formatRupiah = (val: number) => 'Rp ' + (val || 0).toLocaleString('id-ID');
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">

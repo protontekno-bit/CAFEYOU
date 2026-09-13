@@ -42,7 +42,6 @@ interface SettingsCenterModalProps {
   // Voucher
   vouchers?: Record<string, Voucher>;
   dailyPin?: DailyPinConfig;
-  onCreateVoucher?: (tableNumber: string, quota?: number) => Voucher;
   onRevokeVoucher?: (code: string) => void;
   onSetDailyPin?: (enabled: boolean, code: string) => void;
   onOpenVoucherModal?: () => void;
@@ -82,7 +81,6 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   onOpenTableQrModal,
   vouchers = {},
   dailyPin,
-  onCreateVoucher,
   onRevokeVoucher,
   onSetDailyPin,
   onOpenVoucherModal,
@@ -259,8 +257,6 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
             <SettingsVouchersTab
               vouchers={vouchers}
               dailyPin={dailyPin}
-              tables={tables}
-              onCreateVoucher={onCreateVoucher}
               onRevokeVoucher={onRevokeVoucher}
               onSetDailyPin={onSetDailyPin}
               onOpenVoucherModal={onOpenVoucherModal}

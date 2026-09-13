@@ -333,7 +333,6 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onOpenTableQrModal={() => setIsTableQrOpen(true)}
           vouchers={vouchers}
           dailyPin={dailyPin}
-          onCreateVoucher={createVoucher}
           onRevokeVoucher={revokeVoucher}
           onSetDailyPin={setDailyPin}
           onOpenVoucherModal={() => setIsVoucherOpen(true)}

@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Voucher, DailyPinConfig } from '../../../types';
-import { QUICK_TABLES } from '../../../constants/karaoke';
 import { TicketIcon } from '../../icons/Icons';
 
 interface SettingsVouchersTabProps {
   vouchers?: Record<string, Voucher>;
   dailyPin?: DailyPinConfig;
-  tables?: string[];
-  onCreateVoucher?: (tableNumber: string, quota?: number) => Voucher;
   onRevokeVoucher?: (code: string) => void;
   onSetDailyPin?: (enabled: boolean, code: string) => void;
   onOpenVoucherModal?: () => void;
@@ -16,21 +13,13 @@ interface SettingsVouchersTabProps {
 export const SettingsVouchersTab: React.FC<SettingsVouchersTabProps> = ({
   vouchers = {},
   dailyPin,
-  tables,
-  onCreateVoucher,
   onRevokeVoucher,
   onSetDailyPin,
   onOpenVoucherModal,
 }) => {
-  const activeTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
-
   const [isDailyPinActive, setIsDailyPinActive] = useState(dailyPin?.enabled || false);
   const [dailyPinCode, setDailyPinCode] = useState(dailyPin?.code || '1234');
   const [isPinSaved, setIsPinSaved] = useState(false);
-
-  const [voucherTable, setVoucherTable] = useState(() => activeTables[0] || 'Meja 1');
-  const [voucherQuota, setVoucherQuota] = useState(3);
-  const [lastCreatedVoucher, setLastCreatedVoucher] = useState<Voucher | null>(null);
 
   useEffect(() => {
     setIsDailyPinActive(dailyPin?.enabled || false);
@@ -45,17 +34,9 @@ export const SettingsVouchersTab: React.FC<SettingsVouchersTabProps> = ({
     }
   };
 
-  const handleCreateVoucherSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (onCreateVoucher) {
-      const v = onCreateVoucher(voucherTable, voucherQuota);
-      setLastCreatedVoucher(v);
-    }
-  };
-
   const activeVouchersList = Object.values(vouchers)
-    .filter((v) => v.status === 'active')
-    .sort((a, b) => b.createdAt - a.createdAt);
+    .filter((v) => v && v.status === 'active')
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
   return (
     <div className="space-y-6 animate-fadeIn max-w-2xl">
@@ -110,7 +91,7 @@ export const SettingsVouchersTab: React.FC<SettingsVouchersTabProps> = ({
             <button
               type="button"
               onClick={handleSavePin}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
             >
               {isPinSaved ? 'Tersimpan!' : 'Simpan PIN'}
             </button>
@@ -118,102 +99,28 @@ export const SettingsVouchersTab: React.FC<SettingsVouchersTabProps> = ({
         )}
       </div>
 
-      {/* SECTION B: Buat Voucher Baru Langsung (Inline Form) */}
-      <form
-        onSubmit={handleCreateVoucherSubmit}
-        className="p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/40 rounded-2xl border border-blue-500/30 space-y-3"
-      >
-        <div className="text-xs font-bold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
-          <TicketIcon className="w-4 h-4 text-blue-400" />
-          <span>Terbitkan Kode Voucher Baru</span>
+      {/* SECTION B: Akses Terpusat Manajemen Voucher */}
+      <div className="p-4 bg-gradient-to-r from-blue-950/40 via-slate-900 to-indigo-950/40 border border-blue-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="text-xs font-bold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+            <TicketIcon className="w-4 h-4 text-blue-400" />
+            <span>Penerbitan & Kontrol Voucher Meja</span>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Penerbitan kode voucher terpusat di modal Voucher Manager agar alur kerja operator tetap konsisten dan bebas guncangan.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-              Pilih Meja / Pelanggan:
-            </label>
-            <select
-              value={voucherTable}
-              onChange={(e) => setVoucherTable(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
-            >
-              {activeTables.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-              Batas Kuota Lagu:
-            </label>
-            <select
-              value={voucherQuota}
-              onChange={(e) => setVoucherQuota(parseInt(e.target.value, 10))}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value={1}>1 Lagu</option>
-              <option value={2}>2 Lagu</option>
-              <option value={3}>3 Lagu (Standar)</option>
-              <option value={5}>5 Lagu</option>
-              <option value={10}>10 Lagu</option>
-              <option value={20}>20 Lagu (VIP)</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="pt-1 flex items-center justify-between">
+        {onOpenVoucherModal && (
           <button
-            type="submit"
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/30 transition-all flex items-center gap-1.5"
+            type="button"
+            onClick={onOpenVoucherModal}
+            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95 cursor-pointer"
           >
-            <span>🎟️ Terbitkan Voucher {voucherTable}</span>
+            <span>Buka Manajemen Voucher 🎟️</span>
           </button>
-
-          {onOpenVoucherModal && (
-            <button
-              type="button"
-              onClick={onOpenVoucherModal}
-              className="text-xs text-slate-400 hover:text-white underline"
-            >
-              Buka Layout Cetak Voucher
-            </button>
-          )}
-        </div>
-      </form>
-
-      {/* Card Voucher Terbit Baru */}
-      {lastCreatedVoucher && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-600/20 border border-amber-500/40 space-y-2 animate-fadeIn">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-amber-300">VOUCHER BERHASIL DITERBITKAN:</span>
-            <span className="text-[10px] font-bold text-white bg-amber-600/60 px-2.5 py-0.5 rounded-full">
-              {lastCreatedVoucher.tableNumber}
-            </span>
-          </div>
-          <div className="flex items-center justify-between pt-1">
-            <div className="font-mono text-2xl sm:text-3xl font-black text-amber-400 tracking-wider">
-              {lastCreatedVoucher.code}
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(lastCreatedVoucher.code);
-                alert(`Kode voucher ${lastCreatedVoucher.code} berhasil disalin!`);
-              }}
-              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-colors"
-            >
-              Salin Kode
-            </button>
-          </div>
-          <div className="text-[11px] text-amber-200/80">
-            Kuota: <strong>{lastCreatedVoucher.quotaTotal} Lagu</strong> • Berikan kode ini kepada tamu di {lastCreatedVoucher.tableNumber}.
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* SECTION C: Daftar Voucher Aktif */}
       <div className="space-y-2">
@@ -225,7 +132,7 @@ export const SettingsVouchersTab: React.FC<SettingsVouchersTabProps> = ({
             Belum ada voucher aktif saat ini.
           </div>
         ) : (
-          <div className="space-y-2 max-h-52 overflow-y-auto custom-scrollbar pr-1">
+          <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
             {activeVouchersList.map((v) => (
               <div
                 key={v.code}
@@ -238,7 +145,7 @@ export const SettingsVouchersTab: React.FC<SettingsVouchersTabProps> = ({
                   <div>
                     <div className="text-xs font-bold text-white">{v.tableNumber}</div>
                     <div className="text-[10px] text-slate-400">
-                      Terpakai: <strong>{v.quotaUsed}</strong> / {v.quotaTotal} Lagu
+                      Terpakai: <strong>{v.quotaUsed}</strong> / {v.quotaTotal === 999 ? '∞' : v.quotaTotal} Lagu
                     </div>
                   </div>
                 </div>
@@ -251,7 +158,7 @@ export const SettingsVouchersTab: React.FC<SettingsVouchersTabProps> = ({
                         onRevokeVoucher(v.code);
                       }
                     }}
-                    className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-xs"
+                    className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-xs cursor-pointer"
                     title="Cabut voucher ini"
                   >
                     🗑️

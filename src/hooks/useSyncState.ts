@@ -12,10 +12,25 @@ function sanitizeState<T>(val: any, fallback: T, currentState?: any): T {
   }
   const merged: any = { ...fallback, ...val };
   if ('queue' in (fallback as any)) {
-    merged.queue = Array.isArray(val.queue) ? val.queue : [];
+    // Firebase RTDB menyimpan array sebagai object {0: item, 1: item, ...}
+    // Harus handle kedua kasus: native array JS dan object Firebase
+    if (Array.isArray(val.queue)) {
+      merged.queue = val.queue;
+    } else if (val.queue && typeof val.queue === 'object') {
+      merged.queue = Object.values(val.queue);
+    } else {
+      merged.queue = [];
+    }
   }
   if ('history' in (fallback as any)) {
-    merged.history = Array.isArray(val.history) ? val.history : [];
+    // Firebase RTDB menyimpan array sebagai object {0: item, 1: item, ...}
+    if (Array.isArray(val.history)) {
+      merged.history = val.history;
+    } else if (val.history && typeof val.history === 'object') {
+      merged.history = Object.values(val.history);
+    } else {
+      merged.history = [];
+    }
   }
   if ('songLibrary' in (fallback as any)) {
     merged.songLibrary =
@@ -258,11 +273,26 @@ export function useSyncState<T>(
           if (db) {
             try {
               const dbRef = ref(db, `cafeyou/${key}`);
-              // Pisahkan tableOrders, expenses, dan vouchers agar TIDAK terhapus/tertimpa saat sinkronisasi state umum (lagu, player, antrean)
-              const { tableOrders: _to, expenses: _exp, vouchers: _vouch, ...cleanState } = newValue as any;
+              // Pisahkan tableOrders, expenses, dan vouchers agar TIDAK terhapus/tertimpa
+              // Pisahkan juga queue & history karena array perlu di-set secara atomik
+              const { tableOrders: _to, expenses: _exp, vouchers: _vouch, queue: _q, history: _hist, ...cleanState } = newValue as any;
               const sanitizedPayload = JSON.parse(JSON.stringify(cleanState));
+              
+              // Tulis field non-array (lagu, settings, dll) dengan update()
               update(dbRef, sanitizedPayload).catch((err) => {
-                console.warn('Gagal menulis ke Firebase Cloud:', err);
+                console.warn('Gagal menulis state ke Firebase Cloud:', err);
+              });
+
+              // Tulis queue secara atomik ke path sendiri (menghindari Firebase array-as-object bug)
+              const queueRef = ref(db, `cafeyou/${key}/queue`);
+              set(queueRef, Array.isArray(_q) ? _q : []).catch((err) => {
+                console.warn('Gagal menulis queue ke Firebase Cloud:', err);
+              });
+
+              // Tulis history secara atomik ke path sendiri
+              const historyRef = ref(db, `cafeyou/${key}/history`);
+              set(historyRef, Array.isArray(_hist) ? _hist : []).catch((err) => {
+                console.warn('Gagal menulis history ke Firebase Cloud:', err);
               });
             } catch (err) {}
           }

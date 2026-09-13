@@ -51,7 +51,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
       if (snap.exists()) {
         const val = snap.val();
         const diff = Date.now() - (val?.timestamp || 0);
-        setIsPlayerOnline(diff < 25000);
+        setIsPlayerOnline(Math.abs(diff) < 30000);
       } else {
         setIsPlayerOnline(false);
       }

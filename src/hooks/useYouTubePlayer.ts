@@ -21,7 +21,7 @@ export function useYouTubePlayer({
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const lastSoundTimestampRef = useRef<number>(0);
   const lastPlayedSongIdRef = useRef<string | null>(null);
-  const lastReplayTimestampRef = useRef<number>(0);
+  const lastReplayTimestampRef = useRef<number>(appState?.forceReplay || 0);
 
   // appStateRef to access latest state inside callbacks
   const appStateRef = useRef(appState);
@@ -125,44 +125,46 @@ export function useYouTubePlayer({
         }
       }
 
-      // 2. Play / Pause flexibility
-      const state = player.getPlayerState();
-      if (appState?.playbackStatus === 'PAUSED') {
-        if (state === window.YT.PlayerState.PLAYING || state === window.YT.PlayerState.BUFFERING) {
-          player.pauseVideo();
-        }
-      } else if (appState?.playbackStatus === 'PLAYING') {
-        if (state !== window.YT.PlayerState.PLAYING && state !== window.YT.PlayerState.BUFFERING) {
-          player.playVideo();
-        }
-      }
-
-      // 3. Force Replay signal from Operator
-      if (
-        appState?.forceReplay &&
-        appState.forceReplay > lastReplayTimestampRef.current
-      ) {
-        lastReplayTimestampRef.current = appState.forceReplay;
-        if (typeof player.seekTo === 'function') {
-          player.seekTo(0, true);
-        }
-        if (typeof player.playVideo === 'function') {
-          player.playVideo();
-        }
-      }
-
-      // 4. Track switching sync (Uses unique song.id to guarantee reload on duplicate video IDs)
       if (currentSong) {
+        // 2. Track switching sync (Uses unique song.id to guarantee reload on duplicate video IDs)
         const isNewSongInstance = lastPlayedSongIdRef.current !== currentSong.id;
         const videoData = player.getVideoData ? player.getVideoData() : null;
         const playingId = videoData ? videoData.video_id : null;
 
         if (isNewSongInstance || playingId !== currentSong.videoId) {
           lastPlayedSongIdRef.current = currentSong.id;
+          setErrorNotice(null);
           player.loadVideoById(currentSong.videoId);
+        }
+
+        // 3. Play / Pause flexibility
+        const state = typeof player.getPlayerState === 'function' ? player.getPlayerState() : null;
+        if (appState?.playbackStatus === 'PAUSED') {
+          if (state === window.YT.PlayerState.PLAYING || state === window.YT.PlayerState.BUFFERING) {
+            player.pauseVideo();
+          }
+        } else if (appState?.playbackStatus === 'PLAYING') {
+          if (state !== window.YT.PlayerState.PLAYING && state !== window.YT.PlayerState.BUFFERING) {
+            player.playVideo();
+          }
+        }
+
+        // 4. Force Replay signal from Operator
+        if (
+          appState?.forceReplay &&
+          appState.forceReplay > lastReplayTimestampRef.current
+        ) {
+          lastReplayTimestampRef.current = appState.forceReplay;
+          if (typeof player.seekTo === 'function') {
+            player.seekTo(0, true);
+          }
+          if (typeof player.playVideo === 'function') {
+            player.playVideo();
+          }
         }
       } else {
         lastPlayedSongIdRef.current = null;
+        const state = typeof player.getPlayerState === 'function' ? player.getPlayerState() : null;
         if (state === window.YT.PlayerState.PLAYING || state === window.YT.PlayerState.PAUSED) {
           player.stopVideo();
         }

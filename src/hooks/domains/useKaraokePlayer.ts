@@ -293,11 +293,15 @@ export function useKaraokePlayer(
   };
 
   const replayCurrentSong = () => {
-    updateAppState((prev) => ({
-      ...prev,
-      forceReplay: Date.now(),
-      playbackStatus: 'PLAYING',
-    }));
+    updateAppState((prev) => {
+      const currentQueue = Array.isArray(prev?.queue) ? prev.queue : [];
+      if (currentQueue.length === 0) return prev;
+      return {
+        ...prev,
+        forceReplay: Date.now(),
+        playbackStatus: 'PLAYING',
+      };
+    });
   };
 
   const clearQueue = (keepCurrentSong: boolean = true) => {

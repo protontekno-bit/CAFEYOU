@@ -41,7 +41,7 @@ export function useKaraokePlayer(
       id: songId,
       videoId,
       requester: requester?.trim() || options?.tableNumber || 'Hamba Allah',
-      tableNumber: options?.tableNumber,
+      tableNumber: options?.tableNumber || '',
       source: options?.source || 'operator',
       title: finalTitle,
       url: rawUrl,
@@ -124,7 +124,8 @@ export function useKaraokePlayer(
           }
 
           const rawAppended = [...list, newSong];
-          return fairRotationEnabled ? rebalanceFairQueue(rawAppended) : rawAppended;
+          const finalQueue = fairRotationEnabled ? rebalanceFairQueue(rawAppended) : rawAppended;
+          return JSON.parse(JSON.stringify(finalQueue));
         });
       }
     } catch (err) {

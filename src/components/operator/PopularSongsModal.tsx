@@ -82,9 +82,9 @@ export const PopularSongsModal: React.FC<PopularSongsModalProps> = ({
         {/* Daftar Lagu */}
         <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
           {filteredSongs.length > 0 ? (
-            filteredSongs.map((song) => (
+            filteredSongs.map((song, index) => (
               <div
-                key={song.videoId}
+                key={`${song.videoId}-${index}`}
                 className="flex items-center justify-between p-3 bg-slate-900/70 hover:bg-slate-900 rounded-xl border border-slate-700/60 hover:border-blue-500/50 transition-all group"
               >
                 <div className="flex items-center gap-3 min-w-0">

@@ -188,6 +188,13 @@ export function useSyncState<T>(
             setState((prevState) => {
               const safeVal = sanitizeState<T>(cloudVal, initialState, prevState);
 
+              // Hindari re-render jika data identik
+              try {
+                if (JSON.stringify(safeVal) === JSON.stringify(prevState)) {
+                  return prevState;
+                }
+              } catch {}
+
               // Simpan juga ke cache lokal tanpa menimpa tableOrders & expenses yang ada
               try {
                 window.localStorage.setItem(key, JSON.stringify(safeVal));
@@ -228,7 +235,15 @@ export function useSyncState<T>(
         if (event.data && event.data.key === key) {
           // Gunakan setState callback agar prevState tersedia sebagai currentState
           // Ini mencegah vouchers/tableOrders/expenses terhapus saat sync antar-tab
-          setState((prevState) => sanitizeState<T>(event.data.value, initialState, prevState));
+          setState((prevState) => {
+            const safeVal = sanitizeState<T>(event.data.value, initialState, prevState);
+            try {
+              if (JSON.stringify(safeVal) === JSON.stringify(prevState)) {
+                return prevState;
+              }
+            } catch {}
+            return safeVal;
+          });
         }
       };
 

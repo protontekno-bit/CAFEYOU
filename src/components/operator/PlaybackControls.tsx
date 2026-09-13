@@ -46,7 +46,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   useEffect(() => {
     const db = initFirebaseDatabase();
     if (!db) return;
-    const hbRef = ref(db, `cafeyou/${STORAGE_KEY}/playerHeartbeat`);
+    const hbRef = ref(db, `cafeyou/player_heartbeat/${STORAGE_KEY}`);
     const unsub = onValue(hbRef, (snap) => {
       if (snap.exists()) {
         const val = snap.val();
@@ -74,12 +74,12 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
             }`}
             title={isPlayerOnline ? 'Layar Proyektor TV sedang aktif dan terhubung' : 'Layar Proyektor belum dibuka di browser TV atau sedang offline'}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${isPlayerOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+            <span className={`w-2 h-2 rounded-full ${isPlayerOnline ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]' : 'bg-slate-500'}`} />
             <span>TV: {isPlayerOnline ? 'Online' : 'Offline'}</span>
           </span>
           {hasCurrentSong && (
             <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
               ON AIR
             </span>
           )}

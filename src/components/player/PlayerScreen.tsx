@@ -47,7 +47,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
   useEffect(() => {
     const db = initFirebaseDatabase();
     if (!db) return;
-    const hbRef = ref(db, `cafeyou/${STORAGE_KEY}/playerHeartbeat`);
+    const hbRef = ref(db, `cafeyou/player_heartbeat/${STORAGE_KEY}`);
     const sendHb = () => {
       set(hbRef, { timestamp: Date.now(), status: 'online' }).catch(() => {});
     };

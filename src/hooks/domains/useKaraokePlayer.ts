@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import {
   Song,
   KaraokeState,
@@ -376,7 +377,7 @@ export function useKaraokePlayer(
     }));
   };
 
-  const triggerSoundEffect = (type: SoundEffectType) => {
+  const triggerSoundEffect = useCallback((type: SoundEffectType) => {
     playSoundEffect(type);
     updateAppState((prev) => ({
       ...prev,
@@ -385,9 +386,9 @@ export function useKaraokePlayer(
         timestamp: Date.now(),
       },
     }));
-  };
+  }, [updateAppState]);
 
-  const sendLiveReaction = (emoji: string, tableNumber: string) => {
+  const sendLiveReaction = useCallback((emoji: string, tableNumber: string) => {
     updateAppState((prev) => ({
       ...prev,
       liveReaction: {
@@ -397,7 +398,7 @@ export function useKaraokePlayer(
         timestamp: Date.now(),
       },
     }));
-  };
+  }, [updateAppState]);
 
   const toggleFairRotation = (enabled?: boolean) => {
     updateAppState((prev) => {

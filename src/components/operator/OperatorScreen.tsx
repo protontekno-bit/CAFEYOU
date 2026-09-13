@@ -24,6 +24,7 @@ import { useWakeLock } from '../../hooks/useWakeLock';
 import { AppRole, PopularPresetSong } from '../../types';
 import { initFirebaseDatabase, ref, onValue, set } from '../../config/firebase';
 import { STORAGE_KEY } from '../../constants/karaoke';
+import { playSoundEffect } from '../../utils/soundfx';
 
 interface OperatorScreenProps {
   setRole?: (role: AppRole) => void;
@@ -126,7 +127,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
       const newestSong = state.queue[state.queue.length - 1];
       if (newestSong && (newestSong.source === 'guest' || newestSong.tableNumber)) {
         try {
-          triggerSoundEffect('chime');
+          playSoundEffect('chime');
         } catch {}
         setNewOrderAlert({
           table: newestSong.tableNumber || 'Meja Tamu',
@@ -139,7 +140,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
       }
     }
     prevQueueLengthRef.current = currentLen;
-  }, [state.queue, triggerSoundEffect]);
+  }, [state.queue?.length]);
 
   // Pantau penambahan pesanan makanan/minuman (F&B) baru dari Tamu
   const pendingOrdersCount = Object.values(tableOrders || {}).filter(
@@ -150,7 +151,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   React.useEffect(() => {
     if (pendingOrdersCount > prevPendingCountRef.current) {
       try {
-        triggerSoundEffect('chime');
+        playSoundEffect('chime');
       } catch {}
       setNewOrderAlert({
         table: 'Pesanan F&B',
@@ -162,7 +163,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
       }, 7000);
     }
     prevPendingCountRef.current = pendingOrdersCount;
-  }, [pendingOrdersCount, triggerSoundEffect]);
+  }, [pendingOrdersCount]);
 
   // Pantau Permintaan Top-Up Kuota Lagu dari Meja Tamu
   const [assistanceRequests, setAssistanceRequests] = useState<
@@ -182,7 +183,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     try {
       const db = initFirebaseDatabase();
       if (!db) return;
-      const reqRef = ref(db, `cafeyou/${STORAGE_KEY}/assistanceRequests`);
+      const reqRef = ref(db, `cafeyou/assistance_requests`);
       const unsub = onValue(reqRef, (snapshot) => {
         const val = snapshot.val();
         if (val && typeof val === 'object') {
@@ -206,7 +207,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     try {
       const db = initFirebaseDatabase();
       if (db) {
-        const rRef = ref(db, `cafeyou/${STORAGE_KEY}/assistanceRequests/${req.tableNumber}`);
+        const rRef = ref(db, `cafeyou/assistance_requests/${req.tableNumber}`);
         set(rRef, null).catch(() => {});
       }
     } catch {}
@@ -216,7 +217,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     try {
       const db = initFirebaseDatabase();
       if (db) {
-        const rRef = ref(db, `cafeyou/${STORAGE_KEY}/assistanceRequests/${tableNumber}`);
+        const rRef = ref(db, `cafeyou/assistance_requests/${tableNumber}`);
         set(rRef, null).catch(() => {});
       }
     } catch {}
@@ -282,7 +283,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
         {/* Floating Toast Alert Pesanan Meja Baru */}
         {newOrderAlert && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3">
-            <div className="p-3.5 bg-gradient-to-r from-emerald-600/90 via-emerald-700 to-teal-800 border border-emerald-400/50 rounded-2xl shadow-xl flex items-center justify-between text-white animate-bounce">
+            <div className="p-3.5 bg-gradient-to-r from-emerald-600/90 via-emerald-700 to-teal-800 border border-emerald-400/50 rounded-2xl shadow-xl flex items-center justify-between text-white animate-fadeIn">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🔔</span>
                 <div>
@@ -310,7 +311,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
             {pendingTopUpList.map((req) => (
               <div
                 key={req.tableNumber}
-                className="p-3.5 bg-gradient-to-r from-amber-600/90 via-amber-700 to-orange-800 border border-amber-400/50 rounded-2xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white animate-pulse"
+                className="p-3.5 bg-gradient-to-r from-amber-600/90 via-amber-700 to-orange-800 border border-amber-400/50 rounded-2xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white animate-fadeIn"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">⚡</span>

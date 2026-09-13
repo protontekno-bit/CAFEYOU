@@ -28,7 +28,7 @@ export const NowPlayingCard: React.FC<NowPlayingCardProps> = ({
 
       {currentSong ? (
         <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gradient-to-br from-slate-900 via-slate-900/90 to-blue-950/40 rounded-xl border border-blue-500/40 relative overflow-hidden shadow-inner">
-          <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-400 via-indigo-400 to-emerald-400 animate-pulse" />
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-400 via-indigo-400 to-emerald-400" />
 
           {/* Thumbnail */}
           <div className="relative shrink-0 self-center sm:self-start">

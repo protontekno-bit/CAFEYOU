@@ -761,7 +761,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     try {
       const db = initFirebaseDatabase();
       if (db) {
-        const reqRef = ref(db, `cafeyou/${STORAGE_KEY}/assistanceRequests/${tableNumber}`);
+        const reqRef = ref(db, `cafeyou/assistance_requests/${tableNumber}`);
         set(reqRef, {
           tableNumber,
           voucherCode: activeVoucher?.code || '',

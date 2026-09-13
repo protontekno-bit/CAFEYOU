@@ -79,7 +79,7 @@ export const QueueList: React.FC<QueueListProps> = ({
             {safeQueue.length} Lagu
           </span>
           {guestCount > 0 && (
-            <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono animate-pulse">
+            <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono">
               {guestCount} dari Meja Tamu
             </span>
           )}

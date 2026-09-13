@@ -703,23 +703,21 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     }
   };
 
-  // Debounced Live YouTube Search — berjalan otomatis saat tamu mengetik (catalog & youtube mode)
+  // Debounced Live YouTube Search saat berada di tab YouTube
   useEffect(() => {
+    if (searchSource !== 'youtube') return;
     const trimmed = searchQuery.trim();
-    // Hanya jalankan jika ada query nyata (bukan URL YouTube) dan ada API key
-    if (!trimmed || extractYouTubeID(trimmed) || !cafeSettings?.youtubeApiKey) {
+    if (!trimmed || extractYouTubeID(trimmed)) {
       setYtSearchResults([]);
-      setYtSearchError(null);
       return;
     }
 
-    // Debounce 600ms agar tidak terlalu agresif saat tamu masih mengetik
     const timer = setTimeout(() => {
       performYouTubeSearch(trimmed);
-    }, 600);
+    }, 450);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, cafeSettings?.youtubeApiKey]);
+  }, [searchQuery, searchSource, cafeSettings?.youtubeApiKey]);
 
   const handleOpenExternalYouTube = (queryText?: string) => {
     const q = (queryText || searchQuery || 'karaoke').trim();

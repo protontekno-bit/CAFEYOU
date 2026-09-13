@@ -20,8 +20,8 @@ export const GuestReceiptModal: React.FC<GuestReceiptModalProps> = ({
     0
   );
   const subtotal = order.subtotal || rawSubtotal;
-  const isTaxPlus =
-    cafeSettings?.isTaxIncluded === false && (cafeSettings?.taxPercentage || 0) > 0;
+  const isTaxEnabled = cafeSettings?.enableTax !== false && (cafeSettings?.taxPercentage || 0) > 0;
+  const isTaxPlus = isTaxEnabled && cafeSettings?.isTaxIncluded === false;
   const taxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
   const serviceRate = cafeSettings?.servicePercentage || 0;
 
@@ -142,9 +142,9 @@ export const GuestReceiptModal: React.FC<GuestReceiptModalProps> = ({
                   <span className="font-mono">Rp {roundingAmount.toLocaleString('id-ID')}</span>
                 </div>
               )}
-              {cafeSettings?.isTaxIncluded && (
+              {cafeSettings?.enableTax !== false && (cafeSettings?.taxPercentage || 0) > 0 && cafeSettings?.isTaxIncluded && (
                 <div className="text-[10px] text-slate-500 italic">
-                  *Harga menu sudah termasuk PB1 ({cafeSettings?.taxPercentage || 10}%)
+                  *Harga menu sudah termasuk PB1 ({cafeSettings.taxPercentage}%)
                 </div>
               )}
             </div>

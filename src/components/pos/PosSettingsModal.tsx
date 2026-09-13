@@ -16,9 +16,17 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
   onUpdateCafeSettings,
   onUpdatePosPassword,
 }) => {
+  const getInitialTaxMode = (settings?: CafeSettings): 'NONE' | 'INCLUDED' | 'ADDED' => {
+    if (settings?.enableTax === false || settings?.taxPercentage === 0) return 'NONE';
+    if (settings?.isTaxIncluded) return 'INCLUDED';
+    if ((settings?.taxPercentage || 0) > 0) return 'ADDED';
+    return 'NONE';
+  };
+
   // State: Pajak PB1 & Service
-  const [taxPercentage, setTaxPercentage] = useState<number>(cafeSettings?.taxPercentage ?? 10);
-  const [isTaxIncluded, setIsTaxIncluded] = useState<boolean>(cafeSettings?.isTaxIncluded ?? true);
+  const [taxMode, setTaxMode] = useState<'NONE' | 'INCLUDED' | 'ADDED'>(() => getInitialTaxMode(cafeSettings));
+  const [taxPercentage, setTaxPercentage] = useState<number>(cafeSettings?.taxPercentage || 10);
+  const [isTaxIncluded, setIsTaxIncluded] = useState<boolean>(cafeSettings?.isTaxIncluded ?? false);
   const [servicePercentage, setServicePercentage] = useState<number>(cafeSettings?.servicePercentage ?? 0);
 
   // State: QRIS & DANA
@@ -39,8 +47,10 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setTaxPercentage(cafeSettings?.taxPercentage ?? 10);
-      setIsTaxIncluded(cafeSettings?.isTaxIncluded ?? true);
+      const mode = getInitialTaxMode(cafeSettings);
+      setTaxMode(mode);
+      setTaxPercentage(cafeSettings?.taxPercentage || 10);
+      setIsTaxIncluded(cafeSettings?.isTaxIncluded ?? false);
       setServicePercentage(cafeSettings?.servicePercentage ?? 0);
       setQrisImageUrl(cafeSettings?.qrisImageUrl || '');
       setQrisMerchantName(cafeSettings?.qrisMerchantName || '');
@@ -86,10 +96,15 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
 
   const handleSaveTaxSettings = (e: React.FormEvent) => {
     e.preventDefault();
+    const isNone = taxMode === 'NONE';
+    const isInc = taxMode === 'INCLUDED';
+    const effTax = isNone ? 0 : (Number(taxPercentage) || 10);
+
     onUpdateCafeSettings({
       ...cafeSettings,
-      taxPercentage: Number(taxPercentage) || 0,
-      isTaxIncluded: Boolean(isTaxIncluded),
+      enableTax: !isNone,
+      taxPercentage: effTax,
+      isTaxIncluded: isInc,
       servicePercentage: Number(servicePercentage) || 0,
     });
     setSaveSuccess(true);
@@ -183,61 +198,103 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
 
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">Skema Pajak Restoran (PB1):</label>
-              <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs font-bold text-slate-300">Skema Kebijakan Pajak Restoran (PB1):</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {/* 1. Bebas Pajak (Non-PB1) */}
                 <button
                   type="button"
-                  onClick={() => setIsTaxIncluded(true)}
+                  onClick={() => {
+                    setTaxMode('NONE');
+                    setIsTaxIncluded(false);
+                  }}
                   className={`p-3 rounded-xl border text-left transition-all ${
-                    isTaxIncluded
-                      ? 'bg-amber-500/20 border-amber-500/50 text-white'
+                    taxMode === 'NONE'
+                      ? 'bg-emerald-500/20 border-emerald-500/60 text-white shadow-sm ring-1 ring-emerald-500/30'
                       : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <div className="text-xs font-black flex items-center gap-1.5">
-                    <span>{isTaxIncluded ? '🔘' : '⚪'}</span> Sudah Termasuk
+                  <div className="text-xs font-black flex items-center gap-1.5 text-emerald-400">
+                    <span>{taxMode === 'NONE' ? '🟢' : '⚪'}</span> Bebas Pajak (Non-PB1)
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1">
-                    Harga menu sudah nett termasuk PB1 (tidak menambah tagihan akhir).
+                    Direkomendasikan untuk kafe kecil/UMKM. Struk & portal tamu bersih tanpa pungutan pajak.
                   </p>
                 </button>
 
+                {/* 2. Sudah Termasuk di Menu */}
                 <button
                   type="button"
-                  onClick={() => setIsTaxIncluded(false)}
+                  onClick={() => {
+                    setTaxMode('INCLUDED');
+                    setIsTaxIncluded(true);
+                  }}
                   className={`p-3 rounded-xl border text-left transition-all ${
-                    !isTaxIncluded
-                      ? 'bg-amber-500/20 border-amber-500/50 text-white'
+                    taxMode === 'INCLUDED'
+                      ? 'bg-amber-500/20 border-amber-500/60 text-white shadow-sm ring-1 ring-amber-500/30'
                       : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <div className="text-xs font-black flex items-center gap-1.5">
-                    <span>{!isTaxIncluded ? '🔘' : '⚪'}</span> Tambahan di Kasir
+                  <div className="text-xs font-black flex items-center gap-1.5 text-amber-300">
+                    <span>{taxMode === 'INCLUDED' ? '🟡' : '⚪'}</span> Termasuk di Menu (Nett)
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1">
-                    PB1 dihitung otomatis sebagai baris tambahan saat struk kasir dicetak.
+                    Harga menu sudah nett termasuk PB1 (tidak menambah total akhir pembayaran).
+                  </p>
+                </button>
+
+                {/* 3. Tambahan di Kasir */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTaxMode('ADDED');
+                    setIsTaxIncluded(false);
+                  }}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    taxMode === 'ADDED'
+                      ? 'bg-blue-500/20 border-blue-500/60 text-white shadow-sm ring-1 ring-blue-500/30'
+                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <div className="text-xs font-black flex items-center gap-1.5 text-blue-400">
+                    <span>{taxMode === 'ADDED' ? '🔵' : '⚪'}</span> Tambahan Kasir (+PB1)
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Pajak PB1 dihitung otomatis dan ditambahkan ke subtotal saat struk dicetak.
                   </p>
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Tarif PB1 (%):</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.5}
-                    value={taxPercentage}
-                    onChange={(e) => setTaxPercentage(Number(e.target.value))}
-                    className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-amber-500"
-                  />
-                  <span className="absolute right-3 top-2 text-xs font-bold text-slate-500">%</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {taxMode === 'NONE' ? (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex items-center justify-between text-xs text-emerald-300">
+                  <div className="flex items-center gap-2">
+                    <span>🌱</span>
+                    <div>
+                      <span className="font-bold block">Status Non-PB1 Aktif</span>
+                      <span className="text-[10px] text-slate-400">Pajak 0% (Tanpa beban pajak daerah)</span>
+                    </div>
+                  </div>
+                  <span className="text-[9px] text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full font-bold">UMKM</span>
                 </div>
-                <span className="text-[10px] text-slate-500">Standar Pemda: 10%</span>
-              </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300">Tarif PB1 (%):</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={0.5}
+                      max={100}
+                      step={0.5}
+                      value={taxPercentage || 10}
+                      onChange={(e) => setTaxPercentage(Number(e.target.value))}
+                      className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-amber-500"
+                    />
+                    <span className="absolute right-3 top-2 text-xs font-bold text-slate-500">%</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500">Standar Pemda: 10%</span>
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-300">Service Charge (%):</label>

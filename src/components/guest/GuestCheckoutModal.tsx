@@ -181,9 +181,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 <span className="text-slate-300 font-bold block">
                   {isTaxPlus ? 'Estimasi Total Pembayaran:' : 'Total Pembayaran Meja (Nett):'}
                 </span>
-                {cafeSettings?.isTaxIncluded && (
+                {cafeSettings?.enableTax !== false && (cafeSettings?.taxPercentage || 0) > 0 && cafeSettings?.isTaxIncluded && (
                   <span className="text-[10px] text-emerald-400 font-medium">
-                    ✓ Termasuk PB1 ({cafeSettings?.taxPercentage || 10}%)
+                    ✓ Termasuk PB1 ({cafeSettings.taxPercentage}%)
                   </span>
                 )}
               </div>

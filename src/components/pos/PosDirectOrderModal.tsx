@@ -73,11 +73,12 @@ export const PosDirectOrderModal: React.FC<PosDirectOrderModalProps> = ({
   const cartList = Object.values(cart);
   const rawSubtotal = cartList.reduce((sum, c) => sum + (c.unitPrice * c.quantity), 0);
 
-  const taxPercentage = cafeSettings?.taxPercentage ?? 10;
-  const isTaxIncluded = cafeSettings?.isTaxIncluded ?? false;
+  const isTaxEnabled = cafeSettings?.enableTax !== false && (cafeSettings?.taxPercentage || 0) > 0;
+  const taxPercentage = isTaxEnabled ? (cafeSettings?.taxPercentage || 0) : 0;
+  const isTaxIncluded = isTaxEnabled && (cafeSettings?.isTaxIncluded ?? false);
   const servicePercentage = cafeSettings?.servicePercentage || 0;
 
-  const estimatedTax = !isTaxIncluded && taxPercentage > 0
+  const estimatedTax = isTaxEnabled && !isTaxIncluded && taxPercentage > 0
     ? Math.round(rawSubtotal * (taxPercentage / 100))
     : 0;
 

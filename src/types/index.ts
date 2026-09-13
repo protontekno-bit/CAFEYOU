@@ -71,6 +71,7 @@ export interface CafeSettings {
   wifiName?: string;
   wifiPassword?: string;
   youtubeApiKey?: string;
+  enableTax?: boolean;
   taxPercentage?: number;
   isTaxIncluded?: boolean;
   servicePercentage?: number;

@@ -21,10 +21,12 @@ export const calculateTaxAndService = (
   isTaxIncluded: boolean = false,
   taxPercentage: number = 0,
   servicePercentage: number = 0,
-  isCashRounding: boolean = false
+  isCashRounding: boolean = false,
+  enableTax: boolean = true
 ): TaxAndServiceResult => {
-  const isTaxPlus = isTaxIncluded === false && taxPercentage > 0;
-  const taxRate = isTaxPlus ? taxPercentage : 0;
+  const effectiveTax = enableTax !== false ? (taxPercentage || 0) : 0;
+  const isTaxPlus = isTaxIncluded === false && effectiveTax > 0;
+  const taxRate = isTaxPlus ? effectiveTax : 0;
   const serviceRate = servicePercentage > 0 ? servicePercentage : 0;
 
   const taxAmount = Math.round((subtotal * taxRate) / 100);

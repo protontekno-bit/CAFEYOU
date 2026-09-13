@@ -43,8 +43,8 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
   if (!payingTable || payingOrders.length === 0) return null;
 
   const subtotalDue = payingOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-  const isTaxPlus =
-    cafeSettings?.isTaxIncluded === false && (cafeSettings?.taxPercentage || 0) > 0;
+  const isTaxEnabled = cafeSettings?.enableTax !== false && (cafeSettings?.taxPercentage || 0) > 0;
+  const isTaxPlus = isTaxEnabled && cafeSettings?.isTaxIncluded === false;
   const taxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
   const taxAmount = Math.round((subtotalDue * taxRate) / 100);
   const totalDue = subtotalDue + taxAmount;

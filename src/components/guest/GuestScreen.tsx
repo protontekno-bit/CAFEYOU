@@ -408,7 +408,8 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
   }).length;
 
   // Tarif Pajak PB1 & Service Charge
-  const isTaxPlus = cafeSettings?.isTaxIncluded === false && (cafeSettings?.taxPercentage || 0) > 0;
+  const isTaxEnabled = cafeSettings?.enableTax !== false && (cafeSettings?.taxPercentage || 0) > 0;
+  const isTaxPlus = isTaxEnabled && cafeSettings?.isTaxIncluded === false;
   const guestTaxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
   const guestServiceRate = cafeSettings?.servicePercentage || 0;
 

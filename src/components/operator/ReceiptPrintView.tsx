@@ -120,7 +120,8 @@ export const ReceiptPrintView: React.FC<ReceiptPrintViewProps> = ({
       {/* Ringkasan Pembayaran */}
       {(() => {
         const savedTax = ordersToPrint.reduce((sum: number, o) => sum + (o.taxAmount || 0), 0);
-        const isTaxPlus = cafeSettings?.isTaxIncluded === false && (cafeSettings?.taxPercentage || 0) > 0;
+        const isTaxEnabled = cafeSettings?.enableTax !== false && (cafeSettings?.taxPercentage || 0) > 0;
+        const isTaxPlus = isTaxEnabled && cafeSettings?.isTaxIncluded === false;
         const taxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
         const taxAmount = savedTax > 0 ? savedTax : Math.round((totalAmount * taxRate) / 100);
         const grandTotal = totalAmount + (savedTax > 0 ? 0 : taxAmount);

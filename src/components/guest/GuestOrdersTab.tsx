@@ -91,9 +91,9 @@ export const GuestOrdersTab: React.FC<GuestOrdersTabProps> = ({
             <span className="text-xs text-slate-300 block font-bold">
               {guestTaxRate > 0 ? 'Total Belum Lunas (+PB1):' : 'Total Tagihan Belum Lunas:'}
             </span>
-            {cafeSettings?.isTaxIncluded && (
+            {cafeSettings?.enableTax !== false && (cafeSettings?.taxPercentage || 0) > 0 && cafeSettings?.isTaxIncluded && (
               <span className="text-[10px] text-emerald-400 font-medium">
-                ✓ Termasuk PB1 ({cafeSettings?.taxPercentage || 10}%)
+                ✓ Termasuk PB1 ({cafeSettings.taxPercentage}%)
               </span>
             )}
           </div>

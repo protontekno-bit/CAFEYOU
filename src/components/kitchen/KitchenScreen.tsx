@@ -3,6 +3,7 @@ import { useKaraoke } from '../../hooks/useKaraoke';
 import { AppRole, TableOrder } from '../../types';
 import { DeveloperFooter } from '../common/DeveloperFooter';
 import { KitchenOrderCard } from './KitchenOrderCard';
+import { PosDirectOrderModal } from '../pos/PosDirectOrderModal';
 
 interface KitchenScreenProps {
   setRole?: (role: AppRole) => void;
@@ -12,12 +13,16 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
   const {
     tableOrders,
     tables,
+    menuItems,
     cafeSettings,
     isCloudConnected,
     confirmTableOrder,
     updateTableOrderStatus,
+    createTableOrder,
     triggerSoundEffect,
   } = useKaraoke();
+
+  const [isDirectOrderOpen, setIsDirectOrderOpen] = useState(false);
 
   // Jam Digital Berjalan
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -129,8 +134,19 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
           </div>
         </div>
 
-        {/* Kontrol Kanan: Bel Suara, Fullscreen, Navigasi */}
+        {/* Kontrol Kanan: Input Pesanan Langsung, Bel Suara, Fullscreen, Navigasi */}
         <div className="flex items-center gap-2">
+          {/* Tombol Input Pesanan Manual / Walk-in Dapur */}
+          <button
+            type="button"
+            onClick={() => setIsDirectOrderOpen(true)}
+            className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
+            title="Input Pesanan Baru Manual (Tamu Langsung Pesan ke Bar / Dapur)"
+          >
+            <span>➕</span>
+            <span className="hidden sm:inline">Input Pesanan Dapur</span>
+          </button>
+
           {/* Toggle Bel Suara */}
           <button
             type="button"
@@ -331,6 +347,17 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
           </div>
         </div>
       </main>
+
+      {/* Modal Input Pesanan Langsung di Dapur (Walk-in / Barista Counter) */}
+      <PosDirectOrderModal
+        isOpen={isDirectOrderOpen}
+        onClose={() => setIsDirectOrderOpen(false)}
+        menuItems={menuItems || {}}
+        tables={tables || []}
+        cafeSettings={cafeSettings}
+        onCreateOrder={createTableOrder}
+        existingOrdersCount={ordersList.length}
+      />
 
       {/* Footer Branding */}
       <DeveloperFooter className="w-full border-t border-slate-900 bg-slate-950/80" />

@@ -138,8 +138,20 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     const found = Object.values(vouchers || {}).find(
       (v) => v && v.code && v.code.trim().toUpperCase() === activeVoucher.code.trim().toUpperCase()
     );
+    // Jika voucher sudah direvoke operator (tidak ada di vouchers state),
+    // jangan fallback ke activeVoucher lama — kembalikan null agar diblokir
+    if (!found && Object.keys(vouchers || {}).length > 0) {
+      // Vouchers state sudah dimuat tapi kode ini tidak ada → sudah direvoke
+      return null;
+    }
+    // Jika found, update sessionStorage agar kuota sisa di header real-time
+    if (found) {
+      try {
+        sessionStorage.setItem(`cafeyou_voucher_${tableNumber}`, JSON.stringify(found));
+      } catch {}
+    }
     return found || activeVoucher;
-  }, [activeVoucher, vouchers, state?.dailyPin]);
+  }, [activeVoucher, vouchers, state?.dailyPin, tableNumber]);
 
   // Auto-sync jika kasir memindahkan pesanan meja dari POS
   useEffect(() => {
@@ -660,6 +672,28 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         source: 'guest',
         voucherCode: activeVoucher?.code,
       });
+
+      // Setelah berhasil tambah lagu, sync activeVoucher dengan data terbaru
+      // agar counter sisa kuota di header langsung terupdate
+      if (activeVoucher?.code) {
+        const updatedVoucher = Object.values(vouchers || {}).find(
+          (v) => v?.code?.trim().toUpperCase() === activeVoucher.code.trim().toUpperCase()
+        );
+        if (updatedVoucher) {
+          // Beri Firebase 300ms untuk propagate lalu ambil dari state
+          setTimeout(() => {
+            const latestVoucher = Object.values(vouchers || {}).find(
+              (v) => v?.code?.trim().toUpperCase() === activeVoucher.code.trim().toUpperCase()
+            );
+            if (latestVoucher) {
+              setActiveVoucher({ ...latestVoucher });
+              try {
+                sessionStorage.setItem(`cafeyou_voucher_${tableNumber}`, JSON.stringify(latestVoucher));
+              } catch {}
+            }
+          }, 800);
+        }
+      }
 
       setSuccessAddMsg(`"${title}" berhasil dimasukkan ke antrean kafe! 🎤`);
       setSearchQuery('');

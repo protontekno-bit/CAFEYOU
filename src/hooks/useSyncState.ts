@@ -18,15 +18,6 @@ function sanitizeState<T>(val: any, fallback: T, currentState?: any): T {
       merged.queue = val.queue;
     } else if (val.queue && typeof val.queue === 'object') {
       merged.queue = Object.values(val.queue);
-    } else if (
-      currentState &&
-      Array.isArray(currentState.queue) &&
-      currentState.queue.length > 0 &&
-      (val.queue === undefined || val.queue === null)
-    ) {
-      // Snapshot cloud parsial (misal dari pembaruan voucher/settings/expenses) tidak memuat field queue.
-      // PERTAHANKAN antrean yang sedang aktif agar pemutaran video TV tidak berhenti!
-      merged.queue = currentState.queue;
     } else {
       merged.queue = [];
     }
@@ -37,13 +28,6 @@ function sanitizeState<T>(val: any, fallback: T, currentState?: any): T {
       merged.history = val.history;
     } else if (val.history && typeof val.history === 'object') {
       merged.history = Object.values(val.history);
-    } else if (
-      currentState &&
-      Array.isArray(currentState.history) &&
-      currentState.history.length > 0 &&
-      (val.history === undefined || val.history === null)
-    ) {
-      merged.history = currentState.history;
     } else {
       merged.history = [];
     }

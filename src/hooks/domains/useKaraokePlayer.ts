@@ -329,11 +329,20 @@ export function useKaraokePlayer(
       const currentQueue = Array.isArray(prev?.queue) ? prev.queue : [];
       const current = currentQueue[0];
       const { history, songLibrary } = recordFinishedSong(current, prev);
+      const remainingQueue = currentQueue.slice(1);
+
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const queueRef = ref(db, `cafeyou/${STORAGE_KEY}/queue`);
+          set(queueRef, remainingQueue.length > 0 ? remainingQueue : null).catch(() => {});
+        }
+      } catch {}
 
       return {
         ...prev,
         forceSkip: Date.now(),
-        queue: currentQueue.slice(1),
+        queue: remainingQueue,
         history,
         songLibrary,
       };
@@ -345,10 +354,19 @@ export function useKaraokePlayer(
       const currentQueue = Array.isArray(prev?.queue) ? prev.queue : [];
       const current = currentQueue[0];
       const { history, songLibrary } = recordFinishedSong(current, prev);
+      const remainingQueue = currentQueue.slice(1);
+
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const queueRef = ref(db, `cafeyou/${STORAGE_KEY}/queue`);
+          set(queueRef, remainingQueue.length > 0 ? remainingQueue : null).catch(() => {});
+        }
+      } catch {}
 
       return {
         ...prev,
-        queue: currentQueue.slice(1),
+        queue: remainingQueue,
         history,
         songLibrary,
       };

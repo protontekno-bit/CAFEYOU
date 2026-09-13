@@ -175,10 +175,11 @@ export function useYouTubePlayer({
         }
       } else {
         lastPlayedSongIdRef.current = null;
-        const state = typeof player.getPlayerState === 'function' ? player.getPlayerState() : null;
-        if (state === window.YT.PlayerState.PLAYING || state === window.YT.PlayerState.PAUSED) {
-          player.stopVideo();
-        }
+        try {
+          if (typeof player.stopVideo === 'function') {
+            player.stopVideo();
+          }
+        } catch {}
       }
     } catch (error) {
       console.warn('Syncing player state...', error);

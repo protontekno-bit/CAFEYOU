@@ -7,10 +7,12 @@ import {
   TableOrder,
   OrderType,
   DeliveryPlatform,
+  KitchenStationFilter,
 } from '../../types';
 import { DEFAULT_MENU_ITEMS } from '../../constants/menu';
 import { STORAGE_KEY } from '../../constants/karaoke';
 import { initFirebaseDatabase, ref, onValue, set } from '../../config/firebase';
+import { isDrinkItem } from '../../utils/billing';
 
 export function useOrderBilling(
   appState: KaraokeState,
@@ -442,6 +444,136 @@ export function useOrderBilling(
     }
   };
 
+  const updateOrderItemsBulkStatus = (
+    orderId: string,
+    field: 'isCooked' | 'isServed',
+    value: boolean,
+    station: KitchenStationFilter = 'ALL'
+  ) => {
+    let updatedTarget: TableOrder | null = null;
+    updateAppState((prev) => {
+      const currentOrders =
+        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
+      const target = currentOrders[orderId];
+      if (!target || !target.items) return prev;
+
+      const updatedItems = target.items.map((it) => {
+        if (it.isVoided) return it;
+        const isDrink = isDrinkItem(it);
+        const matchesStation =
+          station === 'ALL' ||
+          (station === 'BAR' && isDrink) ||
+          (station === 'KITCHEN' && !isDrink);
+
+        if (matchesStation) {
+          return {
+            ...it,
+            [field]: value,
+            ...(field === 'isCooked' && value ? { cookedAt: it.cookedAt || Date.now() } : {}),
+            ...(field === 'isServed' && value ? { isCooked: true, cookedAt: it.cookedAt || Date.now() } : {}),
+            ...(field === 'isServed' && !value ? { isServed: false } : {}),
+            ...(field === 'isCooked' && !value ? { isCooked: false, isServed: false } : {}),
+          };
+        }
+        return it;
+      });
+
+      const nonVoidItems = updatedItems.filter((it) => !it.isVoided);
+      const allCooked = nonVoidItems.length > 0 && nonVoidItems.every((it) => it.isCooked);
+      const allServed = nonVoidItems.length > 0 && nonVoidItems.every((it) => it.isServed);
+
+      let nextStatus = target.status;
+      if (allServed) {
+        nextStatus = 'SERVED';
+      } else if (allCooked && target.status?.toLowerCase() !== 'served') {
+        nextStatus = 'READY';
+      } else if (field === 'isCooked' && value && nextStatus?.toLowerCase() === 'pending') {
+        nextStatus = 'PREPARING';
+      } else if (!value) {
+        if (field === 'isServed' && target.status?.toLowerCase() === 'served') {
+          nextStatus = allCooked ? 'READY' : 'PREPARING';
+        } else if (field === 'isCooked' && target.status?.toLowerCase() === 'ready') {
+          nextStatus = 'PREPARING';
+        }
+      }
+
+      updatedTarget = {
+        ...target,
+        items: updatedItems,
+        status: nextStatus,
+      };
+
+      currentOrders[orderId] = updatedTarget;
+      return {
+        ...prev,
+        tableOrders: currentOrders,
+      };
+    });
+
+    if (updatedTarget) {
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
+          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
+            console.warn('Gagal update bulk item status di Firebase:', err);
+          });
+        }
+      } catch (err) {}
+    }
+  };
+
+  const revertTableOrderStatus = (orderId: string) => {
+    let updatedTarget: TableOrder | null = null;
+    updateAppState((prev) => {
+      const currentOrders =
+        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
+      const target = currentOrders[orderId];
+      if (!target) return prev;
+
+      const s = target.status?.toLowerCase();
+      let nextStatus: OrderStatus = 'pending';
+      let resetItems = target.items ? [...target.items] : [];
+
+      if (s === 'served') {
+        nextStatus = 'READY';
+        resetItems = resetItems.map((it) => ({ ...it, isServed: false }));
+      } else if (s === 'ready') {
+        nextStatus = 'PREPARING';
+        resetItems = resetItems.map((it) => ({ ...it, isCooked: false, isServed: false }));
+      } else if (s === 'preparing' || s === 'cooking' || s === 'confirmed') {
+        nextStatus = 'pending';
+        resetItems = resetItems.map((it) => ({ ...it, isCooked: false, isServed: false }));
+      } else {
+        return prev;
+      }
+
+      updatedTarget = {
+        ...target,
+        status: nextStatus,
+        items: resetItems,
+      };
+
+      currentOrders[orderId] = updatedTarget;
+      return {
+        ...prev,
+        tableOrders: currentOrders,
+      };
+    });
+
+    if (updatedTarget) {
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
+          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
+            console.warn('Gagal revert status pesanan di Firebase:', err);
+          });
+        }
+      } catch (err) {}
+    }
+  };
+
   const confirmTableOrder = (orderId: string) => {
     updateTableOrderStatus(orderId, 'PREPARING');
   };
@@ -483,6 +615,8 @@ export function useOrderBilling(
     moveTableOrder,
     voidOrderItem,
     toggleOrderItemStatus,
+    updateOrderItemsBulkStatus,
+    revertTableOrderStatus,
     confirmTableOrder,
     addMenuItem,
     updateMenuItem,

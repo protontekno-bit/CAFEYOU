@@ -1,9 +1,11 @@
 import React from 'react';
 import { TableOrder, OrderStatus, KitchenStationFilter } from '../../types';
+import { isDrinkItem } from '../../utils/billing';
+export { isDrinkItem };
 
 interface KitchenOrderCardProps {
   order: TableOrder;
-  statusColumn: 'PENDING' | 'PREPARING' | 'READY';
+  statusColumn: 'PENDING' | 'PREPARING' | 'READY' | 'SERVED';
   stationFilter?: KitchenStationFilter;
   onConfirmOrder: (orderId: string) => void;
   onUpdateStatus: (
@@ -17,41 +19,15 @@ interface KitchenOrderCardProps {
     itemIndex: number,
     field: 'isCooked' | 'isServed'
   ) => void;
+  onBulkUpdateItems?: (
+    orderId: string,
+    field: 'isCooked' | 'isServed',
+    value: boolean,
+    station: KitchenStationFilter
+  ) => void;
+  onRevertStatus?: (orderId: string) => void;
   onVoidItem: (orderId: string, itemIndex: number, reason: string) => void;
 }
-
-export const isDrinkItem = (item: { category?: string; name?: string }): boolean => {
-  const cat = (item.category || '').toUpperCase();
-  if (
-    cat.includes('KOPI') ||
-    cat.includes('MINUM') ||
-    cat.includes('DRINK') ||
-    cat.includes('BEVERAGE') ||
-    cat === 'NON_KOPI'
-  ) {
-    return true;
-  }
-  const n = (item.name || '').toLowerCase();
-  if (
-    n.includes('kopi') ||
-    n.includes('tea') ||
-    n.includes('teh') ||
-    n.includes('jus') ||
-    n.includes('juice') ||
-    n.includes('latte') ||
-    n.includes('boba') ||
-    n.includes('mocktail') ||
-    n.includes('squash') ||
-    n.includes('es ') ||
-    n.includes('ice ') ||
-    n.includes('susu') ||
-    n.includes('matcha') ||
-    n.includes('taro')
-  ) {
-    return true;
-  }
-  return false;
-};
 
 export const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
   order,
@@ -60,6 +36,8 @@ export const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
   onConfirmOrder,
   onUpdateStatus,
   onToggleItemStatus,
+  onBulkUpdateItems,
+  onRevertStatus,
   onVoidItem,
 }) => {
   // Format Waktu Berlalu (Elapsed Timer)
@@ -125,7 +103,9 @@ export const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
       ? 'border-amber-500/40 hover:border-amber-400'
       : statusColumn === 'PREPARING'
       ? 'border-blue-500/40 hover:border-blue-400'
-      : 'border-purple-500/40 hover:border-purple-400';
+      : statusColumn === 'READY'
+      ? 'border-purple-500/40 hover:border-purple-400'
+      : 'border-emerald-500/40 hover:border-emerald-400 bg-slate-950/70';
 
   // Hitung progres item matang & disajikan
   const nonVoidItems = order.items.filter((it) => !it.isVoided);
@@ -317,11 +297,17 @@ export const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
           </button>
           <button
             type="button"
-            onClick={() =>
-              onUpdateStatus(order.id, 'CANCELLED', undefined, 'Ditolak seluruhnya oleh Dapur')
-            }
-            className="px-3 py-3 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-slate-750 hover:border-red-500/30 rounded-xl text-xs font-bold transition-all"
-            title="Tolak Seluruh Tiket Pesanan"
+            onClick={() => {
+              const reason = window.prompt(
+                `Yakin tolak pesanan ${order.tableNumber}? Masukkan alasan penolakan:`,
+                'Bahan baku habis di dapur'
+              );
+              if (reason !== null && reason.trim().length > 0) {
+                onUpdateStatus(order.id, 'CANCELLED', undefined, reason.trim());
+              }
+            }}
+            className="px-3.5 py-3 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-slate-750 hover:border-red-500/30 rounded-xl text-xs font-bold transition-all"
+            title="Tolak Seluruh Tiket Pesanan dengan Alasan"
           >
             ✕
           </button>
@@ -329,29 +315,93 @@ export const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
       )}
 
       {statusColumn === 'PREPARING' && (
-        <button
-          type="button"
-          onClick={() => onUpdateStatus(order.id, 'READY')}
-          className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-1.5"
-        >
-          <span>🍽️</span>
-          <span>
-            {cookedCount === nonVoidItems.length
-              ? 'Semua Siap Saji ➔'
-              : 'Tandai Seluruhnya Siap Saji ➔'}
-          </span>
-        </button>
+        <div className="flex gap-2 pt-1">
+          {onRevertStatus && (
+            <button
+              type="button"
+              onClick={() => onRevertStatus(order.id)}
+              className="px-3 py-3 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-750 rounded-xl text-xs font-bold transition-all"
+              title="Kembalikan ke Menunggu Konfirmasi"
+            >
+              ↩
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (onBulkUpdateItems) {
+                onBulkUpdateItems(order.id, 'isCooked', true, stationFilter);
+              } else {
+                onUpdateStatus(order.id, 'READY');
+              }
+            }}
+            className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+          >
+            <span>🍽️</span>
+            <span>
+              {stationFilter === 'BAR'
+                ? 'Minuman Siap Saji ➔'
+                : stationFilter === 'KITCHEN'
+                ? 'Makanan Siap Saji ➔'
+                : 'Tandai Seluruhnya Siap Saji ➔'}
+            </span>
+          </button>
+        </div>
       )}
 
       {statusColumn === 'READY' && (
-        <button
-          type="button"
-          onClick={() => onUpdateStatus(order.id, 'SERVED')}
-          className="w-full py-3 bg-gradient-to-r from-purple-600 to-emerald-600 hover:from-purple-500 hover:to-emerald-500 text-white font-black text-xs rounded-xl shadow-lg shadow-purple-500/20 transition-all active:scale-95 flex items-center justify-center gap-1.5"
-        >
-          <span>🚀</span>
-          <span>Selesai Seluruhnya Diantar ke Meja</span>
-        </button>
+        <div className="flex gap-2 pt-1">
+          {onRevertStatus && (
+            <button
+              type="button"
+              onClick={() => onRevertStatus(order.id)}
+              className="px-3 py-3 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-750 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+              title="Kembalikan ke status Sedang Dimasak (Masak Ulang)"
+            >
+              <span>↩</span>
+              <span className="hidden sm:inline">Ulang</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (onBulkUpdateItems) {
+                onBulkUpdateItems(order.id, 'isServed', true, stationFilter);
+              } else {
+                onUpdateStatus(order.id, 'SERVED');
+              }
+            }}
+            className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-emerald-600 hover:from-purple-500 hover:to-emerald-500 text-white font-black text-xs rounded-xl shadow-lg shadow-purple-500/20 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+          >
+            <span>🚀</span>
+            <span>Selesai Diantar ke Meja</span>
+          </button>
+        </div>
+      )}
+
+      {statusColumn === 'SERVED' && (
+        <div className="flex flex-col gap-2 pt-1">
+          <div className="flex items-center justify-between px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-xs text-emerald-300 font-semibold">
+            <span className="flex items-center gap-1.5">
+              <span>✅</span>
+              <span>Telah Disajikan ke Meja</span>
+            </span>
+            <span className="font-mono text-[11px] text-slate-400">
+              {cookedCount}/{nonVoidItems.length} Item
+            </span>
+          </div>
+          {onRevertStatus && (
+            <button
+              type="button"
+              onClick={() => onRevertStatus(order.id)}
+              className="w-full py-2 bg-slate-800 hover:bg-slate-750 text-amber-300 hover:text-amber-200 border border-slate-700 hover:border-amber-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+              title="Batalkan status terantar (Kembalikan ke Siap Saji)"
+            >
+              <span>↩</span>
+              <span>Batalkan Antar (Kembalikan ke Siap Saji)</span>
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

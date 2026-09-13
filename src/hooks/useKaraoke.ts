@@ -82,6 +82,8 @@ export function useKaraoke() {
     moveTableOrder: billing.moveTableOrder,
     voidOrderItem: billing.voidOrderItem,
     toggleOrderItemStatus: billing.toggleOrderItemStatus,
+    updateOrderItemsBulkStatus: billing.updateOrderItemsBulkStatus,
+    revertTableOrderStatus: billing.revertTableOrderStatus,
     confirmTableOrder: billing.confirmTableOrder,
     addMenuItem: billing.addMenuItem,
     updateMenuItem: billing.updateMenuItem,

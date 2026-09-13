@@ -22,12 +22,16 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
     createTableOrder,
     voidOrderItem,
     toggleOrderItemStatus,
+    updateOrderItemsBulkStatus,
+    revertTableOrderStatus,
+    clearFinishedOrders,
     toggleMenuItemAvailability,
     triggerSoundEffect,
   } = useKaraoke();
 
   const [isDirectOrderOpen, setIsDirectOrderOpen] = useState(false);
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [showServedColumn, setShowServedColumn] = useState<boolean>(false);
 
   // Jam Digital Berjalan
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -116,13 +120,31 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
     return true;
   });
 
-  // Kelompok 3 Kolom Alur Dapur
+  // Kelompok 4 Kolom Alur Dapur
   const pendingList = filteredOrders.filter((o) => o.status?.toLowerCase() === 'pending');
   const preparingList = filteredOrders.filter((o) => {
     const s = o.status?.toLowerCase();
     return s === 'confirmed' || s === 'preparing' || s === 'cooking';
   });
   const readyList = filteredOrders.filter((o) => o.status?.toLowerCase() === 'ready');
+  const servedList = filteredOrders.filter((o) => o.status?.toLowerCase() === 'served');
+
+  const handleClearShift = () => {
+    const countPaidOrCancelled = ordersList.filter(
+      (o) => o.status?.toLowerCase() === 'paid' || o.status?.toLowerCase() === 'cancelled'
+    ).length;
+    if (countPaidOrCancelled === 0) {
+      alert('Tidak ada tiket yang berstatus Lunas atau Batal untuk diarsipkan saat ini.');
+      return;
+    }
+    if (
+      window.confirm(
+        `Arsipkan ${countPaidOrCancelled} tiket yang telah Lunas/Batal untuk merapikan layar dapur?`
+      )
+    ) {
+      clearFinishedOrders();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none selection:bg-amber-500 selection:text-black">
@@ -158,7 +180,7 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
           </div>
         </div>
 
-        {/* Kontrol Kanan: Input, Stok, Bel Suara, Fullscreen, Navigasi */}
+        {/* Kontrol Kanan: Input, Stok, Bersihkan Shift, Bel Suara, Fullscreen, Navigasi */}
         <div className="flex items-center gap-2">
           {/* Tombol Input Pesanan Manual / Walk-in Dapur */}
           <button
@@ -180,6 +202,17 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
           >
             <span>📦</span>
             <span className="hidden sm:inline">Stok Menu</span>
+          </button>
+
+          {/* Tombol Bersihkan Shift (Arsipkan Tiket Selesai / Lunas) */}
+          <button
+            type="button"
+            onClick={handleClearShift}
+            className="px-3 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 hover:border-slate-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+            title="Arsipkan tiket yang telah lunas/batal untuk merapikan layar dapur"
+          >
+            <span>🧹</span>
+            <span className="hidden sm:inline">Bersihkan Shift</span>
           </button>
 
           {/* Toggle Bel Suara */}
@@ -301,16 +334,33 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
           </select>
         </div>
 
-        {/* Ringkasan Tiket */}
-        <div className="flex items-center gap-3 text-xs font-bold font-mono">
+        {/* Ringkasan Tiket & Toggle Selesai */}
+        <div className="flex items-center gap-2.5 text-xs font-bold font-mono">
           <span className="text-amber-400">⏳ {pendingList.length} Menunggu</span>
           <span className="text-blue-400">🍳 {preparingList.length} Dimasak</span>
-          <span className="text-purple-400">✅ {readyList.length} Siap</span>
+          <span className="text-purple-400">🍽️ {readyList.length} Siap</span>
+          <button
+            type="button"
+            onClick={() => setShowServedColumn(!showServedColumn)}
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold font-sans transition-all border flex items-center gap-1.5 ${
+              showServedColumn
+                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-sm'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+            }`}
+            title="Tampilkan / Sembunyikan kolom pesanan yang telah disajikan"
+          >
+            <span>✅</span>
+            <span>Selesai ({servedList.length})</span>
+          </button>
         </div>
       </div>
 
-      {/* 3. TIGA KOLOM KANBAN KDS */}
-      <main className="flex-1 p-4 lg:p-6 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden">
+      {/* 3. TIGA / EMPAT KOLOM KANBAN KDS */}
+      <main
+        className={`flex-1 p-4 lg:p-6 grid grid-cols-1 ${
+          showServedColumn ? 'md:grid-cols-2 xl:grid-cols-4' : 'md:grid-cols-3'
+        } gap-6 overflow-hidden`}
+      >
         {/* KOLOM 1: PESANAN MASUK (PENDING) */}
         <div className="bg-slate-900/60 border border-amber-500/30 rounded-3xl p-4 flex flex-col h-full shadow-lg">
           <div className="flex justify-between items-center mb-3 pb-2.5 border-b border-amber-500/20 shrink-0">
@@ -339,6 +389,8 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
                   onConfirmOrder={confirmTableOrder}
                   onUpdateStatus={updateTableOrderStatus}
                   onToggleItemStatus={toggleOrderItemStatus}
+                  onBulkUpdateItems={updateOrderItemsBulkStatus}
+                  onRevertStatus={revertTableOrderStatus}
                   onVoidItem={voidOrderItem}
                 />
               ))
@@ -374,6 +426,8 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
                   onConfirmOrder={confirmTableOrder}
                   onUpdateStatus={updateTableOrderStatus}
                   onToggleItemStatus={toggleOrderItemStatus}
+                  onBulkUpdateItems={updateOrderItemsBulkStatus}
+                  onRevertStatus={revertTableOrderStatus}
                   onVoidItem={voidOrderItem}
                 />
               ))
@@ -409,12 +463,56 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
                   onConfirmOrder={confirmTableOrder}
                   onUpdateStatus={updateTableOrderStatus}
                   onToggleItemStatus={toggleOrderItemStatus}
+                  onBulkUpdateItems={updateOrderItemsBulkStatus}
+                  onRevertStatus={revertTableOrderStatus}
                   onVoidItem={voidOrderItem}
                 />
               ))
             )}
           </div>
         </div>
+
+        {/* KOLOM 4: TELAH DISAJIKAN (SERVED) */}
+        {showServedColumn && (
+          <div className="bg-slate-900/60 border border-emerald-500/30 rounded-3xl p-4 flex flex-col h-full shadow-lg animate-fadeIn">
+            <div className="flex justify-between items-center mb-3 pb-2.5 border-b border-emerald-500/20 shrink-0">
+              <h2 className="text-xs font-black text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                <span>✅</span>
+                <span>4. Selesai Disajikan</span>
+              </h2>
+              <span className="text-xs bg-emerald-500/20 text-emerald-300 font-black px-2.5 py-0.5 rounded-full font-mono">
+                {servedList.length} Tiket
+              </span>
+            </div>
+
+            <div className="space-y-3 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+              {servedList.length === 0 ? (
+                <div className="h-48 flex flex-col items-center justify-center text-slate-500 text-xs">
+                  <span className="text-3xl mb-1 opacity-50">✨</span>
+                  <span>Belum ada pesanan yang selesai diantar</span>
+                </div>
+              ) : (
+                servedList
+                  .slice(-15)
+                  .reverse()
+                  .map((ord) => (
+                    <KitchenOrderCard
+                      key={ord.id}
+                      order={ord}
+                      statusColumn="SERVED"
+                      stationFilter={stationFilter}
+                      onConfirmOrder={confirmTableOrder}
+                      onUpdateStatus={updateTableOrderStatus}
+                      onToggleItemStatus={toggleOrderItemStatus}
+                      onBulkUpdateItems={updateOrderItemsBulkStatus}
+                      onRevertStatus={revertTableOrderStatus}
+                      onVoidItem={voidOrderItem}
+                    />
+                  ))
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Modal Input Pesanan Langsung di Dapur (Walk-in / Barista Counter) */}

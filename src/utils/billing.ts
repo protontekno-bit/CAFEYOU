@@ -52,3 +52,36 @@ export const calculateTaxAndService = (
     totalAmount,
   };
 };
+
+export const isDrinkItem = (item: { category?: string; name?: string }): boolean => {
+  const cat = (item.category || '').toUpperCase();
+  if (
+    cat.includes('KOPI') ||
+    cat.includes('MINUM') ||
+    cat.includes('DRINK') ||
+    cat.includes('BEVERAGE') ||
+    cat === 'NON_KOPI'
+  ) {
+    return true;
+  }
+  const n = (item.name || '').toLowerCase();
+  if (
+    n.includes('kopi') ||
+    n.includes('tea') ||
+    n.includes('teh') ||
+    n.includes('jus') ||
+    n.includes('juice') ||
+    n.includes('latte') ||
+    n.includes('boba') ||
+    n.includes('mocktail') ||
+    n.includes('squash') ||
+    n.includes('es ') ||
+    n.includes('ice ') ||
+    n.includes('susu') ||
+    n.includes('matcha') ||
+    n.includes('taro')
+  ) {
+    return true;
+  }
+  return false;
+};

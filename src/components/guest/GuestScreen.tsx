@@ -795,6 +795,21 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     setActiveVoucher(null);
   };
 
+  const totalQueueCount = nextSongs.length + (currentSong ? 1 : 0);
+
+  const isMySongOnAir = Boolean(
+    currentSong &&
+    tableNumber &&
+    (isSameTable(currentSong.tableNumber, tableNumber) || isSameTable(currentSong.requester, tableNumber))
+  );
+
+  const myQueuedSongsCount = useMemo(() => {
+    if (!tableNumber) return 0;
+    return nextSongs.filter(
+      (s) => isSameTable(s.tableNumber, tableNumber) || isSameTable(s.requester, tableNumber)
+    ).length;
+  }, [nextSongs, tableNumber]);
+
   // Jika nomor meja belum ada sama sekali, wajibkan pilih meja terlebih dahulu
   if (!tableNumber) {
     return (
@@ -845,21 +860,6 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
       </>
     );
   }
-
-  const totalQueueCount = nextSongs.length + (currentSong ? 1 : 0);
-
-  const isMySongOnAir = Boolean(
-    currentSong &&
-    tableNumber &&
-    (isSameTable(currentSong.tableNumber, tableNumber) || isSameTable(currentSong.requester, tableNumber))
-  );
-
-  const myQueuedSongsCount = useMemo(() => {
-    if (!tableNumber) return 0;
-    return nextSongs.filter(
-      (s) => isSameTable(s.tableNumber, tableNumber) || isSameTable(s.requester, tableNumber)
-    ).length;
-  }, [nextSongs, tableNumber]);
 
   return (
     <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-500 selection:text-white pb-28">

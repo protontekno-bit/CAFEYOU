@@ -104,6 +104,7 @@ export function useKaraoke() {
     tables: auth.tables,
     createVoucher: auth.createVoucher,
     revokeVoucher: auth.revokeVoucher,
+    topUpVoucherQuota: auth.topUpVoucherQuota,
     setDailyPin: auth.setDailyPin,
     validateVoucher: auth.validateVoucher,
     updateCafeSettings: auth.updateCafeSettings,

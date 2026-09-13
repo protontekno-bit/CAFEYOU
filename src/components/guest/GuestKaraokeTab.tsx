@@ -34,6 +34,9 @@ export interface GuestKaraokeTabProps {
   handleOpenExternalYouTube: (queryText?: string) => void;
   currentSong: Song | null;
   nextSongs: Song[];
+  onRequestQuotaTopUp?: () => void;
+  onSwitchToFnb?: () => void;
+  isTopUpRequested?: boolean;
 }
 
 export const GuestKaraokeTab: React.FC<GuestKaraokeTabProps> = ({
@@ -67,6 +70,9 @@ export const GuestKaraokeTab: React.FC<GuestKaraokeTabProps> = ({
   handleOpenExternalYouTube,
   currentSong,
   nextSongs,
+  onRequestQuotaTopUp,
+  onSwitchToFnb,
+  isTopUpRequested = false,
 }) => {
   return (
     <div className="space-y-4">
@@ -88,15 +94,48 @@ export const GuestKaraokeTab: React.FC<GuestKaraokeTabProps> = ({
         </div>
       )}
 
-      {/* Banner Jika Kuota Habis */}
+      {/* Banner & Aksi Solutif Jika Kuota Habis */}
       {isQuotaExhausted && (
-        <div className="p-3.5 bg-red-500/15 border border-red-500/30 rounded-2xl flex items-center gap-3 text-xs text-red-300">
-          <span className="text-xl">⚠️</span>
-          <div>
-            <div className="font-bold">Kuota Lagu Meja Anda Telah Habis</div>
-            <div className="text-[11px] text-red-300/80">
-              Silakan hubungi kasir atau pelayan untuk menambah kuota lagu baru.
+        <div className="p-4 bg-gradient-to-br from-red-950/60 via-slate-900 to-slate-900 border border-red-500/40 rounded-2xl text-xs space-y-3 shadow-lg animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center text-lg shrink-0">
+              🎤
             </div>
+            <div>
+              <div className="font-extrabold text-sm text-red-300">Kuota Lagu Meja Anda Telah Habis</div>
+              <div className="text-[11px] text-slate-300 mt-0.5">
+                Ingin bernyanyi lagu lagi? Minta kasir untuk menambah kuota lagu meja ini.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 pt-1 border-t border-slate-800/80">
+            {onRequestQuotaTopUp && (
+              <button
+                type="button"
+                onClick={onRequestQuotaTopUp}
+                disabled={isTopUpRequested}
+                className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 ${
+                  isTopUpRequested
+                    ? 'bg-emerald-600/30 border border-emerald-500/50 text-emerald-300'
+                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white'
+                }`}
+              >
+                <span>{isTopUpRequested ? '✓' : '🛎️'}</span>
+                <span>{isTopUpRequested ? 'Permintaan Terkirim ke Kasir' : 'Minta Tambah Lagu ke Kasir'}</span>
+              </button>
+            )}
+
+            {onSwitchToFnb && (
+              <button
+                type="button"
+                onClick={onSwitchToFnb}
+                className="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-xl border border-amber-500/30 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+              >
+                <span>🍽️</span>
+                <span>Pesan Menu Kafe</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -378,25 +417,39 @@ export const GuestKaraokeTab: React.FC<GuestKaraokeTabProps> = ({
                   )}
 
                   {ytSearchError && !isSearchingYt && (
-                    <div className="p-3 bg-red-500/15 border border-red-500/30 rounded-2xl text-xs text-red-300 space-y-2">
-                      <div className="font-bold flex items-center gap-1.5">
+                    <div className="p-3.5 bg-red-500/15 border border-red-500/30 rounded-2xl text-xs text-red-200 space-y-2.5">
+                      <div className="font-bold flex items-center gap-1.5 text-red-300">
                         <span>⚠️</span>
-                        <span>{ytSearchError}</span>
+                        <span>
+                          {ytSearchError.toLowerCase().includes('quota') || ytSearchError.toLowerCase().includes('403')
+                            ? 'Batas Pencarian Langsung Harian YouTube Penuh'
+                            : ytSearchError}
+                        </span>
                       </div>
-                      <div className="flex gap-2">
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        Anda tetap bisa bernyanyi dengan menyalin tautan video dari YouTube lalu menempelkannya di sini, atau memilih lagu dari{' '}
+                        <button
+                          type="button"
+                          onClick={() => setSearchSource('catalog')}
+                          className="text-amber-400 font-bold underline inline"
+                        >
+                          Koleksi Kafe ⭐
+                        </button>.
+                      </p>
+                      <div className="flex flex-wrap gap-2 pt-0.5">
                         <button
                           type="button"
                           onClick={() => handleOpenExternalYouTube(searchQuery)}
-                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-755 text-white rounded-xl text-[11px] font-semibold"
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1"
                         >
-                          Buka di YouTube ↗
+                          <span>Buka Aplikasi YouTube ↗</span>
                         </button>
                         <button
                           type="button"
                           onClick={handleSmartPaste}
-                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[11px] font-semibold"
+                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-sm"
                         >
-                          Tempel Link
+                          <span>📋 Tempel Link Video</span>
                         </button>
                       </div>
                     </div>

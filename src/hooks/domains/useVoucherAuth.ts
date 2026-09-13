@@ -96,6 +96,43 @@ export function useVoucherAuth(
     });
   };
 
+  const topUpVoucherQuota = (code: string, additionalQuota: number = 1) => {
+    const trimmed = code.trim().toUpperCase();
+    const existing = Object.values(vouchers).find(
+      (v) => v && v.code && v.code.trim().toUpperCase() === trimmed
+    );
+    if (!existing) return;
+
+    const updatedVoucher: Voucher = {
+      ...existing,
+      quotaTotal: (existing.quotaTotal || 0) + additionalQuota,
+    };
+
+    // 1. Tulis ke Firebase RTDB secara atomik
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${existing.code}`);
+        set(vRef, updatedVoucher).catch((err) => {
+          console.warn('Gagal top-up voucher di Firebase:', err);
+        });
+      }
+    } catch {}
+
+    // 2. Pembaruan optimistik lokal
+    updateAppState((prev) => {
+      const currentVouchers =
+        prev?.vouchers && typeof prev.vouchers === 'object' ? { ...prev.vouchers } : {};
+      return {
+        ...prev,
+        vouchers: {
+          ...currentVouchers,
+          [existing.code]: updatedVoucher,
+        },
+      };
+    });
+  };
+
   const setDailyPin = (enabled: boolean, code: string) => {
     const cleanPin = {
       enabled,
@@ -416,6 +453,7 @@ export function useVoucherAuth(
     tables,
     createVoucher,
     revokeVoucher,
+    topUpVoucherQuota,
     setDailyPin,
     validateVoucher,
     updateCafeSettings,

@@ -22,6 +22,8 @@ import { DeveloperFooter } from '../common/DeveloperFooter';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { AppRole, PopularPresetSong } from '../../types';
+import { initFirebaseDatabase, ref, onValue, set } from '../../config/firebase';
+import { STORAGE_KEY } from '../../constants/karaoke';
 
 interface OperatorScreenProps {
   setRole?: (role: AppRole) => void;
@@ -66,6 +68,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     triggerSoundEffect,
     createVoucher,
     revokeVoucher,
+    topUpVoucherQuota,
     setDailyPin,
     fairRotationEnabled,
     toggleFairRotation,
@@ -159,6 +162,64 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     prevPendingCountRef.current = pendingOrdersCount;
   }, [pendingOrdersCount, triggerSoundEffect]);
 
+  // Pantau Permintaan Top-Up Kuota Lagu dari Meja Tamu
+  const [assistanceRequests, setAssistanceRequests] = useState<
+    Record<
+      string,
+      {
+        tableNumber: string;
+        voucherCode?: string;
+        type: string;
+        requestedAt: number;
+        status: string;
+      }
+    >
+  >({});
+
+  React.useEffect(() => {
+    try {
+      const db = initFirebaseDatabase();
+      if (!db) return;
+      const reqRef = ref(db, `cafeyou/${STORAGE_KEY}/assistanceRequests`);
+      const unsub = onValue(reqRef, (snapshot) => {
+        const val = snapshot.val();
+        if (val && typeof val === 'object') {
+          setAssistanceRequests(val);
+        } else {
+          setAssistanceRequests({});
+        }
+      });
+      return () => unsub();
+    } catch {}
+  }, []);
+
+  const pendingTopUpList = Object.values(assistanceRequests).filter(
+    (r) => r && r.status === 'pending'
+  );
+
+  const handleApproveTopUp = (req: { tableNumber: string; voucherCode?: string }, songsToAdd: number) => {
+    if (req.voucherCode) {
+      topUpVoucherQuota(req.voucherCode, songsToAdd);
+    }
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const rRef = ref(db, `cafeyou/${STORAGE_KEY}/assistanceRequests/${req.tableNumber}`);
+        set(rRef, null).catch(() => {});
+      }
+    } catch {}
+  };
+
+  const handleDismissTopUp = (tableNumber: string) => {
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const rRef = ref(db, `cafeyou/${STORAGE_KEY}/assistanceRequests/${tableNumber}`);
+        set(rRef, null).catch(() => {});
+      }
+    } catch {}
+  };
+
   // Jika belum login, tampilkan OperatorLoginView Neumorphism
   if (!isLoggedIn) {
     return (
@@ -238,6 +299,50 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
                 Tutup ✕
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Banner Permintaan Tambah Kuota Lagu dari Meja Tamu */}
+        {pendingTopUpList.length > 0 && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3 space-y-2">
+            {pendingTopUpList.map((req) => (
+              <div
+                key={req.tableNumber}
+                className="p-3.5 bg-gradient-to-r from-amber-600/90 via-amber-700 to-orange-800 border border-amber-400/50 rounded-2xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white animate-pulse"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">⚡</span>
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-wider text-amber-200">
+                      Permintaan Tambah Kuota Lagu • Meja {req.tableNumber}
+                    </div>
+                    <div className="text-sm font-semibold text-white">
+                      Voucher: <span className="font-mono font-bold">{req.voucherCode || '-'}</span> • Tamu kehabisan kuota lagu dan ingin memesan lagu lagi.
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                  <button
+                    onClick={() => handleApproveTopUp(req, 1)}
+                    className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl transition-all shadow active:scale-95 flex items-center gap-1"
+                  >
+                    <span>+1 Lagu</span>
+                  </button>
+                  <button
+                    onClick={() => handleApproveTopUp(req, 3)}
+                    className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition-all shadow active:scale-95 flex items-center gap-1"
+                  >
+                    <span>+3 Lagu</span>
+                  </button>
+                  <button
+                    onClick={() => handleDismissTopUp(req.tableNumber)}
+                    className="px-2.5 py-1.5 bg-black/40 hover:bg-black/60 text-xs font-bold rounded-xl transition-all text-slate-300"
+                  >
+                    Tutup ✕
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

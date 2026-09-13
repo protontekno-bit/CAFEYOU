@@ -17,6 +17,8 @@ import {
   getYouTubeThumbnail,
   searchYouTubeVideos,
 } from '../../utils/youtube';
+import { initFirebaseDatabase, ref, set } from '../../config/firebase';
+import { STORAGE_KEY } from '../../constants/karaoke';
 import {
   SparklesIcon,
   CheckIcon,
@@ -750,6 +752,34 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     }
   };
 
+  // Permintaan Tambah Kuota Lagu ke Kasir
+  const [isTopUpRequested, setIsTopUpRequested] = useState<boolean>(false);
+
+  const handleRequestQuotaTopUp = () => {
+    if (!tableNumber || isTopUpRequested) return;
+    setIsTopUpRequested(true);
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const reqRef = ref(db, `cafeyou/${STORAGE_KEY}/assistanceRequests/${tableNumber}`);
+        set(reqRef, {
+          tableNumber,
+          voucherCode: activeVoucher?.code || '',
+          type: 'quota_topup',
+          requestedAt: Date.now(),
+          status: 'pending',
+        }).catch((err) => {
+          console.warn('Gagal mengirim permintaan top-up kuota:', err);
+        });
+      }
+    } catch {}
+
+    setSuccessAddMsg('Permintaan tambah kuota lagu telah terkirim ke kasir! Mohon tunggu konfirmasi.');
+    setTimeout(() => {
+      setSuccessAddMsg(null);
+    }, 4000);
+  };
+
   const handleReactionClick = (emoji: string) => {
     sendLiveReaction(emoji, tableNumber);
     setLastSentReaction(emoji);
@@ -1057,6 +1087,9 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
             handleOpenExternalYouTube={handleOpenExternalYouTube}
             currentSong={currentSong}
             nextSongs={nextSongs}
+            onRequestQuotaTopUp={handleRequestQuotaTopUp}
+            onSwitchToFnb={() => setMainTab('fnb')}
+            isTopUpRequested={isTopUpRequested}
           />
         )}
 

@@ -1,15 +1,14 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { SearchIcon } from '../icons/Icons';
 import {
   extractYouTubeID,
   getYouTubeThumbnail,
-  fetchYouTubeInfo,
   POPULAR_KARAOKE_SONGS,
 } from '../../utils/youtube';
 import { QUICK_TABLES } from '../../constants/karaoke';
 import { SavedLibrarySong, SongHistoryItem } from '../../types';
 import { AddSongSearchTab } from './AddSongSearchTab';
-import { AddSongUrlTab } from './AddSongUrlTab';
+import { AddSongYouTubeTab } from './AddSongYouTubeTab';
 
 interface AddSongFormProps {
   onAddSong: (videoId: string, rawUrl: string, requester: string, customTitle?: string) => void;
@@ -29,17 +28,12 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
   youtubeApiKey,
 }) => {
   const activeTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
-  const [activeTab, setActiveTab] = useState<'search' | 'url'>('search');
-  const [searchInput, setSearchInput] = useState('');
-  const [linkInput, setLinkInput] = useState('');
-  const [customTitleInput, setCustomTitleInput] = useState('');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'youtube'>('catalog');
+  const [searchQuery, setSearchQuery] = useState('');
   const [nameInput, setNameInput] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isFetchingInfo, setIsFetchingInfo] = useState(false);
-  const [detectedVideoId, setDetectedVideoId] = useState<string | null>(null);
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
 
-  // Menggabungkan seluruh sumber data (Catalog Preset + History Pemutaran + Song Library)
+  // Menggabungkan seluruh sumber data lokal (Catalog Preset + History Pemutaran + Song Library)
   const allSavedSongs = useMemo(() => {
     const map = new Map<string, SavedLibrarySong>();
 
@@ -86,9 +80,9 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
     return Array.from(map.values()).sort((a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0));
   }, [songLibrary, history]);
 
-  // Filter lagu berdasarkan kata kunci pencarian
+  // Filter lagu berdasarkan kata kunci pencarian lokal
   const searchResults = useMemo(() => {
-    const term = searchInput.trim().toLowerCase();
+    const term = searchQuery.trim().toLowerCase();
     if (!term) {
       return allSavedSongs.slice(0, 8);
     }
@@ -98,123 +92,67 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
         (song.artist && song.artist.toLowerCase().includes(term)) ||
         song.videoId.toLowerCase().includes(term)
     );
-  }, [searchInput, allSavedSongs]);
+  }, [searchQuery, allSavedSongs]);
 
-  // Otomatis fetch judul saat user menempel link YouTube di tab URL
-  useEffect(() => {
-    const videoId = extractYouTubeID(linkInput);
-    setDetectedVideoId(videoId || null);
+  // Smart Paste Handler
+  const handleSmartPaste = async () => {
+    try {
+      if (!navigator.clipboard?.readText) {
+        setPasteNotice('Clipboard tidak didukung di browser ini.');
+        setTimeout(() => setPasteNotice(null), 3000);
+        return;
+      }
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) {
+        setPasteNotice('Clipboard kosong.');
+        setTimeout(() => setPasteNotice(null), 3000);
+        return;
+      }
 
-    if (videoId) {
-      setIsFetchingInfo(true);
-      fetchYouTubeInfo(videoId)
-        .then((info) => {
-          if (info && info.title) {
-            setCustomTitleInput(info.title);
-          }
-        })
-        .finally(() => {
-          setIsFetchingInfo(false);
-        });
-    } else {
-      setCustomTitleInput('');
+      const trimmed = text.trim();
+      setSearchQuery(trimmed);
+
+      // Jika yang ditempel adalah URL YouTube, otomatis arahkan ke tab YouTube
+      if (extractYouTubeID(trimmed)) {
+        setActiveTab('youtube');
+        setPasteNotice('Link YouTube berhasil ditempel! ✓');
+      } else {
+        setPasteNotice('Teks pencarian berhasil ditempel! ✓');
+      }
+      setTimeout(() => setPasteNotice(null), 3000);
+    } catch {
+      setPasteNotice('Izin membaca clipboard tidak diberikan.');
+      setTimeout(() => setPasteNotice(null), 3000);
     }
-  }, [linkInput]);
+  };
 
   const handleSelectFromLibrary = (song: SavedLibrarySong) => {
+    const requester = nameInput.trim() || 'Kasir';
     onAddSong(
       song.videoId,
       song.url || `https://www.youtube.com/watch?v=${song.videoId}`,
-      nameInput.trim(),
+      requester,
       song.title
     );
-    setSearchInput('');
-    setNameInput('');
-  };
-
-  const handleSubmitUrl = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-
-    if (!linkInput.trim()) {
-      setErrorMsg('Tautan YouTube tidak boleh kosong');
-      return;
-    }
-
-    const videoId = extractYouTubeID(linkInput);
-    if (!videoId) {
-      setErrorMsg('Tautan YouTube tidak valid. Gunakan format youtube.com/watch?v=... atau youtu.be/...');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await onAddSong(
-        videoId,
-        linkInput.trim(),
-        nameInput.trim(),
-        customTitleInput.trim() || undefined
-      );
-      setLinkInput('');
-      setCustomTitleInput('');
-      setNameInput('');
-    } finally {
-      setIsSubmitting(false);
-    }
+    setSearchQuery('');
   };
 
   return (
     <div className="bg-slate-800/95 rounded-2xl p-5 shadow-xl border border-slate-700/60 space-y-4 font-sans">
-      {/* Header & Tabs */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      {/* Header & Judul */}
+      <div className="flex justify-between items-center">
         <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-          <span>➕</span> Tambah Lagu
+          <span>➕</span>
+          <span>Tambah Lagu</span>
         </h2>
-
-        {/* Tab Selector */}
-        <div className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 text-xs">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('search');
-              setErrorMsg('');
-            }}
-            className={`px-3 py-1 rounded-lg font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'search'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <SearchIcon className="w-3.5 h-3.5" />
-            <span>Cari di Database ({allSavedSongs.length})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('url');
-              setErrorMsg('');
-            }}
-            className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-              activeTab === 'url'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>+ Link YouTube</span>
-          </button>
-        </div>
+        <span className="text-[10px] bg-slate-900/80 text-slate-400 px-2.5 py-1 rounded-full border border-slate-700/60">
+          Total Koleksi: <strong className="text-emerald-400 font-mono">{allSavedSongs.length}</strong>
+        </span>
       </div>
 
-      {errorMsg && (
-        <div className="p-3 bg-red-500/15 border border-red-500/40 rounded-xl text-red-300 text-xs flex items-center gap-2 animate-fadeIn">
-          <span>⚠️</span>
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {/* Input Nama Pemesan / Meja */}
-      <div>
-        <div className="flex justify-between items-center mb-1.5">
+      {/* Bagian 1: Input Nama Pemesan / Meja */}
+      <div className="space-y-1.5">
+        <div className="flex justify-between items-center">
           <label className="text-xs font-semibold text-slate-300">
             Nama Pemesan / Meja
           </label>
@@ -222,14 +160,14 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
         </div>
         <input
           type="text"
-          placeholder="Ketik nama tamu atau klik tombol meja di bawah"
+          placeholder="Ketik nama tamu atau klik tombol meja di bawah..."
           value={nameInput}
           onChange={(e) => setNameInput(e.target.value)}
           className="w-full bg-slate-900/90 border border-slate-700 focus:border-blue-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner"
         />
 
         {/* Quick Table Chips */}
-        <div className="flex flex-wrap gap-1.5 mt-2">
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
           {activeTables.map((table) => (
             <button
               key={table}
@@ -244,41 +182,129 @@ export const AddSongForm: React.FC<AddSongFormProps> = ({
               {table}
             </button>
           ))}
+          {nameInput && (
+            <button
+              type="button"
+              onClick={() => setNameInput('')}
+              className="px-2 py-0.5 rounded-lg text-[10px] font-medium text-slate-400 hover:text-rose-300 bg-slate-900/70 border border-slate-700/60 cursor-pointer"
+              title="Reset nama/meja"
+            >
+              ✕ Reset
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mode 1: Cari dari Database Library Kafe */}
-      {activeTab === 'search' && (
-        <AddSongSearchTab
-          searchInput={searchInput}
-          onSearchInputChange={setSearchInput}
-          searchResults={searchResults}
-          onSelectFromLibrary={handleSelectFromLibrary}
-          onAddSong={onAddSong}
-          requesterName={nameInput}
-          onClearInputs={() => {
-            setSearchInput('');
-            setNameInput('');
-          }}
-          youtubeApiKey={youtubeApiKey}
-          onOpenPopularModal={onOpenPopularModal}
-        />
-      )}
+      {/* Bagian 2: Kotak Pencarian Pintar Universal (Universal Search Bar) */}
+      <div className="space-y-1">
+        <div className="flex justify-between items-center">
+          <label className="text-xs font-semibold text-slate-300">
+            Kotak Pencarian Pintar
+          </label>
+          {pasteNotice && (
+            <span className="text-[10px] text-emerald-400 font-semibold animate-fadeIn">
+              {pasteNotice}
+            </span>
+          )}
+        </div>
+        <div className="relative flex items-center gap-1.5">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Ketik judul lagu, artis, atau tempel link YouTube..."
+              value={searchQuery}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearchQuery(val);
+                // Jika user langsung menempel link YouTube di sini, bantu otomatis aktifkan tab YouTube
+                if (extractYouTubeID(val) && activeTab !== 'youtube') {
+                  setActiveTab('youtube');
+                }
+              }}
+              className="w-full bg-slate-900/90 border border-slate-700 focus:border-purple-500 rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner"
+            />
+            <SearchIcon className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300 text-xs p-0.5 rounded-full cursor-pointer"
+                title="Hapus pencarian"
+              >
+                ✕
+              </button>
+            )}
+          </div>
 
-      {/* Mode 2: Tempel Link YouTube Baru */}
-      {activeTab === 'url' && (
-        <AddSongUrlTab
-          linkInput={linkInput}
-          onLinkInputChange={(val) => {
-            setLinkInput(val);
-            if (errorMsg) setErrorMsg('');
-          }}
-          detectedVideoId={detectedVideoId}
-          customTitleInput={customTitleInput}
-          onCustomTitleChange={setCustomTitleInput}
-          isFetchingInfo={isFetchingInfo}
-          isSubmitting={isSubmitting}
-          onSubmitUrl={handleSubmitUrl}
+          {/* Tombol Tempel Cepat (Smart Paste) */}
+          <button
+            type="button"
+            onClick={handleSmartPaste}
+            className="px-3 py-2.5 bg-slate-900/90 hover:bg-slate-700 active:scale-95 text-purple-300 border border-purple-500/30 hover:border-purple-500/60 rounded-xl text-xs font-bold transition-all shadow flex items-center gap-1 shrink-0 cursor-pointer"
+            title="Tempel dari Clipboard"
+          >
+            <span>📋</span>
+            <span className="hidden sm:inline">Tempel</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Bagian 3: Pilihan Sumber Lagu (2 Sub-pills Sejajar) */}
+      <div className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 text-xs font-bold">
+        <button
+          type="button"
+          onClick={() => setActiveTab('catalog')}
+          className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTab === 'catalog'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <span>🎵</span>
+          <span>Koleksi Kafe ({allSavedSongs.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('youtube')}
+          className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTab === 'youtube'
+              ? 'bg-red-600 text-white shadow-md'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <span className="text-red-400">🔴</span>
+          <span>Cari di YouTube</span>
+          {youtubeApiKey ? (
+            <span className="text-[9px] bg-red-500/20 text-red-200 px-1.5 py-0.2 rounded font-mono">
+              LIVE
+            </span>
+          ) : (
+            <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.2 rounded">
+              BANTUAN
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Bagian 4: Konten Sesuai Tab Aktif */}
+      {activeTab === 'catalog' ? (
+        <AddSongSearchTab
+          searchQuery={searchQuery}
+          searchResults={searchResults}
+          totalSavedCount={allSavedSongs.length}
+          onSelectFromLibrary={handleSelectFromLibrary}
+          onOpenPopularModal={onOpenPopularModal}
+          onSwitchToYouTube={() => setActiveTab('youtube')}
+        />
+      ) : (
+        <AddSongYouTubeTab
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          youtubeApiKey={youtubeApiKey}
+          requesterName={nameInput}
+          onAddSong={onAddSong}
+          onClearQuery={() => setSearchQuery('')}
         />
       )}
     </div>

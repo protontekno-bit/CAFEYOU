@@ -28,15 +28,15 @@ export const GuestItemOptionsModal: React.FC<GuestItemOptionsModalProps> = ({
         {/* Header */}
         <div className="flex justify-between items-start pb-4 border-b border-slate-800">
           <div className="flex gap-3 items-center">
-            <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl overflow-hidden shrink-0">
-              {configuringMenuItem.imageUrl && configuringMenuItem.imageUrl.startsWith('http') ? (
+            <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl overflow-hidden shrink-0 shadow-inner">
+              {configuringMenuItem.imageUrl && (configuringMenuItem.imageUrl.startsWith('http') || configuringMenuItem.imageUrl.startsWith('data:')) ? (
                 <img
                   src={configuringMenuItem.imageUrl}
                   alt={configuringMenuItem.name}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                configuringMenuItem.imageUrl || '🍽️'
+                <span>{configuringMenuItem.image || configuringMenuItem.imageUrl || '☕'}</span>
               )}
             </div>
             <div>

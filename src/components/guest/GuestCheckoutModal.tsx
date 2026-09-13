@@ -102,7 +102,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h5 className="text-xs font-bold text-white">{item.name}</h5>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm shrink-0">{item.image || '🍽️'}</span>
+                      <h5 className="text-xs font-bold text-white">{item.name}</h5>
+                    </div>
                     <div className="text-[11px] text-amber-400 font-mono mt-0.5">
                       Rp {effectivePrice.toLocaleString('id-ID')}
                     </div>

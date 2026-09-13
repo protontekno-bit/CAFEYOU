@@ -48,31 +48,40 @@ export const GuestMenuTab: React.FC<GuestMenuTabProps> = ({
           <span className="absolute left-3 top-2.5 text-sm text-slate-500">🔍</span>
         </div>
 
-        {/* Category Pills */}
+        {/* Category Pills (Selaras dengan Katalog POS) */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           {(
             [
-              { id: 'ALL', label: 'Semua', icon: '🍽️' },
-              { id: 'KOPI', label: 'Kopi', icon: '☕' },
-              { id: 'NON_KOPI', label: 'Minuman Segar', icon: '🥤' },
-              { id: 'MAKANAN', label: 'Makanan Utama', icon: '🍜' },
-              { id: 'SNACK', label: 'Camilan', icon: '🍟' },
-              { id: 'PAKET', label: 'Paket Hemat', icon: '🍱' },
+              { id: 'ALL', label: 'Semua', icon: '📋' },
+              { id: 'Minuman', label: 'Kopi & Minuman', icon: '☕' },
+              { id: 'Makanan', label: 'Makanan Utama', icon: '🍛' },
+              { id: 'Snack', label: 'Snack & Camilan', icon: '🍟' },
+              { id: 'Paket', label: 'Paket Combo', icon: '🍱' },
             ] as const
-          ).map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setFnbCategory(cat.id as any)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
-                fnbCategory === cat.id
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              <span>{cat.icon}</span>
-              <span>{cat.label}</span>
-            </button>
-          ))}
+          ).map((cat) => {
+            const isSelected =
+              fnbCategory === cat.id ||
+              (cat.id === 'ALL' && fnbCategory === 'ALL') ||
+              (cat.id === 'Minuman' && (fnbCategory === 'KOPI' || fnbCategory === 'NON_KOPI' || fnbCategory === 'Kopi' || fnbCategory === 'Minuman')) ||
+              (cat.id === 'Makanan' && (fnbCategory === 'MAKANAN' || fnbCategory === 'Makanan')) ||
+              (cat.id === 'Snack' && (fnbCategory === 'SNACK' || fnbCategory === 'Snack')) ||
+              (cat.id === 'Paket' && (fnbCategory === 'PAKET' || fnbCategory === 'Paket'));
+
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setFnbCategory(cat.id as any)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                  isSelected
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
+                    : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -80,7 +89,19 @@ export const GuestMenuTab: React.FC<GuestMenuTabProps> = ({
       <div className="space-y-2.5">
         {Object.values(menuItems || {})
           .filter((item) => {
-            if (fnbCategory !== 'ALL' && item.category !== fnbCategory) return false;
+            if (fnbCategory !== 'ALL') {
+              const itemCat = (item.category || '').toUpperCase();
+              const selCat = (fnbCategory || '').toUpperCase();
+              if (itemCat !== selCat) {
+                const isDrinkMatch = (selCat === 'MINUMAN' || selCat === 'KOPI' || selCat === 'NON_KOPI') && (itemCat === 'MINUMAN' || itemCat === 'KOPI' || itemCat === 'NON_KOPI');
+                const isFoodMatch = (selCat === 'MAKANAN') && (itemCat === 'MAKANAN');
+                const isSnackMatch = (selCat === 'SNACK') && (itemCat === 'SNACK');
+                const isComboMatch = (selCat === 'PAKET') && (itemCat === 'PAKET');
+                if (!isDrinkMatch && !isFoodMatch && !isSnackMatch && !isComboMatch) {
+                  return false;
+                }
+              }
+            }
             if (fnbSearch.trim()) {
               const q = fnbSearch.toLowerCase();
               return (
@@ -106,15 +127,15 @@ export const GuestMenuTab: React.FC<GuestMenuTabProps> = ({
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-14 h-14 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl shrink-0 overflow-hidden">
-                    {item.imageUrl && item.imageUrl.startsWith('http') ? (
+                  <div className="w-14 h-14 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-3xl shrink-0 overflow-hidden shadow-inner">
+                    {item.imageUrl && (item.imageUrl.startsWith('http') || item.imageUrl.startsWith('data:')) ? (
                       <img
                         src={item.imageUrl}
                         alt={item.name}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      item.imageUrl || '🍽️'
+                      <span>{item.image || item.imageUrl || '☕'}</span>
                     )}
                   </div>
                   <div className="min-w-0">

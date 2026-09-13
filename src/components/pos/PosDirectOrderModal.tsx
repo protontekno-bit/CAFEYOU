@@ -232,7 +232,19 @@ export const PosDirectOrderModal: React.FC<PosDirectOrderModalProps> = ({
   // List Menu yang Difilter
   const filteredMenuList = useMemo(() => {
     return Object.values(menuItems || {}).filter((item) => {
-      if (activeCategory !== 'ALL' && item.category !== activeCategory) return false;
+      if (activeCategory !== 'ALL') {
+        const itemCat = (item.category || '').toUpperCase();
+        const selCat = (activeCategory || '').toUpperCase();
+        if (itemCat !== selCat) {
+          const isDrinkMatch = (selCat === 'MINUMAN' || selCat === 'KOPI' || selCat === 'NON_KOPI') && (itemCat === 'MINUMAN' || itemCat === 'KOPI' || itemCat === 'NON_KOPI');
+          const isFoodMatch = (selCat === 'MAKANAN') && (itemCat === 'MAKANAN');
+          const isSnackMatch = (selCat === 'SNACK') && (itemCat === 'SNACK');
+          const isComboMatch = (selCat === 'PAKET') && (itemCat === 'PAKET');
+          if (!isDrinkMatch && !isFoodMatch && !isSnackMatch && !isComboMatch) {
+            return false;
+          }
+        }
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return item.name.toLowerCase().includes(q) || (item.description && item.description.toLowerCase().includes(q));
@@ -435,24 +447,24 @@ export const PosDirectOrderModal: React.FC<PosDirectOrderModalProps> = ({
               {/* Pill Kategori */}
               <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                 {[
-                  { id: 'ALL', label: 'Semua' },
-                  { id: 'KOPI', label: 'Kopi' },
-                  { id: 'NON_KOPI', label: 'Minuman Segar' },
-                  { id: 'MAKANAN', label: 'Makanan Utama' },
-                  { id: 'SNACK', label: 'Camilan' },
-                  { id: 'PAKET', label: 'Paket' },
+                  { id: 'ALL', label: 'Semua', icon: '📋' },
+                  { id: 'Minuman', label: 'Kopi & Minuman', icon: '☕' },
+                  { id: 'Makanan', label: 'Makanan Utama', icon: '🍛' },
+                  { id: 'Snack', label: 'Snack & Camilan', icon: '🍟' },
+                  { id: 'Paket', label: 'Paket Combo', icon: '🍱' },
                 ].map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => setActiveCategory(c.id)}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold shrink-0 transition-all ${
+                    className={`px-3 py-1 rounded-xl text-xs font-bold shrink-0 transition-all flex items-center gap-1.5 ${
                       activeCategory === c.id
                         ? 'bg-amber-500 text-slate-950 font-black'
                         : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
                     }`}
                   >
-                    {c.label}
+                    <span>{c.icon}</span>
+                    <span>{c.label}</span>
                   </button>
                 ))}
               </div>
@@ -471,11 +483,11 @@ export const PosDirectOrderModal: React.FC<PosDirectOrderModalProps> = ({
                     className="p-3 bg-slate-950/70 border border-slate-800/80 rounded-2xl flex items-center justify-between gap-3 hover:border-slate-700 transition-all"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-11 h-11 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-xl shrink-0">
-                        {item.imageUrl && item.imageUrl.startsWith('http') ? (
+                      <div className="w-11 h-11 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl shrink-0 overflow-hidden">
+                        {item.imageUrl && (item.imageUrl.startsWith('http') || item.imageUrl.startsWith('data:')) ? (
                           <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover rounded-xl" />
                         ) : (
-                          item.imageUrl || '🍽️'
+                          <span>{item.image || item.imageUrl || '☕'}</span>
                         )}
                       </div>
                       <div className="min-w-0">

@@ -160,6 +160,9 @@ export type OrderStatus =
   | 'PAID'
   | 'CANCELLED';
 
+export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'ONLINE_DELIVERY';
+export type DeliveryPlatform = 'GOFOOD' | 'GRABFOOD' | 'SHOPEEFOOD' | 'WA_DELIVERY' | 'OTHER';
+
 export interface TableOrder {
   id: string;
   orderNumber?: string;
@@ -174,9 +177,11 @@ export interface TableOrder {
   status: OrderStatus;
   createdAt: number;
   paidAt?: number;
-  paymentMethod?: 'cash' | 'qris' | 'transfer' | 'debit' | 'TUNAI' | 'QRIS' | 'TRANSFER' | 'DEBIT';
+  paymentMethod?: 'cash' | 'qris' | 'transfer' | 'debit' | 'TUNAI' | 'QRIS' | 'TRANSFER' | 'DEBIT' | 'ONLINE_MERCHANT' | 'online_merchant';
   cancelReason?: string;
   tableMoveHistory?: { from: string; to: string; movedAt: number }[];
+  orderType?: OrderType;
+  platform?: DeliveryPlatform;
 }
 
 export type ExpenseCategory =

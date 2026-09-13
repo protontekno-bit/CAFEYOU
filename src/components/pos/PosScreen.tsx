@@ -7,6 +7,7 @@ import { DeveloperFooter } from '../common/DeveloperFooter';
 import { PosMenuManager } from './PosMenuManager';
 import { PosSettingsModal } from './PosSettingsModal';
 import { PosExpenseModal } from './PosExpenseModal';
+import { PosDirectOrderModal } from './PosDirectOrderModal';
 
 interface PosScreenProps {
   setRole?: (role: AppRole) => void;
@@ -23,6 +24,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     menuItems,
     cafeSettings,
     tables,
+    createTableOrder,
     updateTableOrderStatus,
     moveTableOrder,
     voidOrderItem,
@@ -59,6 +61,9 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
 
   // Modal Kas Keluar / Pengeluaran (Petty Cash)
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+
+  // Modal Buat Pesanan Baru Kasir (Dine-in / Takeaway / Online Ojol)
+  const [isDirectOrderOpen, setIsDirectOrderOpen] = useState(false);
 
   // 2. Tab Aktif & Jam Digital
   const [activeTab, setActiveTab] = useState<PosTab>('billing');
@@ -154,6 +159,38 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
   // Format Angka Rupiah
   const formatRupiah = (amount: number) => {
     return 'Rp ' + (amount || 0).toLocaleString('id-ID');
+  };
+
+  const renderOrderBadge = (ord: TableOrder) => {
+    const isTakeaway =
+      ord.orderType === 'TAKEAWAY' ||
+      ord.tableNumber?.toUpperCase().includes('BUNGKUS') ||
+      ord.tableNumber?.toUpperCase().includes('TAKEAWAY');
+    const isOnline =
+      ord.orderType === 'ONLINE_DELIVERY' ||
+      ord.tableNumber?.toUpperCase().includes('GOFOOD') ||
+      ord.tableNumber?.toUpperCase().includes('GRAB') ||
+      ord.tableNumber?.toUpperCase().includes('SHOPEE');
+
+    if (isTakeaway) {
+      return (
+        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30 shrink-0">
+          🥡 BUNGKUS
+        </span>
+      );
+    }
+    if (isOnline) {
+      return (
+        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
+          🛵 {ord.platform || 'OJOL'}
+        </span>
+      );
+    }
+    return (
+      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0">
+        🍽️ MEJA
+      </span>
+    );
   };
 
   // Trigger Print Struk Fisik (Opsional)
@@ -482,6 +519,16 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
 
         {/* Tombol Kontrol Kanan */}
         <div className="flex items-center gap-2">
+          {/* Tombol Buat Pesanan Baru Kasir (Dine-in / Takeaway / Online Ojol) */}
+          <button
+            onClick={() => setIsDirectOrderOpen(true)}
+            className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
+            title="Buat Pesanan Langsung di Kasir (Makan di Meja, Bawa Pulang, atau Driver Ojol)"
+          >
+            <span className="text-sm">➕</span>
+            <span>Pesanan Kasir</span>
+          </button>
+
           {/* Toggle Suara Bel */}
           <button
             onClick={() => setIsSoundAlertEnabled(!isSoundAlertEnabled)}
@@ -647,10 +694,27 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
                           {/* Header Meja */}
                           <div className="flex justify-between items-start mb-3 border-b border-slate-800/80 pb-3">
                             <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">🪑</span>
-                                <h3 className="text-lg font-black text-white">{table}</h3>
-                              </div>
+                              {(() => {
+                                const isTakeaway = table.toUpperCase().includes('BUNGKUS') || table.toUpperCase().includes('TAKEAWAY') || orders.some(o => o.orderType === 'TAKEAWAY');
+                                const isOnline = table.toUpperCase().includes('GOFOOD') || table.toUpperCase().includes('GRAB') || table.toUpperCase().includes('SHOPEE') || orders.some(o => o.orderType === 'ONLINE_DELIVERY');
+                                const tableIcon = isTakeaway ? '🥡' : isOnline ? '🛵' : '🪑';
+                                return (
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-lg">{tableIcon}</span>
+                                    <h3 className="text-lg font-black text-white">{table}</h3>
+                                    {isTakeaway && (
+                                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                                        🥡 TAKEAWAY
+                                      </span>
+                                    )}
+                                    {isOnline && (
+                                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                        🛵 ONLINE OJOL
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               <span className="text-[11px] text-slate-400">
                                 {orders.length} Pesanan terdaftar •{' '}
                                 {new Date(oldestCreatedAt).toLocaleTimeString('id-ID', {
@@ -858,7 +922,10 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="text-sm font-black text-white">{ord.tableNumber}</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-black text-white">{ord.tableNumber}</span>
+                              {renderOrderBadge(ord)}
+                            </div>
                             <span className="text-[11px] text-slate-400 block">
                               {ord.customerName} • {new Date(ord.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -948,7 +1015,10 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="text-sm font-black text-white">{ord.tableNumber}</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-black text-white">{ord.tableNumber}</span>
+                              {renderOrderBadge(ord)}
+                            </div>
                             <span className="text-[11px] text-slate-400 block">
                               {ord.customerName} • {new Date(ord.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -1029,7 +1099,10 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="text-sm font-black text-white">{ord.tableNumber}</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-black text-white">{ord.tableNumber}</span>
+                              {renderOrderBadge(ord)}
+                            </div>
                             <span className="text-[11px] text-slate-400 block">
                               {ord.customerName} • {new Date(ord.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -1736,6 +1809,17 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         expenses={expenses || {}}
         onAddExpense={addExpense}
         onDeleteExpense={deleteExpense}
+      />
+
+      {/* 9. MODAL BUAT PESANAN KASIR LANGSUNG (DINE-IN, TAKEAWAY, ONLINE OJOL) */}
+      <PosDirectOrderModal
+        isOpen={isDirectOrderOpen}
+        onClose={() => setIsDirectOrderOpen(false)}
+        menuItems={menuItems || {}}
+        tables={tables || []}
+        cafeSettings={cafeSettings}
+        onCreateOrder={createTableOrder}
+        existingOrdersCount={ordersList.length}
       />
 
       {/* 9. MODAL ZOOM BARCODE QRIS (FULLSCREEN HIGH-RES DISPLAY) */}

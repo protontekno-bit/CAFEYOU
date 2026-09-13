@@ -14,6 +14,8 @@ import {
   OrderItem,
   OrderStatus,
   TableOrder,
+  OrderType,
+  DeliveryPlatform,
   ExpenseItem,
   ExpenseCategory,
 } from '../types';
@@ -754,24 +756,56 @@ export function useKaraoke() {
   const createTableOrder = async (
     tableNumber: string,
     customerName: string,
-    items: OrderItem[]
+    items: OrderItem[],
+    orderType: OrderType = 'DINE_IN',
+    platform?: DeliveryPlatform,
+    initialStatus: OrderStatus = 'pending',
+    paymentMethod?: 'cash' | 'qris' | 'transfer' | 'debit' | 'TUNAI' | 'QRIS' | 'TRANSFER' | 'DEBIT' | 'ONLINE_MERCHANT' | 'online_merchant',
+    financials?: {
+      subtotal?: number;
+      taxAmount?: number;
+      serviceAmount?: number;
+      roundingAmount?: number;
+      finalTotal?: number;
+    }
   ): Promise<TableOrder | null> => {
-    if (!tableNumber || !items || items.length === 0) return null;
+    if (!items || items.length === 0) return null;
+
+    const effectiveTable =
+      (tableNumber && tableNumber.trim()) ||
+      (orderType === 'TAKEAWAY' ? 'TAKEAWAY' : orderType === 'ONLINE_DELIVERY' ? (platform || 'ONLINE') : 'Meja Umum');
 
     const timestamp = Date.now();
     const orderSeq = (Object.keys(tableOrders).length + 1).toString().padStart(3, '0');
-    const orderNumber = `ORD-${orderSeq}`;
-    const totalAmount = items.reduce((sum, item) => sum + item.price * (item.quantity ?? item.qty ?? 1), 0);
+    const orderPrefix = orderType === 'TAKEAWAY' ? 'TKW' : orderType === 'ONLINE_DELIVERY' ? 'ONL' : 'ORD';
+    const orderNumber = `${orderPrefix}-${orderSeq}`;
+
+    const calculatedTotal = items.reduce((sum, item) => sum + item.price * (item.quantity ?? item.qty ?? 1), 0);
+    const finalAmount = financials?.finalTotal !== undefined ? financials.finalTotal : calculatedTotal;
+
+    const isPaid = initialStatus === 'paid' || (initialStatus as string).toLowerCase() === 'paid';
 
     const newOrder: TableOrder = {
       id: `order-${timestamp}-${Math.random().toString(36).substring(2, 6)}`,
       orderNumber,
-      tableNumber,
-      customerName: customerName.trim() || tableNumber,
+      tableNumber: effectiveTable,
+      customerName: customerName.trim() || effectiveTable,
       items,
-      totalAmount,
-      status: 'pending',
+      totalAmount: finalAmount,
+      subtotal: financials?.subtotal !== undefined ? financials.subtotal : calculatedTotal,
+      taxAmount: financials?.taxAmount || 0,
+      serviceAmount: financials?.serviceAmount || 0,
+      roundingAmount: financials?.roundingAmount || 0,
+      status: initialStatus,
       createdAt: timestamp,
+      orderType,
+      platform,
+      ...(isPaid
+        ? {
+            paidAt: timestamp,
+            paymentMethod: paymentMethod || (orderType === 'ONLINE_DELIVERY' ? 'ONLINE_MERCHANT' : 'cash'),
+          }
+        : {}),
     };
 
     // 1. Update state lokal segera

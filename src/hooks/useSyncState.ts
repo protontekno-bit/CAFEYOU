@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { BROADCAST_CHANNEL_NAME } from '../constants/karaoke';
 import { SyncMessage } from '../types';
-import { initFirebaseDatabase, ref, onValue, set } from '../config/firebase';
+import { initFirebaseDatabase, ref, onValue, set, update } from '../config/firebase';
 
 /**
  * Memastikan struktur state selalu aman dari nilai null/undefined (terutama dari Firebase RTDB)
@@ -223,7 +223,9 @@ export function useSyncState<T>(
           if (db) {
             try {
               const dbRef = ref(db, `cafeyou/${key}`);
-              set(dbRef, newValue).catch((err) => {
+              // Pisahkan tableOrders dan expenses agar TIDAK terhapus/tertimpa saat sinkronisasi state umum (lagu, player, antrean)
+              const { tableOrders: _to, expenses: _exp, ...cleanState } = newValue as any;
+              update(dbRef, cleanState).catch((err) => {
                 console.warn('Gagal menulis ke Firebase Cloud:', err);
               });
             } catch (err) {}

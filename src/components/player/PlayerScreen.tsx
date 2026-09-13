@@ -78,7 +78,10 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
     } catch {}
   };
 
-  // Dengarkan perintah remote dari Operator (misal: reload layar proyektor)
+  const playerRef = useRef(player);
+  playerRef.current = player;
+
+  // Dengarkan perintah remote dari Operator (misal: reload layar proyektor, remote mute/unmute)
   useEffect(() => {
     const mountTime = Date.now();
     const db = initFirebaseDatabase();
@@ -88,9 +91,23 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
       const cmdRef = ref(db, `cafeyou/player_commands/${STORAGE_KEY}`);
       const unsub = onValue(cmdRef, (snap) => {
         const val = snap.val();
-        if (val && val.command === 'reload' && val.timestamp > mountTime) {
-          console.log('Menerima perintah muat ulang remote dari operator...');
-          window.location.reload();
+        if (val && val.timestamp > mountTime) {
+          if (val.command === 'reload') {
+            console.log('Menerima perintah muat ulang remote dari operator...');
+            window.location.reload();
+          } else if (val.command === 'mute') {
+            try {
+              if (playerRef.current && typeof playerRef.current.mute === 'function') {
+                playerRef.current.mute();
+              }
+            } catch {}
+          } else if (val.command === 'unmute') {
+            try {
+              if (playerRef.current && typeof playerRef.current.unMute === 'function') {
+                playerRef.current.unMute();
+              }
+            } catch {}
+          }
         }
       });
       return () => unsub();

@@ -87,6 +87,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     autoSaveLibrary,
     toggleAutoSaveLibrary,
     saveSongToLibrary,
+    sendPlayerCommand,
+    sendStageCue,
     menuItems,
     tableOrders,
     confirmTableOrder,
@@ -162,6 +164,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onOpenKitchenTab={() => window.open('#kitchen', '_blank')}
           onOpenVoucherManager={() => setIsVoucherOpen(true)}
           onOpenProjectorTab={handleOpenProjector}
+          onRemotePlayerCommand={sendPlayerCommand}
           onOpenPopularSongs={() => setIsPopularOpen(true)}
           onOpenHistory={() => setIsHistoryOpen(true)}
           onOpenSoundBoard={() => setIsSoundBoardOpen(true)}
@@ -235,6 +238,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
               onOpenPopularModal={() => setIsPopularOpen(true)}
               onToggleFairRotation={toggleFairRotation}
               onRebalanceFairly={rebalanceQueueFairly}
+              onSendStageCue={sendStageCue}
             />
           </div>
         </main>

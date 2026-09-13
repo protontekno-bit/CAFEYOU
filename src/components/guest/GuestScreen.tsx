@@ -17,7 +17,7 @@ import {
   getYouTubeThumbnail,
   searchYouTubeVideos,
 } from '../../utils/youtube';
-import { initFirebaseDatabase, ref, set } from '../../config/firebase';
+import { initFirebaseDatabase, ref, set, onValue } from '../../config/firebase';
 import { STORAGE_KEY } from '../../constants/karaoke';
 import {
   SparklesIcon,
@@ -96,6 +96,8 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
 
   // Notifikasi Pindah Meja Otomatis dari Kasir
   const [relocationNotice, setRelocationNotice] = useState<string | null>(null);
+  // Notifikasi Panggilan Bernyanyi dari Operator
+  const [stageCueAlert, setStageCueAlert] = useState<{ message: string; songTitle?: string } | null>(null);
 
   // 2. Status autentikasi voucher (Per-Meja)
   const [activeVoucher, setActiveVoucher] = useState<Voucher | null>(() => {
@@ -210,6 +212,42 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
       }
     }
   }, [tableOrders, tableNumber]);
+
+  // Realtime Stage Cue Alert (Panggilan Operator saat giliran bernyanyi tiba)
+  useEffect(() => {
+    if (!tableNumber) return;
+    const cleanT = tableNumber.trim();
+    const db = initFirebaseDatabase();
+    if (!db) return;
+
+    try {
+      const cueRef = ref(db, `cafeyou/${STORAGE_KEY}/stage_cues/${cleanT}`);
+      const unsub = onValue(cueRef, (snap) => {
+        const val = snap.val();
+        if (val && val.timestamp && Date.now() - val.timestamp < 60000) {
+          setStageCueAlert({
+            message: val.message || 'Lagu Anda berikutnya! Silakan bersiap menuju panggung 🎤',
+            songTitle: val.songTitle,
+          });
+
+          // Getar smartphone tamu (tactile feedback)
+          try {
+            if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+              navigator.vibrate([300, 150, 300]);
+            }
+          } catch {}
+
+          // Otomatis tutup notifikasi setelah 12 detik
+          const timer = setTimeout(() => {
+            setStageCueAlert(null);
+          }, 12000);
+          return () => clearTimeout(timer);
+        }
+      });
+
+      return () => unsub();
+    } catch {}
+  }, [tableNumber]);
 
   // Auto-login jika URL membawa parameter voucher/pin (misal: #guest?table=Meja%201&voucher=1234)
   useEffect(() => {
@@ -1041,6 +1079,37 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
             <button
               onClick={() => setRelocationNotice(null)}
               className="text-blue-300 hover:text-white text-xs px-1 font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Banner Panggilan Panggung dari Operator */}
+        {stageCueAlert && (
+          <div className="p-4 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 border-2 border-amber-300 rounded-2xl flex items-center justify-between gap-3 text-white shadow-2xl shadow-amber-600/30 animate-bounceIn">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-2xl shadow-inner shrink-0 animate-pulse">
+                🎤
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-black uppercase tracking-wider text-amber-200">
+                  PANGGILAN PANGGUNG • {tableNumber}
+                </div>
+                <div className="text-xs sm:text-sm font-extrabold leading-tight">
+                  {stageCueAlert.message}
+                </div>
+                {stageCueAlert.songTitle && (
+                  <div className="text-[11px] text-amber-100 opacity-90 truncate mt-0.5">
+                    Lagu: <strong>{stageCueAlert.songTitle}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setStageCueAlert(null)}
+              className="p-1.5 rounded-lg bg-black/20 hover:bg-black/40 text-white text-xs font-bold shrink-0"
+              title="Tutup Notifikasi"
             >
               ✕
             </button>

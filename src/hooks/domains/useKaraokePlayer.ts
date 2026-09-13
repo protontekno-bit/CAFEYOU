@@ -553,6 +553,38 @@ export function useKaraokePlayer(
     });
   };
 
+  const sendPlayerCommand = useCallback(async (command: 'reload' | 'mute' | 'unmute') => {
+    try {
+      const db = initFirebaseDatabase();
+      if (!db) return;
+      const cmdRef = ref(db, `cafeyou/player_commands/${STORAGE_KEY}`);
+      await set(cmdRef, {
+        command,
+        timestamp: Date.now(),
+      });
+    } catch (err) {
+      console.warn('Gagal mengirim perintah remote player:', err);
+    }
+  }, []);
+
+  const sendStageCue = useCallback(async (tableNumber: string, songTitle?: string) => {
+    const cleanTable = tableNumber?.trim();
+    if (!cleanTable) return;
+    try {
+      const db = initFirebaseDatabase();
+      if (!db) return;
+      const cueRef = ref(db, `cafeyou/${STORAGE_KEY}/stage_cues/${cleanTable}`);
+      await set(cueRef, {
+        tableNumber: cleanTable,
+        songTitle: songTitle || '',
+        message: 'Lagu Anda berikutnya! Silakan bersiap menuju mikrofon panggung 🎤',
+        timestamp: Date.now(),
+      });
+    } catch (err) {
+      console.warn('Gagal mengirim panggilan meja:', err);
+    }
+  }, []);
+
   return {
     state: {
       queue: safeQueue,
@@ -592,5 +624,7 @@ export function useKaraokePlayer(
     clearLibrary,
     toggleAutoSaveLibrary,
     saveSongToLibrary,
+    sendPlayerCommand,
+    sendStageCue,
   };
 }

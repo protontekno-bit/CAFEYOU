@@ -28,6 +28,7 @@ interface HeaderProps {
   onOpenKitchenTab?: () => void;
   onOpenSettings?: () => void;
   onLogout?: () => void;
+  onRemotePlayerCommand?: (command: 'reload' | 'mute' | 'unmute') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -48,7 +49,19 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenKitchenTab,
   onOpenSettings,
   onLogout,
+  onRemotePlayerCommand,
 }) => {
+  const [isRemoteMenuOpen, setIsRemoteMenuOpen] = React.useState(false);
+  const [remoteNotice, setRemoteNotice] = React.useState<string | null>(null);
+
+  const handleSendCommand = (cmd: 'reload' | 'mute' | 'unmute') => {
+    if (onRemotePlayerCommand) {
+      onRemotePlayerCommand(cmd);
+      setRemoteNotice(cmd === 'reload' ? 'Layar TV dimuat ulang...' : cmd === 'mute' ? 'Audio panggung disenyapkan!' : 'Audio panggung aktif!');
+      setTimeout(() => setRemoteNotice(null), 2500);
+      setIsRemoteMenuOpen(false);
+    }
+  };
   return (
     <header className="bg-slate-900/95 backdrop-blur-lg px-4 py-3 shadow-xl sticky top-0 z-30 border-b border-slate-800 flex flex-wrap justify-between items-center gap-3 select-none">
       {/* KIRI: Brand Logo, Judul & Venue Badge */}
@@ -99,14 +112,65 @@ export const Header: React.FC<HeaderProps> = ({
         {/* GRUP 1: ⚡ AKSI CEPAT OPERASIONAL KASIR */}
         <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-2xl border border-slate-700/70 shadow-sm">
           {onOpenProjectorTab && (
-            <button
-              onClick={onOpenProjectorTab}
-              className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/20"
-              title="Buka Layar Proyektor di Tab Baru (Untuk Monitor Kedua / HDMI TV)"
-            >
-              <ExternalLinkIcon className="w-3.5 h-3.5" />
-              <span>Proyektor ↗</span>
-            </button>
+            <div className="relative flex items-center">
+              <button
+                onClick={onOpenProjectorTab}
+                className={`px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/20 ${
+                  onRemotePlayerCommand ? 'rounded-l-xl' : 'rounded-xl'
+                }`}
+                title="Buka Layar Proyektor di Tab Baru (Untuk Monitor Kedua / HDMI TV)"
+              >
+                <ExternalLinkIcon className="w-3.5 h-3.5" />
+                <span>Proyektor ↗</span>
+              </button>
+
+              {onRemotePlayerCommand && (
+                <button
+                  onClick={() => setIsRemoteMenuOpen((prev) => !prev)}
+                  className="px-1.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-r-xl border-l border-emerald-500/40 text-xs transition-colors"
+                  title="Remote Kontrol Layar TV Proyektor"
+                >
+                  ▾
+                </button>
+              )}
+
+              {/* Dropdown Menu Remote TV */}
+              {isRemoteMenuOpen && (
+                <div className="absolute top-full right-0 mt-2 w-52 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2 z-50 text-left space-y-1 animate-fadeIn">
+                  <div className="text-[10px] font-black uppercase text-slate-400 px-2.5 py-1 border-b border-slate-800">
+                    Remote Kontrol TV Panggung
+                  </div>
+                  <button
+                    onClick={() => handleSendCommand('reload')}
+                    className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-slate-800 text-xs text-white font-medium flex items-center gap-2 transition-colors"
+                  >
+                    <span>🔄</span>
+                    <span>Reload Layar TV</span>
+                  </button>
+                  <button
+                    onClick={() => handleSendCommand('mute')}
+                    className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-red-500/20 text-xs text-red-300 font-medium flex items-center gap-2 transition-colors"
+                  >
+                    <span>🔇</span>
+                    <span>Mute Darurat Panggung</span>
+                  </button>
+                  <button
+                    onClick={() => handleSendCommand('unmute')}
+                    className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-emerald-500/20 text-xs text-emerald-300 font-medium flex items-center gap-2 transition-colors"
+                  >
+                    <span>🔊</span>
+                    <span>Unmute Suara TV</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Toast Notifikasi Remote */}
+              {remoteNotice && (
+                <div className="absolute top-full left-0 mt-2 whitespace-nowrap bg-emerald-600 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-lg z-50 animate-fadeIn">
+                  {remoteNotice}
+                </div>
+              )}
+            </div>
           )}
 
           {onOpenPopularSongs && (

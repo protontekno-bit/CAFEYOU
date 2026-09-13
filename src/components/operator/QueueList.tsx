@@ -23,6 +23,7 @@ interface QueueListProps {
   onOpenPopularModal?: () => void;
   onToggleFairRotation?: () => void;
   onRebalanceFairly?: () => void;
+  onSendStageCue?: (tableNumber: string, songTitle?: string) => void;
 }
 
 export const QueueList: React.FC<QueueListProps> = ({
@@ -39,10 +40,12 @@ export const QueueList: React.FC<QueueListProps> = ({
   onOpenPopularModal,
   onToggleFairRotation,
   onRebalanceFairly,
+  onSendStageCue,
 }) => {
   const safeQueue = Array.isArray(queue) ? queue : [];
   const [filterSource, setFilterSource] = useState<'all' | 'guest' | 'operator'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [calledTables, setCalledTables] = useState<Record<string, number>>({});
 
   const totalCount = (currentSong ? 1 : 0) + safeQueue.length;
 
@@ -60,6 +63,19 @@ export const QueueList: React.FC<QueueListProps> = ({
 
   // Estimasi durasi antrean: asumsi rata-rata 4 menit per lagu
   const estimatedWaitMinutes = safeQueue.length * 4;
+
+  const estimatedCompletionTime = useMemo(() => {
+    if (safeQueue.length === 0) return '';
+    const finishDate = new Date(Date.now() + safeQueue.length * 4 * 60000);
+    return finishDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+  }, [safeQueue.length]);
+
+  const handleCallTable = (songId: string, tableNumber: string, songTitle?: string) => {
+    if (onSendStageCue) {
+      onSendStageCue(tableNumber, songTitle);
+      setCalledTables((prev) => ({ ...prev, [songId]: Date.now() }));
+    }
+  };
 
   // Gabungkan currentSong + safeQueue agar giliran meja (rounds) akurat secara global
   const fullQueue = useMemo(() => {
@@ -132,10 +148,10 @@ export const QueueList: React.FC<QueueListProps> = ({
           {safeQueue.length > 0 && (
             <span
               className="text-[11px] font-semibold text-amber-300/90 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 font-mono flex items-center gap-1"
-              title={`Total estimasi antrean sekitar ~${estimatedWaitMinutes} menit`}
+              title={`Total antrean sekitar ~${estimatedWaitMinutes} menit (estimasi selesai pukul ${estimatedCompletionTime})`}
             >
               <span>⏱️</span>
-              <span>~{estimatedWaitMinutes} mnt antrean</span>
+              <span>~{estimatedWaitMinutes} mnt {estimatedCompletionTime && `(selesai ${estimatedCompletionTime})`}</span>
             </span>
           )}
         </div>
@@ -309,13 +325,29 @@ export const QueueList: React.FC<QueueListProps> = ({
                       </span>
                     )}
 
-                    {/* Estimasi Menit Tunggu */}
+                    {/* Estimasi Menit Tunggu & Perkiraan Jam */}
                     <span
                       className="text-[10px] text-slate-400 bg-slate-800/80 px-1.5 py-0.2 rounded border border-slate-700/60 font-mono"
-                      title={`Estimasi giliran diputar dalam ~${estimatedMinutes} menit`}
+                      title={`Estimasi giliran diputar dalam ~${estimatedMinutes} menit (sekitar ${new Date(Date.now() + estimatedMinutes * 60000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})`}
                     >
-                      ±{estimatedMinutes}m
+                      ±{estimatedMinutes}m ({new Date(Date.now() + estimatedMinutes * 60000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})
                     </span>
+
+                    {/* Tombol Panggil Meja untuk 2 lagu teratas */}
+                    {idx < 2 && song.tableNumber && onSendStageCue && (
+                      <button
+                        onClick={() => handleCallTable(song.id, song.tableNumber!, song.title)}
+                        disabled={Boolean(calledTables[song.id] && Date.now() - calledTables[song.id] < 30000)}
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 transition-all active:scale-95 ${
+                          calledTables[song.id] && Date.now() - calledTables[song.id] < 30000
+                            ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40 cursor-default'
+                            : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 hover:text-white hover:from-amber-600 hover:to-orange-600 border border-amber-500/40 shadow-sm'
+                        }`}
+                        title="Kirim Panggilan ke Smartphone Meja untuk Bersiap Bernyanyi"
+                      >
+                        <span>{calledTables[song.id] && Date.now() - calledTables[song.id] < 30000 ? '✓ Terpanggil' : '🔔 Panggil Meja'}</span>
+                      </button>
+                    )}
 
                     {/* Badge Giliran Meja jika pemesan memiliki lebih dari 1 lagu */}
                     {round.totalInQueue > 1 && (

@@ -78,7 +78,7 @@ export function useCashExpenses(
       const db = initFirebaseDatabase();
       if (db) {
         const expRef = ref(db, `cafeyou/${STORAGE_KEY}/expenses/${id}`);
-        set(expRef, newExpense).catch((err) => {
+        set(expRef, JSON.parse(JSON.stringify(newExpense))).catch((err) => {
           console.warn('Gagal menyimpan pengeluaran langsung ke Firebase:', err);
         });
       }

@@ -112,6 +112,10 @@ export function useOrderBilling(
         : {}),
     };
 
+    // Sanitasi bersih agar tidak memuat properti bernilai undefined yang ditolak oleh Firebase RTDB
+    const cleanOrder: TableOrder = JSON.parse(JSON.stringify(newOrder));
+
+    // 1. Update state lokal segera
     updateAppState((prev) => {
       const currentOrders =
         prev?.tableOrders && typeof prev.tableOrders === 'object' ? prev.tableOrders : {};
@@ -119,22 +123,24 @@ export function useOrderBilling(
         ...prev,
         tableOrders: {
           ...currentOrders,
-          [newOrder.id]: newOrder,
+          [cleanOrder.id]: cleanOrder,
         },
       };
     });
 
-    try {
-      const db = initFirebaseDatabase();
-      if (db) {
-        const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${newOrder.id}`);
-        await set(orderRef, newOrder);
+    // 2. Tulis langsung secara atomik ke node Firebase RTDB agar instan terkirim ke POS & Operator
+    const db = initFirebaseDatabase();
+    if (db) {
+      try {
+        const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${cleanOrder.id}`);
+        await set(orderRef, cleanOrder);
+      } catch (err: any) {
+        console.error('Gagal menyimpan pesanan langsung ke Firebase:', err);
+        throw new Error('Gagal mengirim pesanan ke cloud kasir. Periksa koneksi internet kafe.');
       }
-    } catch (err) {
-      console.warn('Gagal menyimpan pesanan langsung ke Firebase:', err);
     }
 
-    return newOrder;
+    return cleanOrder;
   };
 
   const updateTableOrderStatus = (
@@ -187,7 +193,7 @@ export function useOrderBilling(
         const db = initFirebaseDatabase();
         if (db) {
           const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
-          set(orderRef, updatedTarget).catch((err) => {
+          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
             console.warn('Gagal update status pesanan di Firebase:', err);
           });
         }
@@ -315,7 +321,7 @@ export function useOrderBilling(
         const db = initFirebaseDatabase();
         if (db) {
           const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
-          set(orderRef, updatedTarget).catch((err) => {
+          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
             console.warn('Gagal update perpindahan meja di Firebase:', err);
           });
         }
@@ -367,7 +373,7 @@ export function useOrderBilling(
         const db = initFirebaseDatabase();
         if (db) {
           const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
-          set(orderRef, updatedTarget).catch((err) => {
+          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
             console.warn('Gagal void item di Firebase:', err);
           });
         }
@@ -401,7 +407,7 @@ export function useOrderBilling(
       const db = initFirebaseDatabase();
       if (db) {
         const ordersRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders`);
-        set(ordersRef, activeOnly).catch((err) => {
+        set(ordersRef, JSON.parse(JSON.stringify(activeOnly))).catch((err) => {
           console.warn('Gagal sinkronisasi pembersihan pesanan selesai di Firebase:', err);
         });
       }

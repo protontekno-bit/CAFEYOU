@@ -37,12 +37,22 @@ export const DEFAULT_FIREBASE_CONFIG: FirebaseCustomConfig = {
  * Mendapatkan konfigurasi Firebase aktif (URL query params, LocalStorage, atau Default)
  */
 export function getStoredFirebaseConfig(): FirebaseCustomConfig {
-  // 1. Coba baca dari URL parameter jika dibagikan via link QR
+  // 1. Coba baca dari URL parameter jika dibagikan via link QR (mendukung ?query dan #hash?query)
   try {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
-      const urlDb = searchParams.get('dbUrl');
-      const urlProj = searchParams.get('projId');
+      let urlDb = searchParams.get('dbUrl');
+      let urlProj = searchParams.get('projId');
+
+      if (!urlDb && !urlProj && window.location.hash.includes('?')) {
+        const hashQuery = window.location.hash.split('?')[1];
+        if (hashQuery) {
+          const hashParams = new URLSearchParams(hashQuery);
+          urlDb = hashParams.get('dbUrl');
+          urlProj = hashParams.get('projId');
+        }
+      }
+
       if (urlDb || urlProj) {
         const urlConfig: FirebaseCustomConfig = {
           databaseURL: urlDb || undefined,

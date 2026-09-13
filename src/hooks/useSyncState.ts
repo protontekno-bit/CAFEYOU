@@ -6,7 +6,7 @@ import { initFirebaseDatabase, ref, onValue, set, update } from '../config/fireb
 /**
  * Memastikan struktur state selalu aman dari nilai null/undefined (terutama dari Firebase RTDB)
  */
-function sanitizeState<T>(val: any, fallback: T): T {
+function sanitizeState<T>(val: any, fallback: T, currentState?: any): T {
   if (!val || typeof val !== 'object') {
     return fallback;
   }
@@ -68,16 +68,36 @@ function sanitizeState<T>(val: any, fallback: T): T {
         : (fallback as any).menuItems || {};
   }
   if ('tableOrders' in (fallback as any)) {
-    merged.tableOrders =
-      val.tableOrders && typeof val.tableOrders === 'object'
-        ? val.tableOrders
-        : (fallback as any).tableOrders || {};
+    // Jika cloudVal memuat tableOrders, gunakan itu.
+    // Jika cloudVal tidak memuatnya (karena update dipisah), PERTAHANKAN tableOrders dari currentState/fallback.
+    if (val.tableOrders && typeof val.tableOrders === 'object') {
+      merged.tableOrders = val.tableOrders;
+    } else if (
+      currentState &&
+      currentState.tableOrders &&
+      typeof currentState.tableOrders === 'object' &&
+      Object.keys(currentState.tableOrders).length > 0
+    ) {
+      merged.tableOrders = currentState.tableOrders;
+    } else {
+      merged.tableOrders = (fallback as any).tableOrders || {};
+    }
   }
   if ('expenses' in (fallback as any)) {
-    merged.expenses =
-      val.expenses && typeof val.expenses === 'object'
-        ? val.expenses
-        : (fallback as any).expenses || {};
+    // Jika cloudVal memuat expenses, gunakan itu.
+    // Jika cloudVal tidak memuatnya (karena update dipisah), PERTAHANKAN expenses dari currentState/fallback.
+    if (val.expenses && typeof val.expenses === 'object') {
+      merged.expenses = val.expenses;
+    } else if (
+      currentState &&
+      currentState.expenses &&
+      typeof currentState.expenses === 'object' &&
+      Object.keys(currentState.expenses).length > 0
+    ) {
+      merged.expenses = currentState.expenses;
+    } else {
+      merged.expenses = (fallback as any).expenses || {};
+    }
   }
   return merged as T;
 }
@@ -140,14 +160,18 @@ export function useSyncState<T>(
         (snapshot) => {
           if (snapshot.exists()) {
             const cloudVal = snapshot.val();
-            const safeVal = sanitizeState<T>(cloudVal, initialState);
             isSettingFromCloudRef.current = true;
-            setState(safeVal);
 
-            // Simpan juga ke cache lokal
-            try {
-              window.localStorage.setItem(key, JSON.stringify(safeVal));
-            } catch (e) {}
+            setState((prevState) => {
+              const safeVal = sanitizeState<T>(cloudVal, initialState, prevState);
+
+              // Simpan juga ke cache lokal tanpa menimpa tableOrders & expenses yang ada
+              try {
+                window.localStorage.setItem(key, JSON.stringify(safeVal));
+              } catch (e) {}
+
+              return safeVal;
+            });
 
             setTimeout(() => {
               isSettingFromCloudRef.current = false;
@@ -169,6 +193,7 @@ export function useSyncState<T>(
       setIsCloudConnected(false);
     }
   }, [key]);
+
 
   // 2. BroadcastChannel Listener (untuk sinkronisasi multi-tab lokal pada perangkat yang sama)
   useEffect(() => {
@@ -199,7 +224,7 @@ export function useSyncState<T>(
           ? (newValueOrFunction as (prev: T) => T)(prevState)
           : newValueOrFunction;
 
-      const newValue = sanitizeState<T>(computed, initialState);
+      const newValue = sanitizeState<T>(computed, initialState, prevState);
 
       // Update LocalStorage
       try {
@@ -225,7 +250,8 @@ export function useSyncState<T>(
               const dbRef = ref(db, `cafeyou/${key}`);
               // Pisahkan tableOrders dan expenses agar TIDAK terhapus/tertimpa saat sinkronisasi state umum (lagu, player, antrean)
               const { tableOrders: _to, expenses: _exp, ...cleanState } = newValue as any;
-              update(dbRef, cleanState).catch((err) => {
+              const sanitizedPayload = JSON.parse(JSON.stringify(cleanState));
+              update(dbRef, sanitizedPayload).catch((err) => {
                 console.warn('Gagal menulis ke Firebase Cloud:', err);
               });
             } catch (err) {}

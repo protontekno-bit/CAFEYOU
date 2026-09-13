@@ -12,7 +12,8 @@
  */
 
 import { calculateTaxAndService, formatRupiah, isDrinkItem } from '../src/utils/billing.ts';
-import type { TableOrder, OrderItem, KitchenStationFilter, OrderStatus } from '../src/types/index.ts';
+import { isSameTable, normalizeTable } from '../src/utils/table.ts';
+import type { TableOrder, OrderItem, KitchenStationFilter, OrderStatus, Voucher } from '../src/types/index.ts';
 
 // Harness Pengujian Sederhana & Mandiri
 let passedCount = 0;
@@ -405,6 +406,90 @@ console.log('\n🔹 [8/8] Menguji Logika Pembersihan Shift & Proteksi Data Aktif
 }
 
 // --------------------------------------------------------------------------
+// TEST SUITE 9: Akurasi Kode Voucher & Sinkronisasi Meja
+// --------------------------------------------------------------------------
+console.log('\n🔹 [9/9] Menguji Akurasi Kode Voucher & Sinkronisasi Meja...');
+{
+  // 9.1 Normalisasi & Kesamaan Meja (isSameTable & normalizeTable)
+  assert(normalizeTable('1') === 'Meja 1', 'Normalisasi "1" menjadi "Meja 1"');
+  assert(normalizeTable('01') === 'Meja 1', 'Normalisasi "01" menjadi "Meja 1"');
+  assert(normalizeTable('meja 02') === 'Meja 2', 'Normalisasi "meja 02" menjadi "Meja 2"');
+  assert(normalizeTable('table 5') === 'Meja 5', 'Normalisasi "table 5" menjadi "Meja 5"');
+  assert(isSameTable('1', 'Meja 1') === true, 'isSameTable("1", "Meja 1") menghasilkan true');
+  assert(isSameTable('Meja 01', 'Meja 1') === true, 'isSameTable("Meja 01", "Meja 1") menghasilkan true');
+  assert(isSameTable('meja 1', 'Meja 1') === true, 'isSameTable("meja 1", "Meja 1") menghasilkan true');
+  assert(isSameTable('Table 3', '3') === true, 'isSameTable("Table 3", "3") menghasilkan true');
+  assert(isSameTable('VIP 1', 'vip 1') === true, 'isSameTable("VIP 1", "vip 1") menghasilkan true');
+  assert(isSameTable('Meja 1', 'Meja 2') === false, 'isSameTable("Meja 1", "Meja 2") menghasilkan false');
+
+  // 9.2 Simulasi Validasi Voucher Sesuai Meja
+  const sampleVouchers: Record<string, Voucher> = {
+    '1234': {
+      code: '1234',
+      tableNumber: 'Meja 1',
+      quotaTotal: 3,
+      quotaUsed: 0,
+      createdAt: Date.now(),
+      status: 'active',
+    },
+    '5678': {
+      code: '5678',
+      tableNumber: 'Meja 2',
+      quotaTotal: 3,
+      quotaUsed: 3,
+      createdAt: Date.now(),
+      status: 'exhausted',
+    },
+    '9999': {
+      code: '9999',
+      tableNumber: 'Meja Umum',
+      quotaTotal: 5,
+      quotaUsed: 1,
+      createdAt: Date.now(),
+      status: 'active',
+    },
+  };
+
+  const testValidate = (code: string, targetTable?: string) => {
+    const trimmed = code.trim();
+    const v = sampleVouchers[trimmed];
+    if (!v) return { valid: false, message: 'Not found' };
+    if (v.status === 'exhausted' || v.quotaUsed >= v.quotaTotal) {
+      return { valid: false, message: 'Quota exhausted' };
+    }
+    const voucherTable = normalizeTable(v.tableNumber) || 'Meja Umum';
+    const isGeneral = isSameTable(voucherTable, 'Meja Umum');
+    const hasTarget = targetTable && !isSameTable(targetTable, 'Meja Umum');
+
+    if (hasTarget && !isGeneral && !isSameTable(targetTable, voucherTable)) {
+      return { valid: false, tableMismatch: true, assignedTable: voucherTable, message: 'Table mismatch' };
+    }
+    return { valid: true, voucher: v, assignedTable: voucherTable };
+  };
+
+  // Validasi Meja Sesuai
+  const resValid = testValidate('1234', 'Meja 1');
+  assert(resValid.valid === true, 'Voucher 1234 valid di Meja 1');
+
+  // Validasi dengan variasi penulisan "1"
+  const resValidFmt = testValidate('1234', '1');
+  assert(resValidFmt.valid === true, 'Voucher 1234 valid di input "1"');
+
+  // Validasi Salah Meja (Table Mismatch)
+  const resMismatch = testValidate('1234', 'Meja 2');
+  assert(resMismatch.valid === false && resMismatch.tableMismatch === true, 'Voucher Meja 1 terdeteksi mismatch saat dipakai di Meja 2');
+  assert(resMismatch.assignedTable === 'Meja 1', 'assignedTable tetap menunjukkan Meja 1 untuk auto-switch');
+
+  // Voucher Meja Umum / Universal
+  const resGeneral = testValidate('9999', 'Meja 5');
+  assert(resGeneral.valid === true, 'Voucher Meja Umum valid di meja manapun (Meja 5)');
+
+  // Voucher Habis Kuota
+  const resExhausted = testValidate('5678', 'Meja 2');
+  assert(resExhausted.valid === false && resExhausted.message === 'Quota exhausted', 'Voucher yang sudah mencapai kuota ditolak');
+}
+
+// --------------------------------------------------------------------------
 // REKAPITULASI HASIL PENGUJIAN
 // --------------------------------------------------------------------------
 console.log('\n======================================================');
@@ -418,6 +503,6 @@ if (failedCount > 0) {
   console.error('🚨 Ditemukan kegagalan pada alur data. Mohon periksa detail error di atas.');
   process.exit(1);
 } else {
-  console.log('🎉 SEMUA 8 MODUL ALUR DATA CRITICAL LOLOS 100% TANPA KESALAHAN!\n');
+  console.log('🎉 SEMUA 9 MODUL ALUR DATA CRITICAL LOLOS 100% TANPA KESALAHAN!\n');
   process.exit(0);
 }

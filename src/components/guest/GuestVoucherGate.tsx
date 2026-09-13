@@ -12,6 +12,8 @@ interface GuestVoucherGateProps {
     valid: boolean;
     voucher?: Voucher;
     isDailyPin?: boolean;
+    tableMismatch?: boolean;
+    assignedTable?: string;
     message?: string;
   }>;
   onBackToLanding?: () => void;
@@ -29,6 +31,7 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
 }) => {
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [mismatchData, setMismatchData] = useState<{ assignedTable: string; voucher: Voucher } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -41,15 +44,17 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
 
     setIsSubmitting(true);
     setErrorMsg(null);
+    setMismatchData(null);
 
     try {
       const result = await validateVoucher(pin.trim(), tableNumber);
       if (result.valid && result.voucher) {
         setIsSuccess(true);
-        // Simpan voucher ke sessionStorage
+        const finalTable = result.assignedTable || result.voucher.tableNumber || tableNumber;
         try {
+          sessionStorage.setItem('cafeyou_guest_table', finalTable);
           sessionStorage.setItem(
-            `cafeyou_voucher_${tableNumber}`,
+            `cafeyou_voucher_${finalTable}`,
             JSON.stringify(result.voucher)
           );
         } catch (err) {
@@ -59,7 +64,12 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
         setTimeout(() => {
           onSuccess(result.voucher!);
         }, 900);
+      } else if (result.tableMismatch && result.assignedTable && result.voucher) {
+        setMismatchData({ assignedTable: result.assignedTable, voucher: result.voucher });
+        setErrorMsg(result.message || null);
+        setIsSubmitting(false);
       } else {
+        setMismatchData(null);
         setErrorMsg(result.message || 'Kode voucher tidak valid. Hubungi kasir kafe.');
         setIsSubmitting(false);
       }
@@ -67,6 +77,22 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
       setErrorMsg('Terjadi kesalahan saat memeriksa voucher. Coba lagi.');
       setIsSubmitting(false);
     }
+  };
+
+  const handleSwitchTableAndProceed = () => {
+    if (!mismatchData) return;
+    setIsSuccess(true);
+    try {
+      sessionStorage.setItem('cafeyou_guest_table', mismatchData.assignedTable);
+      sessionStorage.setItem(
+        `cafeyou_voucher_${mismatchData.assignedTable}`,
+        JSON.stringify(mismatchData.voucher)
+      );
+    } catch {}
+
+    setTimeout(() => {
+      onSuccess(mismatchData.voucher);
+    }, 700);
   };
 
 
@@ -153,9 +179,20 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
             </div>
 
             {errorMsg && (
-              <div className="text-[10px] text-red-400 font-semibold bg-red-500/10 border border-red-500/30 py-1 px-2 rounded-lg -my-0.5 animate-shake">
+              <div className="text-[10px] text-red-400 font-semibold bg-red-500/10 border border-red-500/30 py-1.5 px-2.5 rounded-xl -my-0.5 animate-shake leading-snug">
                 {errorMsg}
               </div>
+            )}
+
+            {mismatchData && (
+              <button
+                type="button"
+                onClick={handleSwitchTableAndProceed}
+                className="w-full max-w-[240px] mx-auto py-2 px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <span>🪑</span>
+                <span>Beralih ke {mismatchData.assignedTable} & Masuk</span>
+              </button>
             )}
 
             <button

@@ -191,8 +191,15 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         validateVoucher(vCode.trim(), tableNumber).then((res) => {
           if (res.valid && res.voucher) {
             setActiveVoucher(res.voucher);
+            const targetT = res.voucher.tableNumber || tableNumber;
+            if (res.voucher.tableNumber && !isSameTable(res.voucher.tableNumber, 'Meja Umum')) {
+              setTableNumber(res.voucher.tableNumber);
+              try {
+                sessionStorage.setItem('cafeyou_guest_table', res.voucher.tableNumber);
+              } catch {}
+            }
             try {
-              sessionStorage.setItem(`cafeyou_voucher_${tableNumber}`, JSON.stringify(res.voucher));
+              sessionStorage.setItem(`cafeyou_voucher_${targetT}`, JSON.stringify(res.voucher));
             } catch {}
           }
         });
@@ -719,6 +726,13 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           tableNumber={tableNumber}
           onSuccess={(v) => {
             setActiveVoucher(v);
+            if (v.tableNumber && !isSameTable(v.tableNumber, 'Meja Umum')) {
+              setTableNumber(v.tableNumber);
+              try {
+                sessionStorage.setItem('cafeyou_guest_table', v.tableNumber);
+                sessionStorage.setItem(`cafeyou_voucher_${v.tableNumber}`, JSON.stringify(v));
+              } catch {}
+            }
             setIsBrowsingFnbWithoutVoucher(false);
           }}
           validateVoucher={validateVoucher}

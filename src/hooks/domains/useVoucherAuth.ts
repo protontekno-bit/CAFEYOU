@@ -1,16 +1,69 @@
+import { useEffect } from 'react';
 import { KaraokeState, Voucher, CafeSettings } from '../../types';
 import { STORAGE_KEY, DEFAULT_CAFE_SETTINGS, DEFAULT_TABLES } from '../../constants/karaoke';
-import { initFirebaseDatabase, ref, get } from '../../config/firebase';
+import { initFirebaseDatabase, ref, onValue, set, get } from '../../config/firebase';
 
-export const isSameTable = (a?: string | null, b?: string | null): boolean => {
-  if (!a || !b) return false;
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
-};
+import { normalizeTable, isSameTable } from '../../utils/table';
+export { normalizeTable, isSameTable };
 
 export function useVoucherAuth(
   appState: KaraokeState,
   updateAppState: (updater: (prev: KaraokeState) => KaraokeState) => void
 ) {
+  // 1. Dedicated Real-time Listeners untuk vouchers dan tables dari Firebase RTDB
+  useEffect(() => {
+    const db = initFirebaseDatabase();
+    if (!db) return;
+
+    try {
+      // Realtime listener untuk vouchers
+      const vouchersRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers`);
+      const unsubVouchers = onValue(vouchersRef, (snapshot) => {
+        const cloudVouchers = snapshot.exists() ? snapshot.val() : {};
+        if (cloudVouchers && typeof cloudVouchers === 'object') {
+          updateAppState((prev) => {
+            const current = prev?.vouchers || {};
+            if (JSON.stringify(current) === JSON.stringify(cloudVouchers)) return prev;
+            return {
+              ...prev,
+              vouchers: cloudVouchers,
+            };
+          });
+        }
+      });
+
+      // Realtime listener untuk tables
+      const tablesRef = ref(db, `cafeyou/${STORAGE_KEY}/tables`);
+      const unsubTables = onValue(tablesRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const cloudTables = snapshot.val();
+          const list = Array.isArray(cloudTables)
+            ? cloudTables
+            : typeof cloudTables === 'object' && cloudTables !== null
+            ? Object.values(cloudTables)
+            : null;
+          if (list && list.length > 0) {
+            updateAppState((prev) => {
+              const current = prev?.tables || [];
+              if (JSON.stringify(current) === JSON.stringify(list)) return prev;
+              return {
+                ...prev,
+                tables: list as string[],
+              };
+            });
+          }
+        }
+      });
+
+      return () => {
+        unsubVouchers();
+        unsubTables();
+      };
+    } catch (err) {
+      console.warn('Gagal memasang realtime listener vouchers/tables:', err);
+    }
+  }, [updateAppState]);
+
   const vouchers =
     appState?.vouchers && typeof appState.vouchers === 'object' ? appState.vouchers : {};
   const dailyPin = appState?.dailyPin || { enabled: false, code: '1234' };
@@ -18,16 +71,35 @@ export function useVoucherAuth(
   const tables = Array.isArray(appState?.tables) && appState.tables.length > 0 ? appState.tables : DEFAULT_TABLES;
 
   const createVoucher = (tableNumber: string, quota: number = 3): Voucher => {
-    const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    // Generate unique 4-digit code that does not collide with existing vouchers
+    const existingCodes = new Set(Object.keys(vouchers));
+    let randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    while (existingCodes.has(randomCode)) {
+      randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    }
+
+    const normalizedTable = normalizeTable(tableNumber) || 'Meja Umum';
     const newVoucher: Voucher = {
       code: randomCode,
-      tableNumber: tableNumber.trim() || 'Meja Umum',
+      tableNumber: normalizedTable,
       quotaTotal: quota,
       quotaUsed: 0,
       createdAt: Date.now(),
       status: 'active',
     };
 
+    // 1. Tulis langsung ke Firebase RTDB secara atomik
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${randomCode}`);
+        set(vRef, newVoucher).catch((err) => {
+          console.warn('Gagal simpan voucher ke Firebase RTDB:', err);
+        });
+      }
+    } catch (err) {}
+
+    // 2. Pembaruan optimistik ke state lokal
     updateAppState((prev) => {
       const currentVouchers =
         prev?.vouchers && typeof prev.vouchers === 'object' ? { ...prev.vouchers } : {};
@@ -44,10 +116,23 @@ export function useVoucherAuth(
   };
 
   const revokeVoucher = (code: string) => {
+    const trimmed = code.trim();
+    // 1. Hapus dari Firebase RTDB secara atomik
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${trimmed}`);
+        set(vRef, null).catch((err) => {
+          console.warn('Gagal hapus voucher di Firebase RTDB:', err);
+        });
+      }
+    } catch (err) {}
+
+    // 2. Hapus dari state lokal
     updateAppState((prev) => {
       const currentVouchers =
         prev?.vouchers && typeof prev.vouchers === 'object' ? { ...prev.vouchers } : {};
-      delete currentVouchers[code];
+      delete currentVouchers[trimmed];
       return {
         ...prev,
         vouchers: currentVouchers,
@@ -56,22 +141,41 @@ export function useVoucherAuth(
   };
 
   const setDailyPin = (enabled: boolean, code: string) => {
+    const cleanPin = {
+      enabled,
+      code: code.trim(),
+    };
+
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const pinRef = ref(db, `cafeyou/${STORAGE_KEY}/dailyPin`);
+        set(pinRef, cleanPin).catch((err) => {
+          console.warn('Gagal simpan dailyPin ke Firebase:', err);
+        });
+      }
+    } catch (err) {}
+
     updateAppState((prev) => ({
       ...prev,
-      dailyPin: {
-        enabled,
-        code: code.trim(),
-      },
+      dailyPin: cleanPin,
     }));
   };
 
   const validateVoucher = async (
     code: string,
     targetTable?: string
-  ): Promise<{ valid: boolean; voucher?: Voucher; isDailyPin?: boolean; message?: string }> => {
+  ): Promise<{
+    valid: boolean;
+    voucher?: Voucher;
+    isDailyPin?: boolean;
+    tableMismatch?: boolean;
+    assignedTable?: string;
+    message?: string;
+  }> => {
     const trimmed = code.trim();
     if (!trimmed) {
-      return { valid: false, message: 'Kode voucher tidak boleh kosong.' };
+      return { valid: false, message: 'Silakan masukkan 4-digit Kode Voucher atau PIN.' };
     }
 
     // 1. Cek Master Daily PIN
@@ -80,12 +184,14 @@ export function useVoucherAuth(
       (appState.dailyPin.code === trimmed ||
         appState.dailyPin.code.toLowerCase() === trimmed.toLowerCase())
     ) {
+      const effTable = normalizeTable(targetTable) || 'Master PIN';
       return {
         valid: true,
         isDailyPin: true,
+        assignedTable: effTable,
         voucher: {
           code: trimmed,
-          tableNumber: targetTable || 'Master PIN',
+          tableNumber: effTable,
           quotaTotal: 999,
           quotaUsed: 0,
           createdAt: Date.now(),
@@ -122,22 +228,31 @@ export function useVoucherAuth(
       const db = initFirebaseDatabase();
       if (db) {
         try {
-          const vouchersRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers`);
-          const snap = await get(vouchersRef);
-          if (snap.exists()) {
-            const cloudVouchers = snap.val() as Record<string, Voucher>;
-            foundVoucher = Object.values(cloudVouchers).find(
-              (v) => v && v.code && v.code.trim().toUpperCase() === trimmed.toUpperCase()
-            );
-            if (foundVoucher) {
-              updateAppState((prev) => ({
-                ...prev,
-                vouchers: {
-                  ...(prev?.vouchers || {}),
-                  ...cloudVouchers,
-                },
-              }));
+          // Direct lookup leaf node first
+          const singleRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${trimmed}`);
+          const singleSnap = await get(singleRef);
+          if (singleSnap.exists()) {
+            foundVoucher = singleSnap.val() as Voucher;
+          } else {
+            // Fallback scan all vouchers
+            const vouchersRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers`);
+            const snap = await get(vouchersRef);
+            if (snap.exists()) {
+              const cloudVouchers = snap.val() as Record<string, Voucher>;
+              foundVoucher = Object.values(cloudVouchers).find(
+                (v) => v && v.code && v.code.trim().toUpperCase() === trimmed.toUpperCase()
+              );
             }
+          }
+
+          if (foundVoucher) {
+            updateAppState((prev) => ({
+              ...prev,
+              vouchers: {
+                ...(prev?.vouchers || {}),
+                [foundVoucher!.code]: foundVoucher!,
+              },
+            }));
           }
         } catch (err) {
           console.warn('Cloud voucher check error:', err);
@@ -148,15 +263,50 @@ export function useVoucherAuth(
     if (!foundVoucher) {
       return {
         valid: false,
-        message: `Kode voucher "${trimmed}" tidak ditemukan. Pastikan kode sudah benar atau dibuat oleh kasir.`,
+        message: `Kode voucher "${trimmed}" tidak ditemukan. Pastikan kode sudah benar atau minta ke kasir.`,
       };
     }
 
-    if (foundVoucher.status === 'exhausted' || foundVoucher.quotaUsed >= foundVoucher.quotaTotal) {
-      return { valid: false, message: 'Kuota lagu untuk voucher ini sudah habis.' };
+    if (
+      foundVoucher.status === 'exhausted' ||
+      (foundVoucher.quotaUsed >= foundVoucher.quotaTotal && foundVoucher.quotaTotal !== 999)
+    ) {
+      return {
+        valid: false,
+        message: `Kuota lagu untuk voucher ini sudah habis (${foundVoucher.quotaUsed}/${foundVoucher.quotaTotal} lagu terpakai).`,
+      };
     }
 
-    return { valid: true, voucher: foundVoucher };
+    // 5. Validasi Kesesuaian Meja (Table Matching Accuracy)
+    const voucherTable = normalizeTable(foundVoucher.tableNumber) || 'Meja Umum';
+    const isGeneralVoucher =
+      !voucherTable ||
+      isSameTable(voucherTable, 'Meja Umum') ||
+      voucherTable.toLowerCase().includes('semua');
+
+    const hasTargetTable =
+      targetTable &&
+      targetTable.trim() &&
+      !isSameTable(targetTable, 'Meja Umum');
+
+    if (hasTargetTable && !isGeneralVoucher && !isSameTable(targetTable, voucherTable)) {
+      return {
+        valid: false,
+        tableMismatch: true,
+        assignedTable: voucherTable,
+        voucher: foundVoucher,
+        message: `Kode voucher ini terdaftar untuk ${voucherTable}, sedangkan Anda berada di ${targetTable}. Silakan beralih ke ${voucherTable} atau gunakan voucher yang sesuai.`,
+      };
+    }
+
+    return {
+      valid: true,
+      voucher: {
+        ...foundVoucher,
+        tableNumber: voucherTable,
+      },
+      assignedTable: voucherTable,
+    };
   };
 
   const updateCafeSettings = (newSettings: Partial<CafeSettings>) => {
@@ -178,22 +328,34 @@ export function useVoucherAuth(
   };
 
   const addTable = (tableName: string) => {
-    const trimmed = tableName.trim();
+    const trimmed = normalizeTable(tableName);
     if (!trimmed) return;
     updateAppState((prev) => {
       const currentTables = Array.isArray(prev?.tables) && prev.tables.length > 0 ? prev.tables : DEFAULT_TABLES;
       if (currentTables.some((t) => isSameTable(t, trimmed))) {
         return prev;
       }
+      const updated = [...currentTables, trimmed];
+
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const tablesRef = ref(db, `cafeyou/${STORAGE_KEY}/tables`);
+          set(tablesRef, updated).catch((err) => {
+            console.warn('Gagal simpan tables ke Firebase:', err);
+          });
+        }
+      } catch (err) {}
+
       return {
         ...prev,
-        tables: [...currentTables, trimmed],
+        tables: updated,
       };
     });
   };
 
   const removeTable = (tableName: string): { success: boolean; reason?: string } => {
-    const trimmed = tableName.trim();
+    const trimmed = normalizeTable(tableName);
     const currentOrders = Object.values(appState?.tableOrders || {});
     const hasUnpaidOrders = currentOrders.some((o) => {
       const s = o.status?.toLowerCase();
@@ -222,9 +384,21 @@ export function useVoucherAuth(
     updateAppState((prev) => {
       const currentTables = Array.isArray(prev?.tables) && prev.tables.length > 0 ? prev.tables : DEFAULT_TABLES;
       const updated = currentTables.filter((t) => !isSameTable(t, trimmed));
+      const nextTables = updated.length > 0 ? updated : ['Meja 1'];
+
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const tablesRef = ref(db, `cafeyou/${STORAGE_KEY}/tables`);
+          set(tablesRef, nextTables).catch((err) => {
+            console.warn('Gagal hapus table di Firebase:', err);
+          });
+        }
+      } catch (err) {}
+
       return {
         ...prev,
-        tables: updated.length > 0 ? updated : ['Meja 1'],
+        tables: nextTables,
       };
     });
 
@@ -232,6 +406,16 @@ export function useVoucherAuth(
   };
 
   const resetTables = () => {
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const tablesRef = ref(db, `cafeyou/${STORAGE_KEY}/tables`);
+        set(tablesRef, DEFAULT_TABLES).catch((err) => {
+          console.warn('Gagal reset tables di Firebase:', err);
+        });
+      }
+    } catch (err) {}
+
     updateAppState((prev) => ({
       ...prev,
       tables: DEFAULT_TABLES,

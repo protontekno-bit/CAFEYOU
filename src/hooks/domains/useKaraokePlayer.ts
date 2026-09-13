@@ -4,7 +4,10 @@ import {
   SoundEffectType,
   SongHistoryItem,
   SavedLibrarySong,
+  Voucher,
 } from '../../types';
+import { STORAGE_KEY } from '../../constants/karaoke';
+import { initFirebaseDatabase, ref, set } from '../../config/firebase';
 import { fetchYouTubeInfo, getYouTubeThumbnail } from '../../utils/youtube';
 import { playSoundEffect } from '../../utils/soundfx';
 import { rebalanceFairQueue } from '../../utils/queue';
@@ -69,11 +72,22 @@ export function useKaraokePlayer(
       if (options?.voucherCode && currentVouchers[options.voucherCode]) {
         const v = currentVouchers[options.voucherCode];
         const newUsed = v.quotaUsed + 1;
-        currentVouchers[options.voucherCode] = {
+        const updatedV: Voucher = {
           ...v,
           quotaUsed: newUsed,
-          status: newUsed >= v.quotaTotal ? 'exhausted' : 'active',
+          status: newUsed >= v.quotaTotal && v.quotaTotal !== 999 ? 'exhausted' : 'active',
         };
+        currentVouchers[options.voucherCode] = updatedV;
+
+        try {
+          const db = initFirebaseDatabase();
+          if (db) {
+            const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${options.voucherCode}`);
+            set(vRef, updatedV).catch((err) => {
+              console.warn('Gagal sinkronisasi kuota voucher ke Firebase:', err);
+            });
+          }
+        } catch (err) {}
       }
 
       const rawNewQueue = [...currentQueue, newSong];

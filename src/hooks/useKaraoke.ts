@@ -4,10 +4,10 @@ import { KaraokeState } from '../types';
 import { useKaraokePlayer } from './domains/useKaraokePlayer';
 import { useOrderBilling } from './domains/useOrderBilling';
 import { useCashExpenses } from './domains/useCashExpenses';
-import { useVoucherAuth, isSameTable } from './domains/useVoucherAuth';
+import { useVoucherAuth, isSameTable, normalizeTable } from './domains/useVoucherAuth';
 
 // Re-export domain hooks and helpers for fine-grained imports
-export { isSameTable };
+export { isSameTable, normalizeTable };
 export { useKaraokePlayer } from './domains/useKaraokePlayer';
 export { useOrderBilling } from './domains/useOrderBilling';
 export { useCashExpenses } from './domains/useCashExpenses';

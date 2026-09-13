@@ -490,6 +490,41 @@ console.log('\n🔹 [9/9] Menguji Akurasi Kode Voucher & Sinkronisasi Meja...');
 }
 
 // --------------------------------------------------------------------------
+// TEST SUITE 10: Sinkronisasi Antrean Lagu & Fair Rotation
+// --------------------------------------------------------------------------
+console.log('🔹 [10/10] Menguji Logika Fair Rotation & Visibilitas Antrean Lagu...');
+{
+  const mockSongs = [
+    { id: 's1', videoId: 'v1', title: 'Lagu 1', requester: 'Meja 1', tableNumber: 'Meja 1', source: 'guest' as const, url: '', thumbnail: '' },
+    { id: 's2', videoId: 'v2', title: 'Lagu 2', requester: 'Meja 1', tableNumber: 'Meja 1', source: 'guest' as const, url: '', thumbnail: '' },
+    { id: 's3', videoId: 'v3', title: 'Lagu 3', requester: 'Meja 2', tableNumber: 'Meja 2', source: 'guest' as const, url: '', thumbnail: '' },
+    { id: 's4', videoId: 'v4', title: 'Lagu 4', requester: 'Meja 1', tableNumber: 'Meja 1', source: 'guest' as const, url: '', thumbnail: '' },
+    { id: 's5', videoId: 'v5', title: 'Lagu 5', requester: 'Meja 3', tableNumber: 'Meja 3', source: 'guest' as const, url: '', thumbnail: '' },
+  ];
+
+  // 10.1 Slicing Queue & Total Accounting
+  const currentSong = mockSongs[0];
+  const nextSongs = mockSongs.slice(1);
+  const totalCount = (currentSong ? 1 : 0) + nextSongs.length;
+  assert(totalCount === mockSongs.length, 'Total hitungan lagu konsisten (Current + Next = Total)');
+
+  // 10.2 Guest Count Accounting
+  const fromWaitlist = nextSongs.filter((s) => s.source === 'guest' || s.tableNumber).length;
+  const fromActive = currentSong && (currentSong.source === 'guest' || currentSong.tableNumber) ? 1 : 0;
+  const totalGuestCount = fromWaitlist + fromActive;
+  assert(totalGuestCount === 5, 'Seluruh 5 lagu dari tamu terhitung akurat pada indikator badge');
+
+  // 10.3 Fair Rotation Interleaving
+  const { rebalanceFairQueue } = await import('../src/utils/queue.ts');
+  const balanced = rebalanceFairQueue(mockSongs);
+  assert(balanced[0].id === 's1', 'Lagu pertama yang sedang diputar (s1) tidak bergeser');
+  assert(balanced[1].tableNumber === 'Meja 1', 'Lagu tunggu pertama dari Meja 1');
+  assert(balanced[2].tableNumber === 'Meja 2', 'Lagu tunggu kedua dirotasi adil ke Meja 2');
+  assert(balanced[3].tableNumber === 'Meja 3', 'Lagu tunggu ketiga dirotasi adil ke Meja 3');
+  assert(balanced[4].tableNumber === 'Meja 1', 'Lagu giliran putaran kedua kembali ke Meja 1');
+}
+
+// --------------------------------------------------------------------------
 // REKAPITULASI HASIL PENGUJIAN
 // --------------------------------------------------------------------------
 console.log('\n======================================================');
@@ -503,6 +538,6 @@ if (failedCount > 0) {
   console.error('🚨 Ditemukan kegagalan pada alur data. Mohon periksa detail error di atas.');
   process.exit(1);
 } else {
-  console.log('🎉 SEMUA 9 MODUL ALUR DATA CRITICAL LOLOS 100% TANPA KESALAHAN!\n');
+  console.log('🎉 SEMUA 10 MODUL ALUR DATA CRITICAL LOLOS 100% TANPA KESALAHAN!\n');
   process.exit(0);
 }

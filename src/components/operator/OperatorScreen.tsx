@@ -114,7 +114,12 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   React.useEffect(() => {
     const currentLen = state.queue?.length || 0;
     if (currentLen > prevQueueLengthRef.current && currentLen > 0) {
-      const newestSong = state.queue[state.queue.length - 1];
+      const guestSongs = (state.queue || []).filter((s) => s && (s.source === 'guest' || s.tableNumber));
+      const newestSong = guestSongs.reduce<any>((latest, s) => {
+        if (!latest || (s.addedAt || 0) > (latest.addedAt || 0)) return s;
+        return latest;
+      }, null);
+
       if (newestSong && (newestSong.source === 'guest' || newestSong.tableNumber)) {
         try {
           playSoundEffect('chime');
@@ -380,6 +385,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
 
           <QueueList
             queue={nextSongs}
+            currentSong={currentSong}
             hasCurrentSong={Boolean(currentSong)}
             currentSongTitle={currentSong?.title}
             fairRotationEnabled={fairRotationEnabled}

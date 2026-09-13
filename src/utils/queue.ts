@@ -1,4 +1,4 @@
-import { Song } from '../types';
+import type { Song } from '../types/index.ts';
 
 /**
  * Menyusun antrean secara adil (Smart Round-Robin berdasarkan nomor meja / pemesan)

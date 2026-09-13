@@ -14,6 +14,7 @@ interface QueueListProps {
   fairRotationEnabled?: boolean;
   hasCurrentSong?: boolean;
   currentSongTitle?: string;
+  currentSong?: Song | null;
   onRemoveSong: (id: string) => void;
   onMoveToTop: (id: string) => void;
   onMoveUp: (id: string) => void;
@@ -29,6 +30,7 @@ export const QueueList: React.FC<QueueListProps> = ({
   fairRotationEnabled = false,
   hasCurrentSong = false,
   currentSongTitle,
+  currentSong,
   onRemoveSong,
   onMoveToTop,
   onMoveUp,
@@ -40,6 +42,7 @@ export const QueueList: React.FC<QueueListProps> = ({
 }) => {
   const safeQueue = Array.isArray(queue) ? queue : [];
   const [filterSource, setFilterSource] = useState<'all' | 'guest' | 'operator'>('all');
+  const totalCount = (currentSong ? 1 : 0) + safeQueue.length;
 
   const handleConfirmClearQueue = () => {
     if (!onClearQueue) return;
@@ -49,8 +52,10 @@ export const QueueList: React.FC<QueueListProps> = ({
   };
 
   const guestCount = useMemo(() => {
-    return safeQueue.filter((s) => s.source === 'guest' || s.tableNumber).length;
-  }, [safeQueue]);
+    const fromWaitlist = safeQueue.filter((s) => s.source === 'guest' || s.tableNumber).length;
+    const fromActive = currentSong && (currentSong.source === 'guest' || currentSong.tableNumber) ? 1 : 0;
+    return fromWaitlist + fromActive;
+  }, [safeQueue, currentSong]);
 
   // Prekalkulasi urutan giliran meja sekali jalan O(N) untuk seluruh antrean
   const roundsMap = useMemo(() => {
@@ -73,10 +78,13 @@ export const QueueList: React.FC<QueueListProps> = ({
       <div className="flex flex-wrap justify-between items-center gap-2 mb-3 pb-2 border-b border-slate-700/50">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">
-            Daftar Antrean Tunggu
+            Daftar Antrean Lagu
           </h2>
-          <span className="text-xs font-bold text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-500/30 font-mono">
-            {safeQueue.length} Lagu
+          <span
+            className="text-xs font-bold text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-500/30 font-mono"
+            title={hasCurrentSong ? `1 Sedang Diputar + ${safeQueue.length} Antrean Tunggu` : `${safeQueue.length} Lagu dalam antrean`}
+          >
+            {totalCount} Lagu
           </span>
           {guestCount > 0 && (
             <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono">
@@ -168,6 +176,35 @@ export const QueueList: React.FC<QueueListProps> = ({
           <span>⚖️</span>
           <span>
             <strong>Smart Fair Rotation Aktif:</strong> Setiap meja mendapat giliran bernyanyi berselang-seling secara adil.
+          </span>
+        </div>
+      )}
+
+      {/* Kartu Status Lagu Aktif (Sedang Diputar) */}
+      {currentSong && (
+        <div className="mb-3 p-3 bg-gradient-to-r from-blue-950/60 via-slate-900 to-emerald-950/40 rounded-xl border border-blue-500/30 flex items-center justify-between gap-3 shadow-inner">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <span>SEDANG DIPUTAR SEKARANG</span>
+                {currentSong.tableNumber && (
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded text-[9px] font-bold">
+                    {currentSong.tableNumber}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs font-bold text-white truncate" title={currentSong.title}>
+                {currentSong.title}
+              </p>
+              <div className="text-[11px] text-slate-400 truncate">
+                Oleh: <strong className="text-slate-200">{currentSong.requester}</strong>
+                {currentSong.source === 'guest' && <span className="ml-1.5 text-emerald-400 font-semibold">• Meja Tamu</span>}
+              </div>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full shrink-0">
+            ON AIR #1
           </span>
         </div>
       )}

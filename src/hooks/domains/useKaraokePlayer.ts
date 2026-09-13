@@ -8,7 +8,7 @@ import {
   Voucher,
 } from '../../types';
 import { STORAGE_KEY } from '../../constants/karaoke';
-import { initFirebaseDatabase, ref, set } from '../../config/firebase';
+import { initFirebaseDatabase, ref, set, runTransaction } from '../../config/firebase';
 import { fetchYouTubeInfo, getYouTubeThumbnail } from '../../utils/youtube';
 import { playSoundEffect } from '../../utils/soundfx';
 import { rebalanceFairQueue } from '../../utils/queue';
@@ -104,6 +104,33 @@ export function useKaraokePlayer(
       };
     });
 
+    // 2. Transaksi Atomik Langsung ke Firebase Cloud
+    // Menjamin lagu baru seketika tersimpan di server dan tidak pernah tertimpa perangkat lain
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const queueRef = ref(db, `cafeyou/${STORAGE_KEY}/queue`);
+        await runTransaction(queueRef, (firebaseQueue) => {
+          let list: Song[] = [];
+          if (Array.isArray(firebaseQueue)) {
+            list = firebaseQueue;
+          } else if (firebaseQueue && typeof firebaseQueue === 'object') {
+            list = Object.values(firebaseQueue);
+          }
+
+          // Cek duplikasi jika lagu dengan ID sama sudah ada
+          if (list.some((s) => s && (s.id === newSong.id || (s.videoId === videoId && s.tableNumber === options?.tableNumber && Date.now() - (s.addedAt || 0) < 6000)))) {
+            return list;
+          }
+
+          const rawAppended = [...list, newSong];
+          return fairRotationEnabled ? rebalanceFairQueue(rawAppended) : rawAppended;
+        });
+      }
+    } catch (err) {
+      console.warn('Gagal transaksi atomik queue Firebase:', err);
+    }
+
     if (!customTitle) {
       try {
         const info = await fetchYouTubeInfo(videoId);
@@ -142,9 +169,25 @@ export function useKaraokePlayer(
                 : currentLibrary,
             };
           });
+
+          // Perbarui juga judul di Firebase jika video info baru didapat
+          try {
+            const db = initFirebaseDatabase();
+            if (db) {
+              const queueRef = ref(db, `cafeyou/${STORAGE_KEY}/queue`);
+              await runTransaction(queueRef, (firebaseQueue) => {
+                if (!Array.isArray(firebaseQueue)) return firebaseQueue;
+                return firebaseQueue.map((s) =>
+                  s && s.id === songId
+                    ? { ...s, title: info.title, thumbnail: info.thumbnail || s.thumbnail }
+                    : s
+                );
+              });
+            }
+          } catch {}
         }
       } catch (err) {
-        console.warn('Error fetching song info:', err);
+        console.warn('Gagal memuat judul YouTube:', err);
       }
     }
 

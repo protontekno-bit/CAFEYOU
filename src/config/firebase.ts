@@ -9,6 +9,7 @@ import {
   push,
   update,
   onDisconnect,
+  runTransaction,
 } from 'firebase/database';
 
 export interface FirebaseCustomConfig {
@@ -132,5 +133,5 @@ export function initFirebaseDatabase(): Database | null {
   }
 }
 
-export { ref, onValue, set, get, push, update, onDisconnect };
+export { ref, onValue, set, get, push, update, onDisconnect, runTransaction };
 

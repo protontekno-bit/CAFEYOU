@@ -16,6 +16,7 @@ export interface PosHeaderProps {
   onToggleSoundAlert: () => void;
   onOpenSettings: () => void;
   onOpenOperator?: () => void;
+  onBack?: () => void;
   onLogout: () => void;
 }
 
@@ -32,6 +33,7 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
   onToggleSoundAlert,
   onOpenSettings,
   onOpenOperator,
+  onBack,
   onLogout,
 }) => {
   return (
@@ -175,7 +177,7 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
             const currentUrl = window.location.href.split('#')[0];
             window.open(currentUrl + '#kitchen', '_blank');
           }}
-          className="px-3 py-1.5 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/40 hover:border-orange-500/60 rounded-xl text-xs font-bold text-orange-300 hover:text-orange-200 transition-all flex items-center gap-1.5 shadow-sm"
+          className="px-3 py-1.5 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/40 hover:border-orange-500/60 rounded-xl text-xs font-bold text-orange-300 hover:text-orange-200 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
           title="Buka Layar Dapur Mandiri (KDS) di Tab / Monitor Baru"
         >
           <span>🍳</span>
@@ -192,6 +194,17 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
           >
             <span>🎤</span>
             <span className="hidden sm:inline">Dasbor Karaoke</span>
+          </button>
+        )}
+
+        {/* Beranda */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="p-2 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-750 rounded-xl text-xs font-bold transition-all"
+            title="Kembali ke Beranda Utama"
+          >
+            🏠
           </button>
         )}
 

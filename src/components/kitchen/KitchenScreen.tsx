@@ -173,7 +173,7 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
             <span className="hidden sm:inline">{isFullscreen ? 'Keluar Fullscreen' : 'Layar Penuh'}</span>
           </button>
 
-          {/* Navigasi Beranda / Kasir */}
+          {/* Navigasi Beranda / Kasir / Operator */}
           {setRole && (
             <div className="flex items-center gap-1.5 border-l border-slate-800 pl-2">
               <button
@@ -183,6 +183,14 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
                 title="Buka Dasbor Kasir POS"
               >
                 💵 Buka POS
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('operator')}
+                className="px-2.5 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all"
+                title="Buka Dasbor Operator Karaoke"
+              >
+                🎤 <span className="hidden xl:inline">Operator</span>
               </button>
               <button
                 type="button"

@@ -25,6 +25,7 @@ interface HeaderProps {
   onOpenHistory?: () => void;
   onOpenVoucherManager?: () => void;
   onOpenPosOrders?: () => void;
+  onOpenKitchenTab?: () => void;
   onOpenSettings?: () => void;
   onLogout?: () => void;
 }
@@ -44,6 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenHistory,
   onOpenVoucherManager,
   onOpenPosOrders,
+  onOpenKitchenTab,
   onOpenSettings,
   onLogout,
 }) => {
@@ -160,12 +162,27 @@ export const Header: React.FC<HeaderProps> = ({
               title="Kelola Pesanan Makanan & Minuman Meja (Kasir POS)"
             >
               <span>🍽️</span>
-              <span className="font-extrabold">Pesanan F&B</span>
+              <span className="font-extrabold hidden md:inline">Pesanan F&B</span>
+              <span className="font-extrabold md:hidden">POS</span>
               {pendingOrdersCount > 0 && (
                 <span className="text-[9px] bg-red-500 text-white font-black px-1.5 py-0.2 rounded-full shadow-sm animate-pulse">
                   {pendingOrdersCount} Baru
                 </span>
               )}
+            </button>
+          )}
+
+          {/* Tombol Layar Dapur KDS Mandiri */}
+          {onOpenKitchenTab && (
+            <button
+              onClick={onOpenKitchenTab}
+              className="px-3 py-1.5 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/40 hover:border-orange-500/60 rounded-xl text-xs font-bold text-orange-300 hover:text-orange-200 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+              title="Buka Layar Dapur (KDS) di Tab / Monitor Baru"
+            >
+              <span>🍳</span>
+              <span className="font-extrabold hidden md:inline">Layar Dapur</span>
+              <span className="font-extrabold md:hidden">Dapur</span>
+              <span className="text-[10px] opacity-75">↗</span>
             </button>
           )}
 

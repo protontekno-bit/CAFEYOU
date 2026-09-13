@@ -100,14 +100,24 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
       <div className="absolute top-4 left-4 right-4 z-40 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-auto">
         <div className="flex items-center gap-2">
           {setRole && (
-            <button
-              onClick={() => setRole('landing')}
-              className="bg-black/70 hover:bg-black text-white px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur-md shadow-2xl border border-white/10 flex items-center gap-2 transition-all hover:scale-105"
-              title="Kembali ke Menu Utama"
-            >
-              <BackIcon className="w-4 h-4" />
-              <span>Kembali</span>
-            </button>
+            <>
+              <button
+                onClick={() => setRole('landing')}
+                className="bg-black/70 hover:bg-black text-white px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur-md shadow-2xl border border-white/10 flex items-center gap-2 transition-all hover:scale-105"
+                title="Kembali ke Menu Utama"
+              >
+                <BackIcon className="w-4 h-4" />
+                <span>Beranda</span>
+              </button>
+              <button
+                onClick={() => setRole('operator')}
+                className="bg-black/70 hover:bg-black text-purple-300 hover:text-white px-3 py-2 rounded-xl text-xs font-semibold backdrop-blur-md shadow-2xl border border-white/10 flex items-center gap-1.5 transition-all hover:scale-105"
+                title="Buka Dasbor Operator Karaoke"
+              >
+                <span>🎤</span>
+                <span>Operator</span>
+              </button>
+            </>
           )}
 
           <div className="bg-black/70 text-slate-300 px-3 py-2 rounded-xl text-xs font-medium backdrop-blur-md border border-white/10 flex items-center gap-2">

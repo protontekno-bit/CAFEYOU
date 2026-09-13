@@ -391,6 +391,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         onToggleSoundAlert={() => setIsSoundAlertEnabled(!isSoundAlertEnabled)}
         onOpenSettings={() => setIsPosSettingsOpen(true)}
         onOpenOperator={setRole ? () => setRole('operator') : undefined}
+        onBack={setRole ? () => setRole('landing') : undefined}
         onLogout={handleLogout}
       />
 

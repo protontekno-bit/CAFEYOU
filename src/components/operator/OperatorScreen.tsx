@@ -206,6 +206,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           isDailyPinActive={dailyPin?.enabled}
           pendingOrdersCount={pendingOrdersCount}
           onOpenPosOrders={() => window.open('#pos', '_blank')}
+          onOpenKitchenTab={() => window.open('#kitchen', '_blank')}
           onOpenVoucherManager={() => setIsVoucherOpen(true)}
           onOpenProjectorTab={handleOpenProjector}
           onOpenPopularSongs={() => setIsPopularOpen(true)}

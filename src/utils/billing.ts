@@ -67,19 +67,38 @@ export const isDrinkItem = (item: { category?: string; name?: string }): boolean
   const n = (item.name || '').toLowerCase();
   if (
     n.includes('kopi') ||
+    n.includes('coffee') ||
+    n.includes('americano') ||
+    n.includes('espresso') ||
+    n.includes('cappuccino') ||
+    n.includes('latte') ||
+    n.includes('mocha') ||
+    n.includes('macchiato') ||
+    n.includes('affogato') ||
+    n.includes('frappe') ||
+    n.includes('brew') ||
     n.includes('tea') ||
     n.includes('teh') ||
     n.includes('jus') ||
     n.includes('juice') ||
-    n.includes('latte') ||
     n.includes('boba') ||
     n.includes('mocktail') ||
+    n.includes('cocktail') ||
     n.includes('squash') ||
+    n.includes('soda') ||
     n.includes('es ') ||
     n.includes('ice ') ||
+    n.includes('iced ') ||
+    n.includes('hot ') ||
     n.includes('susu') ||
+    n.includes('milk') ||
     n.includes('matcha') ||
-    n.includes('taro')
+    n.includes('taro') ||
+    n.includes('chocolate') ||
+    n.includes('cokelat') ||
+    n.includes('mineral') ||
+    n.includes('sirup') ||
+    n.includes('syrup')
   ) {
     return true;
   }

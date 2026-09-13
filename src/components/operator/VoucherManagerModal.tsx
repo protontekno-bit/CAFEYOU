@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Voucher, DailyPinConfig } from '../../types';
 import { QUICK_TABLES } from '../../constants/karaoke';
 import { TicketIcon, TrashIcon, LockIcon } from '../icons/Icons';
@@ -34,6 +34,21 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
   const [dailyPinEnabled, setDailyPinEnabled] = useState(dailyPin?.enabled || false);
   const [dailyPinCode, setDailyPinCode] = useState(dailyPin?.code || '1234');
   const [pinSavedMsg, setPinSavedMsg] = useState(false);
+
+  // Sync dailyPin props ke local state jika berubah dari luar (misalnya dari Firebase sync)
+  useEffect(() => {
+    setDailyPinEnabled(dailyPin?.enabled || false);
+    setDailyPinCode(dailyPin?.code || '1234');
+  }, [dailyPin?.enabled, dailyPin?.code]);
+
+  // Bersihkan state result saat modal ditutup agar tidak muncul data lama saat dibuka kembali
+  useEffect(() => {
+    if (!isOpen) {
+      setLastCreatedVoucher(null);
+      setIsCopied(false);
+      setPinSavedMsg(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -146,9 +161,13 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
               <span>+ Terbitkan Kode Voucher</span>
             </button>
 
-            {/* Banner Hasil Generate (Desain Stabil Tanpa Jitter) */}
+            {/* Banner Hasil Generate — animasi height untuk mencegah layout jump */}
+            <div
+              className="overflow-hidden transition-all duration-300 ease-out"
+              style={{ maxHeight: lastCreatedVoucher ? '200px' : '0px', opacity: lastCreatedVoucher ? 1 : 0 }}
+            >
             {lastCreatedVoucher && (
-              <div className="p-4 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl space-y-3 text-xs transition-opacity duration-200">
+              <div className="p-4 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl space-y-3 text-xs">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-emerald-300 font-bold text-xs">
@@ -184,6 +203,7 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                 </div>
               </div>
             )}
+            </div>
           </form>
 
           {/* Section 2: Master PIN Harian */}

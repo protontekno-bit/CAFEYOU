@@ -232,7 +232,13 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
       </div>
 
       {/* Placeholder jika antrean kosong (Stage Screensaver) */}
-      {hasNoSongs && <PlayerPlaceholder cafeSettings={state?.cafeSettings} />}
+      {hasNoSongs && (
+        <PlayerPlaceholder
+          cafeSettings={state?.cafeSettings}
+          songLibrary={state?.songLibrary}
+          audioUnlocked={audioUnlocked}
+        />
+      )}
 
       {/* OVERLAY: Sedang Bernyanyi (Now Singing Banner) */}
       {currentSong && (

@@ -15,7 +15,8 @@ export interface PosPaymentModalProps {
   onConfirmPayment: (
     taxRateVal?: number,
     serviceRateVal?: number,
-    isCashRounding?: boolean
+    isCashRounding?: boolean,
+    selectedOrdersToPay?: TableOrder[]
   ) => void;
   onPrintReceipt: (single?: TableOrder, grouped?: TableOrder[]) => void;
   onOpenQrisZoom: () => void;
@@ -42,7 +43,19 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
 }) => {
   if (!payingTable || payingOrders.length === 0) return null;
 
-  const subtotalDue = payingOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  // State Pilihan Tiket yang Dibayar (Dukungan Split Bill)
+  const [selectedOrderIds, setSelectedOrderIds] = React.useState<string[]>(() =>
+    payingOrders.map((o) => o.id)
+  );
+
+  React.useEffect(() => {
+    setSelectedOrderIds(payingOrders.map((o) => o.id));
+  }, [payingOrders]);
+
+  const activePayingOrders = payingOrders.filter((o) => selectedOrderIds.includes(o.id));
+  const effectiveOrders = activePayingOrders.length > 0 ? activePayingOrders : payingOrders;
+
+  const subtotalDue = effectiveOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
   const isTaxEnabled = cafeSettings?.enableTax !== false && (cafeSettings?.taxPercentage || 0) > 0;
   const isTaxPlus = isTaxEnabled && cafeSettings?.isTaxIncluded === false;
   const taxRate = isTaxPlus ? (cafeSettings?.taxPercentage || 0) : 0;
@@ -51,8 +64,8 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
   const changeAmount = cashReceived > totalDue ? cashReceived - totalDue : 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-scaleUp text-slate-200">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-scaleUp text-slate-200">
         {/* Header Modal */}
         <div className="flex justify-between items-center border-b border-slate-800 pb-3">
           <div>
@@ -61,7 +74,9 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
               <span>Pembayaran Kasir: {payingTable}</span>
             </h3>
             <span className="text-xs text-slate-400">
-              {payingOrders.length} Pesanan terdaftar untuk meja ini.
+              {payingOrders.length > 1
+                ? `${effectiveOrders.length} dari ${payingOrders.length} Pesanan Dipilih (Split Bill)`
+                : `${payingOrders.length} Pesanan terdaftar untuk meja ini.`}
             </span>
           </div>
           <button
@@ -71,6 +86,70 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
             ✕
           </button>
         </div>
+
+        {/* Pemilih Split Bill jika Meja Memiliki Lebih dari 1 Tiket */}
+        {payingOrders.length > 1 && (
+          <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 space-y-2 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                <span>✂️</span> Pisah Tagihan (Split Bill):
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedOrderIds.length === payingOrders.length) {
+                    setSelectedOrderIds([payingOrders[0].id]);
+                  } else {
+                    setSelectedOrderIds(payingOrders.map((o) => o.id));
+                  }
+                }}
+                className="text-[10px] text-slate-400 hover:text-white underline font-semibold"
+              >
+                {selectedOrderIds.length === payingOrders.length
+                  ? 'Pilih 1 Tiket Saja'
+                  : 'Pilih Seluruhnya'}
+              </button>
+            </div>
+            <div className="space-y-1 max-h-28 overflow-y-auto custom-scrollbar pr-1">
+              {payingOrders.map((ord, oIdx) => {
+                const isSelected = selectedOrderIds.includes(ord.id);
+                return (
+                  <label
+                    key={ord.id}
+                    className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                      isSelected
+                        ? 'bg-amber-500/10 border-amber-500/40 text-amber-200'
+                        : 'bg-slate-900/60 border-slate-800 text-slate-400 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          if (isSelected) {
+                            if (selectedOrderIds.length > 1) {
+                              setSelectedOrderIds(selectedOrderIds.filter((id) => id !== ord.id));
+                            }
+                          } else {
+                            setSelectedOrderIds([...selectedOrderIds, ord.id]);
+                          }
+                        }}
+                        className="accent-amber-500 rounded"
+                      />
+                      <span>
+                        Tiket #{oIdx + 1} ({ord.customerName || 'Tamu'})
+                      </span>
+                    </div>
+                    <span className="font-mono font-bold">
+                      {formatRupiah(ord.totalAmount || 0)}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Rincian Tagihan */}
         <div className="space-y-4">
@@ -327,7 +406,12 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
             <button
               type="button"
               onClick={() =>
-                onConfirmPayment(taxRate, cafeSettings?.servicePercentage || 0, true)
+                onConfirmPayment(
+                  taxRate,
+                  cafeSettings?.servicePercentage || 0,
+                  true,
+                  effectiveOrders
+                )
               }
               disabled={
                 paymentMethod === 'cash' && cashReceived > 0 && cashReceived < totalDue
@@ -339,8 +423,13 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
 
             <button
               type="button"
-              onClick={() => onPrintReceipt(undefined, payingOrders)}
-              className="px-3 py-3.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-bold transition-all"
+              onClick={() =>
+                onPrintReceipt(
+                  effectiveOrders.length === 1 ? effectiveOrders[0] : undefined,
+                  effectiveOrders
+                )
+              }
+              className="px-3 py-3.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-750 rounded-xl text-xs font-bold transition-all"
               title="Cetak Struk Kertas 58mm/80mm (Opsional)"
             >
               🖨️ Cetak

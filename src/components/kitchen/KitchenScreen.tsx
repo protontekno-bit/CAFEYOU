@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useKaraoke } from '../../hooks/useKaraoke';
-import { AppRole, TableOrder } from '../../types';
+import { AppRole, TableOrder, KitchenStationFilter } from '../../types';
 import { DeveloperFooter } from '../common/DeveloperFooter';
-import { KitchenOrderCard } from './KitchenOrderCard';
+import { KitchenOrderCard, isDrinkItem } from './KitchenOrderCard';
 import { PosDirectOrderModal } from '../pos/PosDirectOrderModal';
+import { KitchenStockModal } from './KitchenStockModal';
 
 interface KitchenScreenProps {
   setRole?: (role: AppRole) => void;
@@ -19,10 +20,14 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
     confirmTableOrder,
     updateTableOrderStatus,
     createTableOrder,
+    voidOrderItem,
+    toggleOrderItemStatus,
+    toggleMenuItemAvailability,
     triggerSoundEffect,
   } = useKaraoke();
 
   const [isDirectOrderOpen, setIsDirectOrderOpen] = useState(false);
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
 
   // Jam Digital Berjalan
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -37,6 +42,14 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
     const interval = setInterval(updateClock, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // State Filter Stasiun Kerja (Dapur Koki vs Barista Minuman)
+  const [stationFilter, setStationFilter] = useState<KitchenStationFilter>(() => {
+    const hash = window.location.hash.toLowerCase();
+    if (hash.includes('station=bar') || hash.includes('barista')) return 'BAR';
+    if (hash.includes('station=kitchen') || hash.includes('koki')) return 'KITCHEN';
+    return 'ALL';
+  });
 
   // State Filter Meja & Jenis Pesanan
   const [filterTable, setFilterTable] = useState<string>('ALL');
@@ -71,10 +84,12 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
     }
   };
 
-  // Filter Pesanan
+  // Filter Pesanan berdasarkan Stasiun, Meja & Tipe
   const filteredOrders = ordersList.filter((o) => {
+    // 1. Filter Meja
     if (filterTable !== 'ALL' && o.tableNumber !== filterTable) return false;
 
+    // 2. Filter Tipe Pesanan
     const isTakeaway =
       o.orderType === 'TAKEAWAY' ||
       o.tableNumber?.toUpperCase().includes('BUNGKUS') ||
@@ -88,6 +103,15 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
     if (filterType === 'DINE_IN' && (isTakeaway || isOnline)) return false;
     if (filterType === 'TAKEAWAY' && !isTakeaway) return false;
     if (filterType === 'ONLINE' && !isOnline) return false;
+
+    // 3. Filter Stasiun Kerja (Dapur Koki vs Barista Minuman)
+    if (stationFilter === 'BAR') {
+      const hasDrink = o.items.some((it) => !it.isVoided && isDrinkItem(it));
+      if (!hasDrink) return false;
+    } else if (stationFilter === 'KITCHEN') {
+      const hasFood = o.items.some((it) => !it.isVoided && !isDrinkItem(it));
+      if (!hasFood) return false;
+    }
 
     return true;
   });
@@ -134,7 +158,7 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
           </div>
         </div>
 
-        {/* Kontrol Kanan: Input Pesanan Langsung, Bel Suara, Fullscreen, Navigasi */}
+        {/* Kontrol Kanan: Input, Stok, Bel Suara, Fullscreen, Navigasi */}
         <div className="flex items-center gap-2">
           {/* Tombol Input Pesanan Manual / Walk-in Dapur */}
           <button
@@ -144,14 +168,25 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
             title="Input Pesanan Baru Manual (Tamu Langsung Pesan ke Bar / Dapur)"
           >
             <span>➕</span>
-            <span className="hidden sm:inline">Input Pesanan Dapur</span>
+            <span className="hidden sm:inline">Input Pesanan</span>
+          </button>
+
+          {/* Tombol Cek Stok Menu Habis 1-Sentuhan */}
+          <button
+            type="button"
+            onClick={() => setIsStockModalOpen(true)}
+            className="px-3 py-2 bg-slate-800 hover:bg-slate-750 text-amber-300 hover:text-amber-200 border border-slate-700 hover:border-amber-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+            title="Atur Menu yang Habis (Sold Out) Langsung dari Dapur"
+          >
+            <span>📦</span>
+            <span className="hidden sm:inline">Stok Menu</span>
           </button>
 
           {/* Toggle Bel Suara */}
           <button
             type="button"
             onClick={() => setIsSoundAlertEnabled(!isSoundAlertEnabled)}
-            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+            className={`p-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
               isSoundAlertEnabled
                 ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm'
                 : 'bg-slate-800/80 border-slate-700 text-slate-400'
@@ -159,18 +194,16 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
             title="Bunyikan bel saat ada pesanan baru"
           >
             <span>{isSoundAlertEnabled ? '🔔' : '🔕'}</span>
-            <span className="hidden sm:inline">{isSoundAlertEnabled ? 'Bel Aktif' : 'Bel Bisu'}</span>
           </button>
 
-          {/* Toggle Layar Penuh (Cocok untuk Smart TV Meja Dapur) */}
+          {/* Toggle Layar Penuh (Smart TV Meja Dapur) */}
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="px-3 py-2 bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-750 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+            className="p-2 bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-750 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
             title="Layar Penuh / Smart TV Display"
           >
             <span>{isFullscreen ? '🗗' : '⛶'}</span>
-            <span className="hidden sm:inline">{isFullscreen ? 'Keluar Fullscreen' : 'Layar Penuh'}</span>
           </button>
 
           {/* Navigasi Beranda / Kasir / Operator */}
@@ -179,10 +212,10 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
               <button
                 type="button"
                 onClick={() => setRole('pos')}
-                className="px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-bold transition-all"
+                className="px-2.5 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-bold transition-all"
                 title="Buka Dasbor Kasir POS"
               >
-                💵 Buka POS
+                💵 POS
               </button>
               <button
                 type="button"
@@ -190,12 +223,12 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
                 className="px-2.5 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all"
                 title="Buka Dasbor Operator Karaoke"
               >
-                🎤 <span className="hidden xl:inline">Operator</span>
+                🎤
               </button>
               <button
                 type="button"
                 onClick={() => setRole('landing')}
-                className="px-2.5 py-2 bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-750 rounded-xl text-xs transition-all"
+                className="p-2 bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-750 rounded-xl text-xs transition-all"
                 title="Kembali ke Beranda"
               >
                 🏠
@@ -205,17 +238,36 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
         </div>
       </header>
 
-      {/* 2. SUB-BAR: FILTER MEJA & TIPE PESANAN */}
+      {/* 2. SUB-BAR: FILTER STASIUN, MEJA & TIPE PESANAN */}
       <div className="bg-slate-900/60 border-b border-slate-800 px-4 lg:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-slate-400 font-bold flex items-center gap-1">
-            <span>🔍</span> Filter:
-          </span>
+        <div className="flex flex-wrap items-center gap-2.5 text-xs">
+          {/* Selector Stasiun Kerja (Dapur Koki vs Barista Minuman) */}
+          <div className="flex bg-slate-950 border border-slate-800 p-0.5 rounded-xl shadow-inner">
+            {[
+              { id: 'ALL', label: '🌐 Semua Stasiun' },
+              { id: 'KITCHEN', label: '🍳 Dapur Makanan' },
+              { id: 'BAR', label: '☕ Bar Minuman' },
+            ].map((st) => (
+              <button
+                key={st.id}
+                onClick={() => setStationFilter(st.id as KitchenStationFilter)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  stationFilter === st.id
+                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 font-black shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {st.label}
+              </button>
+            ))}
+          </div>
+
+          <span className="text-slate-600">|</span>
 
           {/* Filter Tipe */}
           <div className="flex bg-slate-950 border border-slate-800 p-0.5 rounded-xl">
             {[
-              { id: 'ALL', label: 'Semua Tiket' },
+              { id: 'ALL', label: 'Semua' },
               { id: 'DINE_IN', label: '🍽️ Meja' },
               { id: 'TAKEAWAY', label: '🥡 Bungkus' },
               { id: 'ONLINE', label: '🛵 Ojol' },
@@ -283,8 +335,11 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
                   key={ord.id}
                   order={ord}
                   statusColumn="PENDING"
+                  stationFilter={stationFilter}
                   onConfirmOrder={confirmTableOrder}
                   onUpdateStatus={updateTableOrderStatus}
+                  onToggleItemStatus={toggleOrderItemStatus}
+                  onVoidItem={voidOrderItem}
                 />
               ))
             )}
@@ -315,8 +370,11 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
                   key={ord.id}
                   order={ord}
                   statusColumn="PREPARING"
+                  stationFilter={stationFilter}
                   onConfirmOrder={confirmTableOrder}
                   onUpdateStatus={updateTableOrderStatus}
+                  onToggleItemStatus={toggleOrderItemStatus}
+                  onVoidItem={voidOrderItem}
                 />
               ))
             )}
@@ -347,8 +405,11 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
                   key={ord.id}
                   order={ord}
                   statusColumn="READY"
+                  stationFilter={stationFilter}
                   onConfirmOrder={confirmTableOrder}
                   onUpdateStatus={updateTableOrderStatus}
+                  onToggleItemStatus={toggleOrderItemStatus}
+                  onVoidItem={voidOrderItem}
                 />
               ))
             )}
@@ -365,6 +426,14 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
         cafeSettings={cafeSettings}
         onCreateOrder={createTableOrder}
         existingOrdersCount={ordersList.length}
+      />
+
+      {/* Modal Cepat Kontrol Stok Menu Habis Langsung dari Dapur */}
+      <KitchenStockModal
+        isOpen={isStockModalOpen}
+        onClose={() => setIsStockModalOpen(false)}
+        menuItems={menuItems || {}}
+        onToggleAvailability={toggleMenuItemAvailability}
       />
 
       {/* Footer Branding */}

@@ -214,17 +214,20 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     }, 150);
   };
 
-  // Eksekusi Pembayaran Kasir (Dengan Sinkronisasi Pajak PB1 & Service Charge)
+  // Eksekusi Pembayaran Kasir (Dengan Dukungan Split Bill / Bayar Sebagian Tiket Meja)
   const handleConfirmPayment = (
     taxRateVal: number = 0,
     serviceRateVal: number = 0,
-    isCashRounding: boolean = false
+    isCashRounding: boolean = false,
+    selectedOrdersToPay?: TableOrder[]
   ) => {
-    if (payingOrders.length === 0) return;
+    const targetOrders =
+      selectedOrdersToPay && selectedOrdersToPay.length > 0
+        ? selectedOrdersToPay
+        : payingOrders;
+    if (targetOrders.length === 0) return;
 
-    const totalSubtotal = payingOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-
-    payingOrders.forEach((ord) => {
+    targetOrders.forEach((ord) => {
       const ordSub = ord.subtotal || ord.totalAmount;
       const taxAmt = Math.round((ordSub * taxRateVal) / 100);
       const servAmt = Math.round((ordSub * serviceRateVal) / 100);

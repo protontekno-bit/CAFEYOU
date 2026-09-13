@@ -128,6 +128,8 @@ export interface MenuItem {
   optionGroups?: MenuItemOptionGroup[];
 }
 
+export type KitchenStationFilter = 'ALL' | 'KITCHEN' | 'BAR';
+
 export interface OrderItem {
   menuId?: string;
   menuItemId?: string;
@@ -139,6 +141,10 @@ export interface OrderItem {
   isVoided?: boolean;
   voidReason?: string;
   selectedOptions?: string[];
+  isCooked?: boolean;
+  isServed?: boolean;
+  cookedAt?: number;
+  category?: string;
 }
 
 export type OrderStatus =

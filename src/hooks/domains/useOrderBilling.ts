@@ -381,6 +381,67 @@ export function useOrderBilling(
     }
   };
 
+  const toggleOrderItemStatus = (
+    orderId: string,
+    itemIndex: number,
+    field: 'isCooked' | 'isServed'
+  ) => {
+    let updatedTarget: TableOrder | null = null;
+    updateAppState((prev) => {
+      const currentOrders =
+        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
+      const target = currentOrders[orderId];
+      if (!target || !target.items || !target.items[itemIndex]) return prev;
+
+      const updatedItems = target.items.map((it, idx) => {
+        if (idx === itemIndex) {
+          const currentVal = !!it[field];
+          return {
+            ...it,
+            [field]: !currentVal,
+            ...(field === 'isCooked' && !currentVal ? { cookedAt: Date.now() } : {}),
+          };
+        }
+        return it;
+      });
+
+      const nonVoidItems = updatedItems.filter((it) => !it.isVoided);
+      const allCooked = nonVoidItems.length > 0 && nonVoidItems.every((it) => it.isCooked);
+      const allServed = nonVoidItems.length > 0 && nonVoidItems.every((it) => it.isServed);
+
+      let nextStatus = target.status;
+      if (allServed) {
+        nextStatus = 'SERVED';
+      } else if (allCooked && target.status?.toLowerCase() !== 'served') {
+        nextStatus = 'READY';
+      }
+
+      updatedTarget = {
+        ...target,
+        items: updatedItems,
+        status: nextStatus,
+      };
+
+      currentOrders[orderId] = updatedTarget;
+      return {
+        ...prev,
+        tableOrders: currentOrders,
+      };
+    });
+
+    if (updatedTarget) {
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
+          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
+            console.warn('Gagal update item status di Firebase:', err);
+          });
+        }
+      } catch (err) {}
+    }
+  };
+
   const confirmTableOrder = (orderId: string) => {
     updateTableOrderStatus(orderId, 'PREPARING');
   };
@@ -421,6 +482,7 @@ export function useOrderBilling(
     updateTableOrderStatus,
     moveTableOrder,
     voidOrderItem,
+    toggleOrderItemStatus,
     confirmTableOrder,
     addMenuItem,
     updateMenuItem,

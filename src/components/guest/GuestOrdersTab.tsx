@@ -315,19 +315,39 @@ export const GuestOrdersTab: React.FC<GuestOrdersTabProps> = ({
                 </div>
 
                 {/* Order items */}
-                <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-850 space-y-1.5">
+                <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-850 space-y-2">
                   {ord.items.map((it, idx) => {
                     const count = it.quantity ?? it.qty ?? 1;
                     return (
                       <div
                         key={idx}
-                        className={`flex justify-between items-start text-xs ${
-                          it.isVoided ? 'line-through text-red-400 opacity-50' : 'text-slate-300'
-                        }`}
+                        className={`flex justify-between items-start text-xs pb-1.5 ${
+                          idx !== ord.items.length - 1 ? 'border-b border-slate-850/60' : ''
+                        } ${it.isVoided ? 'opacity-60' : 'text-slate-300'}`}
                       >
-                        <div>
-                          <div className="font-medium">
-                            {count}x {it.name}
+                        <div className="space-y-0.5">
+                          <div className="font-medium flex items-center gap-1.5 flex-wrap">
+                            <span className={it.isVoided ? 'line-through text-slate-500' : 'text-white'}>
+                              {count}x {it.name}
+                            </span>
+                            {/* Item status badge */}
+                            {it.isVoided ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 bg-red-500/20 text-red-300 border border-red-500/30 rounded">
+                                ✕ Stok Habis (Batal)
+                              </span>
+                            ) : it.isServed ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded flex items-center gap-0.5">
+                                <span>✓</span> Sudah Diantar
+                              </span>
+                            ) : it.isCooked ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded flex items-center gap-0.5">
+                                <span>🍽️</span> Siap Saji
+                              </span>
+                            ) : isCooking ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded">
+                                🍳 Dimasak
+                              </span>
+                            ) : null}
                           </div>
                           {it.selectedOptions && it.selectedOptions.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-0.5">
@@ -346,8 +366,17 @@ export const GuestOrdersTab: React.FC<GuestOrdersTabProps> = ({
                               ({it.notes})
                             </span>
                           )}
+                          {it.isVoided && it.voidReason && (
+                            <span className="block text-red-400/90 text-[10px]">
+                              Alasan: {it.voidReason}
+                            </span>
+                          )}
                         </div>
-                        <span className="font-mono text-slate-400 shrink-0 ml-2">
+                        <span
+                          className={`font-mono shrink-0 ml-2 ${
+                            it.isVoided ? 'line-through text-slate-500' : 'text-slate-400'
+                          }`}
+                        >
                           Rp {(it.price * count).toLocaleString('id-ID')}
                         </span>
                       </div>

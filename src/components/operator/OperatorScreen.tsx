@@ -279,6 +279,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
 
           <QueueList
             queue={nextSongs}
+            hasCurrentSong={Boolean(currentSong)}
+            currentSongTitle={currentSong?.title}
             fairRotationEnabled={fairRotationEnabled}
             onRemoveSong={removeSong}
             onMoveToTop={moveToTop}

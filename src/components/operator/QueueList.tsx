@@ -12,6 +12,8 @@ import { calculateAllTableRounds } from '../../utils/queue';
 interface QueueListProps {
   queue?: Song[];
   fairRotationEnabled?: boolean;
+  hasCurrentSong?: boolean;
+  currentSongTitle?: string;
   onRemoveSong: (id: string) => void;
   onMoveToTop: (id: string) => void;
   onMoveUp: (id: string) => void;
@@ -24,6 +26,8 @@ interface QueueListProps {
 export const QueueList: React.FC<QueueListProps> = ({
   queue = [],
   fairRotationEnabled = false,
+  hasCurrentSong = false,
+  currentSongTitle,
   onRemoveSong,
   onMoveToTop,
   onMoveUp,
@@ -244,22 +248,38 @@ export const QueueList: React.FC<QueueListProps> = ({
         </div>
       ) : (
         /* Empty State */
-        <div className="flex-1 flex flex-col items-center justify-center py-12 text-center text-slate-400 space-y-3 bg-slate-900/40 rounded-xl border border-dashed border-slate-700/60">
-          <div className="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center text-2xl shadow-inner">
-            🎵
+        <div className="flex-1 flex flex-col items-center justify-center py-10 text-center text-slate-400 space-y-3 bg-slate-900/40 rounded-xl border border-dashed border-slate-700/60 p-4">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-inner ${
+            hasCurrentSong
+              ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+              : 'bg-slate-800 text-slate-300'
+          }`}>
+            {hasCurrentSong ? '🎤' : '🎵'}
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-300">Antrean lagu sedang kosong</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Pilih lagu dari katalog populer atau masukkan link video YouTube.
+            <p className="text-sm font-bold text-slate-200">
+              {hasCurrentSong
+                ? 'Lagu #1 Sedang Diputar (ON AIR) di Atas'
+                : 'Daftar Antrean Lagu Sedang Kosong'}
+            </p>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm leading-relaxed">
+              {hasCurrentSong ? (
+                <>
+                  Belum ada antrean lagu berikutnya di ruang tunggu. Lagu berikutnya yang dipesan oleh{' '}
+                  <strong className="text-emerald-400">tamu</strong> atau{' '}
+                  <strong className="text-blue-400">operator</strong> akan muncul di sini.
+                </>
+              ) : (
+                'Pilih lagu dari katalog populer atau masukkan tautan video YouTube untuk mulai bernyanyi.'
+              )}
             </p>
           </div>
           {onOpenPopularModal && (
             <button
               onClick={onOpenPopularModal}
-              className="mt-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+              className="mt-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95"
             >
-              + Buka Katalog Populer
+              + Buka Katalog Populer Kafe
             </button>
           )}
         </div>

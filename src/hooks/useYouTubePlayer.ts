@@ -18,6 +18,7 @@ export function useYouTubePlayer({
 }: UseYouTubePlayerOptions) {
   const playerRef = useRef<any>(null);
   const [isApiReady, setIsApiReady] = useState(false);
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const lastSoundTimestampRef = useRef<number>(0);
 
   // appStateRef to access latest state inside callbacks
@@ -85,7 +86,11 @@ export function useYouTubePlayer({
             // Auto skip if video is restricted/copyright blocked (Error 150/101/2)
             if (event.data === 150 || event.data === 101 || event.data === 2) {
               console.warn('YouTube error encountered, skipping track:', event.data);
-              onErrorFallback();
+              setErrorNotice('Video dibatasi oleh lisensi YouTube. Memutar lagu berikutnya...');
+              setTimeout(() => {
+                setErrorNotice(null);
+                onErrorFallback();
+              }, 2500);
             }
           },
         },
@@ -140,5 +145,6 @@ export function useYouTubePlayer({
   return {
     player: playerRef.current,
     isApiReady,
+    errorNotice,
   };
 }

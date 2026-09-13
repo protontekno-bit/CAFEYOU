@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   PlayIcon,
   PauseIcon,
@@ -7,6 +7,8 @@ import {
   VolumeMuteIcon,
 } from '../icons/Icons';
 import { PlaybackStatus, SoundEffectType } from '../../types';
+import { initFirebaseDatabase, ref, onValue } from '../../config/firebase';
+import { STORAGE_KEY } from '../../constants/karaoke';
 
 interface PlaybackControlsProps {
   playbackStatus: PlaybackStatus;
@@ -32,6 +34,24 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   onQuickSoundEffect,
 }) => {
   const isPlaying = playbackStatus === 'PLAYING';
+  const [isPlayerOnline, setIsPlayerOnline] = useState<boolean>(false);
+
+  // Monitor sinyal heartbeat dari Layar Proyektor TV
+  useEffect(() => {
+    const db = initFirebaseDatabase();
+    if (!db) return;
+    const hbRef = ref(db, `cafeyou/${STORAGE_KEY}/playerHeartbeat`);
+    const unsub = onValue(hbRef, (snap) => {
+      if (snap.exists()) {
+        const val = snap.val();
+        const diff = Date.now() - (val?.timestamp || 0);
+        setIsPlayerOnline(diff < 25000);
+      } else {
+        setIsPlayerOnline(false);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   return (
     <div className="bg-slate-800/95 rounded-2xl p-5 shadow-xl border border-slate-700/60 space-y-4">
@@ -39,12 +59,25 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
           <span>🎚️</span> Dek Kendali Utama
         </h2>
-        {hasCurrentSong && (
-          <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-            Aktif
+        <div className="flex items-center gap-2">
+          <span
+            className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full border transition-all ${
+              isPlayerOnline
+                ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30'
+                : 'text-slate-400 bg-slate-900 border-slate-700'
+            }`}
+            title={isPlayerOnline ? 'Layar Proyektor TV sedang aktif dan terhubung' : 'Layar Proyektor belum dibuka di browser TV atau sedang offline'}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${isPlayerOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+            <span>TV: {isPlayerOnline ? 'Online' : 'Offline'}</span>
           </span>
-        )}
+          {hasCurrentSong && (
+            <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              ON AIR
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Tombol Playback Utama */}

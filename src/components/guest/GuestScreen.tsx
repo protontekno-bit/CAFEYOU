@@ -818,6 +818,19 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
 
   const totalQueueCount = nextSongs.length + (currentSong ? 1 : 0);
 
+  const isMySongOnAir = Boolean(
+    currentSong &&
+    tableNumber &&
+    (isSameTable(currentSong.tableNumber, tableNumber) || isSameTable(currentSong.requester, tableNumber))
+  );
+
+  const myQueuedSongsCount = useMemo(() => {
+    if (!tableNumber) return 0;
+    return nextSongs.filter(
+      (s) => isSameTable(s.tableNumber, tableNumber) || isSameTable(s.requester, tableNumber)
+    ).length;
+  }, [nextSongs, tableNumber]);
+
   return (
     <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-500 selection:text-white pb-28">
       {/* Top Navbar */}
@@ -896,6 +909,40 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           )}
         </div>
       </header>
+
+      {/* Real-time Status Banner: Lagu Meja Ini Sedang ON AIR atau Mengantre */}
+      {isMySongOnAir && (
+        <div className="bg-gradient-to-r from-emerald-600/30 via-teal-600/20 to-emerald-600/30 border-b border-emerald-500/40 px-4 py-2 flex items-center justify-between text-xs animate-fadeIn">
+          <div className="flex items-center gap-2 text-emerald-300 font-extrabold truncate">
+            <span className="text-sm animate-bounce">🎤</span>
+            <span>Lagu Meja Anda Sedang Tayang di Layar TV!</span>
+            <span className="text-[11px] text-white font-medium opacity-90 truncate max-w-[150px] sm:max-w-xs">
+              ({currentSong?.title})
+            </span>
+          </div>
+          <span className="px-2.5 py-0.5 bg-emerald-500 text-slate-950 text-[10px] font-black rounded-full shrink-0 shadow-sm animate-pulse">
+            ON AIR
+          </span>
+        </div>
+      )}
+
+      {!isMySongOnAir && myQueuedSongsCount > 0 && (
+        <div className="bg-gradient-to-r from-blue-600/25 via-indigo-600/15 to-blue-600/25 border-b border-blue-500/30 px-4 py-1.5 flex items-center justify-between text-xs animate-fadeIn">
+          <div className="flex items-center gap-2 text-blue-200 font-semibold truncate">
+            <span>⏳</span>
+            <span>{myQueuedSongsCount} lagu dari meja Anda ada dalam antrean tunggu kafe</span>
+          </div>
+          <button
+            onClick={() => {
+              setMainTab('karaoke');
+              setActiveTab('queue');
+            }}
+            className="text-[11px] font-bold text-blue-300 underline underline-offset-2 shrink-0 hover:text-white"
+          >
+            Lihat Urutan →
+          </button>
+        </div>
+      )}
 
       {/* 3 Main Segmented Tabs: 🎤 Karaoke | 🍽️ Pesan Makanan & Minuman | 📋 Pesanan Meja */}
       <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-2 sticky top-[57px] z-20 backdrop-blur-md">

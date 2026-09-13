@@ -5,6 +5,8 @@ import { useKaraoke } from '../../hooks/useKaraoke';
 import { useYouTubePlayer } from '../../hooks/useYouTubePlayer';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { AppRole, LiveReactionEvent } from '../../types';
+import { initFirebaseDatabase, ref, set } from '../../config/firebase';
+import { STORAGE_KEY } from '../../constants/karaoke';
 
 interface PlayerScreenProps {
   setRole?: (role: AppRole) => void;
@@ -30,7 +32,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
 
   const { state, currentSong, nextSongs, nextSong } = useKaraoke();
 
-  useYouTubePlayer({
+  const { errorNotice } = useYouTubePlayer({
     containerRef,
     appState: state,
     onSongEnd: () => {
@@ -40,6 +42,19 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
       nextSong();
     },
   });
+
+  // Kirim sinyal detak jantung (heartbeat) ke Firebase agar Operator tahu Proyektor online
+  useEffect(() => {
+    const db = initFirebaseDatabase();
+    if (!db) return;
+    const hbRef = ref(db, `cafeyou/${STORAGE_KEY}/playerHeartbeat`);
+    const sendHb = () => {
+      set(hbRef, { timestamp: Date.now(), status: 'online' }).catch(() => {});
+    };
+    sendHb();
+    const interval = setInterval(sendHb, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const nextSongItem = nextSongs[0] || null;
 
@@ -224,6 +239,17 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
               {state?.cafeSettings?.name || 'CAFEYOU'}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* OVERLAY: Notifikasi Video Dibatasi Lisensi YouTube HUD */}
+      {errorNotice && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-slate-950/95 border border-amber-500/80 rounded-3xl p-6 sm:p-8 text-center shadow-2xl max-w-md w-[90vw] animate-scaleUp backdrop-blur-md">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+            ⚠️
+          </div>
+          <h4 className="text-lg font-black text-white mb-1">Lagu Tidak Dapat Diputar</h4>
+          <p className="text-xs text-amber-300 font-medium leading-relaxed">{errorNotice}</p>
         </div>
       )}
 

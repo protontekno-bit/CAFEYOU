@@ -11,6 +11,8 @@ interface VoucherManagerModalProps {
   onClose: () => void;
   onCreateVoucher: (tableNumber: string, quota: number) => Voucher;
   onRevokeVoucher: (code: string) => void;
+  onTopUpVoucher?: (code: string, additionalQuota: number) => void;
+  onClearExhaustedVouchers?: () => void;
   onSetDailyPin: (enabled: boolean, code: string) => void;
 }
 
@@ -22,6 +24,8 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
   onClose,
   onCreateVoucher,
   onRevokeVoucher,
+  onTopUpVoucher,
+  onClearExhaustedVouchers,
   onSetDailyPin,
 }) => {
   const activeTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
@@ -280,9 +284,28 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
 
           {/* SECTION 3 — Daftar Voucher Aktif */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Daftar Voucher Aktif ({voucherList.length})
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Daftar Voucher ({voucherList.length})
+              </h3>
+              {onClearExhaustedVouchers && voucherList.some((v) => v.status === 'exhausted' || (v.quotaTotal !== 999 && v.quotaUsed >= v.quotaTotal)) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const exhaustedCount = voucherList.filter(
+                      (v) => v.status === 'exhausted' || (v.quotaTotal !== 999 && v.quotaUsed >= v.quotaTotal)
+                    ).length;
+                    if (confirm(`Bersihkan ${exhaustedCount} voucher yang sudah habis dari daftar?`)) {
+                      onClearExhaustedVouchers();
+                    }
+                  }}
+                  className="px-2.5 py-1 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                  title="Hapus semua voucher yang kuotanya sudah habis"
+                >
+                  <span>🧹 Bersihkan Voucher Habis</span>
+                </button>
+              )}
+            </div>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar text-xs">
               {voucherList.length > 0 ? (
@@ -310,7 +333,7 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2.5 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span
                           className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
                             isExhausted
@@ -322,6 +345,29 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                             ? 'Habis'
                             : `Terpakai ${v.quotaUsed}/${v.quotaTotal === 999 ? '∞' : v.quotaTotal}`}
                         </span>
+
+                        {/* Tombol Cepat Tambah Kuota (Top Up Tanpa Ganti Kode) */}
+                        {onTopUpVoucher && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => onTopUpVoucher(v.code, 1)}
+                              className="px-2 py-0.5 bg-blue-500/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 rounded-lg text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer"
+                              title="Tambah 1 Lagu ke Meja Ini"
+                            >
+                              +1
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onTopUpVoucher(v.code, 3)}
+                              className="px-2 py-0.5 bg-purple-500/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 rounded-lg text-[10px] font-extrabold transition-all active:scale-95 cursor-pointer"
+                              title="Tambah 3 Lagu ke Meja Ini"
+                            >
+                              +3
+                            </button>
+                          </div>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => {

@@ -69,6 +69,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     createVoucher,
     revokeVoucher,
     topUpVoucherQuota,
+    clearExhaustedVouchers,
     approveTopUpRequest,
     dismissTopUpRequest,
     assistanceRequests,
@@ -308,6 +309,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onClose={() => setIsVoucherOpen(false)}
           onCreateVoucher={createVoucher}
           onRevokeVoucher={revokeVoucher}
+          onTopUpVoucher={topUpVoucherQuota}
+          onClearExhaustedVouchers={clearExhaustedVouchers}
           onSetDailyPin={setDailyPin}
         />
 

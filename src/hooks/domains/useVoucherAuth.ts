@@ -134,6 +134,35 @@ export function useVoucherAuth(
     });
   };
 
+  const clearExhaustedVouchers = () => {
+    const currentVouchers = { ...vouchers };
+    const exhaustedCodes: string[] = [];
+
+    Object.values(currentVouchers).forEach((v) => {
+      if (v && (v.status === 'exhausted' || (v.quotaTotal !== 999 && v.quotaUsed >= v.quotaTotal))) {
+        exhaustedCodes.push(v.code);
+        delete currentVouchers[v.code];
+      }
+    });
+
+    if (exhaustedCodes.length === 0) return;
+
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        exhaustedCodes.forEach((code) => {
+          const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${code}`);
+          set(vRef, null).catch(() => {});
+        });
+      }
+    } catch {}
+
+    updateAppState((prev) => ({
+      ...prev,
+      vouchers: currentVouchers,
+    }));
+  };
+
   const setDailyPin = (enabled: boolean, code: string) => {
     const cleanPin = {
       enabled,
@@ -499,6 +528,7 @@ export function useVoucherAuth(
     createVoucher,
     revokeVoucher,
     topUpVoucherQuota,
+    clearExhaustedVouchers,
     approveTopUpRequest,
     dismissTopUpRequest,
     setDailyPin,

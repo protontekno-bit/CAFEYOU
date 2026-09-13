@@ -111,6 +111,7 @@ export function useKaraoke() {
     createVoucher: auth.createVoucher,
     revokeVoucher: auth.revokeVoucher,
     topUpVoucherQuota: auth.topUpVoucherQuota,
+    clearExhaustedVouchers: auth.clearExhaustedVouchers,
     approveTopUpRequest: auth.approveTopUpRequest,
     dismissTopUpRequest: auth.dismissTopUpRequest,
     setDailyPin: auth.setDailyPin,

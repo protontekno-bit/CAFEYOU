@@ -25,23 +25,25 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
   onSetDailyPin,
 }) => {
   const activeTables = tables && tables.length > 0 ? tables : QUICK_TABLES;
+
+  /* ── Form state: Buat Voucher ── */
   const [selectedTable, setSelectedTable] = useState(() => activeTables[0] || 'Meja 1');
   const [quota, setQuota] = useState(3);
   const [lastCreatedVoucher, setLastCreatedVoucher] = useState<Voucher | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
-  // Daily PIN form state
+  /* ── Form state: Daily PIN ── */
   const [dailyPinEnabled, setDailyPinEnabled] = useState(dailyPin?.enabled || false);
   const [dailyPinCode, setDailyPinCode] = useState(dailyPin?.code || '1234');
   const [pinSavedMsg, setPinSavedMsg] = useState(false);
 
-  // Sync dailyPin props ke local state jika berubah dari luar (misalnya dari Firebase sync)
+  /* Sync dailyPin dari Firebase ke local state */
   useEffect(() => {
     setDailyPinEnabled(dailyPin?.enabled || false);
     setDailyPinCode(dailyPin?.code || '1234');
   }, [dailyPin?.enabled, dailyPin?.code]);
 
-  // Bersihkan state result saat modal ditutup agar tidak muncul data lama saat dibuka kembali
+  /* Reset semua state saat modal ditutup */
   useEffect(() => {
     if (!isOpen) {
       setLastCreatedVoucher(null);
@@ -52,7 +54,9 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
 
   if (!isOpen) return null;
 
-  const voucherList = Object.values(vouchers || {}).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const voucherList = Object.values(vouchers || {}).sort(
+    (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+  );
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,16 +85,27 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
     return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
   };
 
+  /* Teks WA dibuat di luar JSX agar tidak jitter saat re-render */
+  const waText = lastCreatedVoucher
+    ? encodeURIComponent(
+        `Halo! Berikut adalah Kode Voucher Karaoke untuk ${lastCreatedVoucher.tableNumber}:\n\n` +
+          `🎟️ KODE: ${lastCreatedVoucher.code}\n` +
+          `📊 KUOTA: ${lastCreatedVoucher.quotaTotal === 999 ? 'Unlimited' : `${lastCreatedVoucher.quotaTotal} Lagu`}\n\n` +
+          `Silakan masukkan kode ini di portal karaoke meja Anda. Selamat bernyanyi! 🎤`
+      )
+    : '';
+
   return (
     <div className="fixed inset-0 z-[70] flex items-start sm:items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden my-auto transition-all">
-        {/* Header Tetap (Fixed Header) */}
+      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden my-auto">
+
+        {/* ── Header (shrink-0) ── */}
         <div className="flex justify-between items-center p-5 sm:p-6 border-b border-slate-800 bg-slate-900/90 shrink-0">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🎟️</span>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                <span>Manajemen Voucher & Akses Meja</span>
+              <h2 className="text-base sm:text-lg font-black text-white">
+                Manajemen Voucher &amp; Akses Meja
               </h2>
               <p className="text-xs text-slate-400">
                 Terbitkan kode voucher kuota lagu per meja atau atur PIN harian kafe
@@ -106,19 +121,20 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
           </button>
         </div>
 
-        {/* Scrollable Body dengan scrollbar-gutter stabil */}
+        {/* ── Body (scrollable) ── */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-6 space-y-5">
-          {/* Section 1: Buat Voucher Baru */}
+
+          {/* SECTION 1 — Form buat voucher */}
           <form
             onSubmit={handleCreate}
-            className="p-4 sm:p-5 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/40 rounded-2xl border border-blue-500/30 space-y-4 shadow-inner"
+            className="p-4 sm:p-5 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/40 rounded-2xl border border-blue-500/30 shadow-inner"
           >
-            <div className="text-xs font-bold uppercase tracking-wider text-blue-300 flex items-center gap-1.5">
+            <div className="text-xs font-bold uppercase tracking-wider text-blue-300 flex items-center gap-1.5 mb-4">
               <TicketIcon className="w-4 h-4 text-blue-400" />
               <span>Terbitkan Kode Voucher Meja Baru</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-4">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
                   Pilih Meja / Lokasi
@@ -135,7 +151,6 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
                   Kuota Jumlah Lagu
@@ -156,57 +171,70 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] mb-4"
             >
               <span>+ Terbitkan Kode Voucher</span>
             </button>
 
-            {/* Banner Hasil Generate — animasi height untuk mencegah layout jump */}
+            {/*
+              Area hasil: SELALU ada di DOM dengan minHeight tetap.
+              Hanya opacity & border/bg yang berubah → ZERO layout shift.
+            */}
             <div
-              className="overflow-hidden transition-all duration-300 ease-out"
-              style={{ maxHeight: lastCreatedVoucher ? '200px' : '0px', opacity: lastCreatedVoucher ? 1 : 0 }}
+              className="rounded-2xl border overflow-hidden transition-opacity duration-300"
+              style={{
+                minHeight: '88px',
+                opacity: lastCreatedVoucher ? 1 : 0,
+                pointerEvents: lastCreatedVoucher ? 'auto' : 'none',
+                borderColor: lastCreatedVoucher ? 'rgba(16,185,129,0.4)' : 'rgba(71,85,105,0.3)',
+                background: lastCreatedVoucher
+                  ? 'rgba(16,185,129,0.08)'
+                  : 'rgba(2,6,23,0.3)',
+              }}
             >
-            {lastCreatedVoucher && (
-              <div className="p-4 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl space-y-3 text-xs">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-emerald-300 font-bold text-xs">
-                      Voucher Siap Digunakan untuk <strong>{lastCreatedVoucher.tableNumber}</strong>:
+              {lastCreatedVoucher && (
+                <div className="p-4 space-y-3 text-xs">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-emerald-300 font-bold">
+                        Voucher siap untuk <strong>{lastCreatedVoucher.tableNumber}</strong>:
+                      </div>
+                      <div className="text-slate-300 text-[11px] mt-0.5">
+                        Kuota:{' '}
+                        <strong>
+                          {lastCreatedVoucher.quotaTotal === 999
+                            ? 'Unlimited (∞)'
+                            : `${lastCreatedVoucher.quotaTotal} Lagu`}
+                        </strong>
+                      </div>
                     </div>
-                    <div className="text-slate-300 text-[11px] mt-0.5">
-                      Kuota: <strong>{lastCreatedVoucher.quotaTotal === 999 ? 'Unlimited (∞)' : `${lastCreatedVoucher.quotaTotal} Lagu`}</strong>
+                    <div className="px-4 py-2 bg-emerald-500/25 text-emerald-200 border border-emerald-500/50 rounded-xl font-mono font-black text-xl tracking-widest shadow shrink-0">
+                      {lastCreatedVoucher.code}
                     </div>
                   </div>
-                  <div className="px-4 py-2 bg-emerald-500/25 text-emerald-200 border border-emerald-500/50 rounded-xl font-mono font-black text-xl tracking-widest shadow shrink-0">
-                    {lastCreatedVoucher.code}
+                  <div className="flex gap-2 pt-1 border-t border-emerald-500/30">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCode(lastCreatedVoucher.code)}
+                      className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {isCopied ? 'Tersalin! ✓' : '📋 Salin Kode'}
+                    </button>
+                    <a
+                      href={`https://wa.me/?text=${waText}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5"
+                    >
+                      📱 Kirim ke WA
+                    </a>
                   </div>
                 </div>
-
-                <div className="flex gap-2 pt-1 border-t border-emerald-500/30">
-                  <button
-                    type="button"
-                    onClick={() => handleCopyCode(lastCreatedVoucher.code)}
-                    className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-all text-center text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <span>{isCopied ? 'Tersalin! ✓' : '📋 Salin Kode'}</span>
-                  </button>
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(
-                      `Halo! Berikut adalah Kode Voucher Karaoke untuk ${lastCreatedVoucher.tableNumber}:\n\n🎟️ KODE: ${lastCreatedVoucher.code}\n📊 KUOTA: ${lastCreatedVoucher.quotaTotal === 999 ? 'Unlimited' : `${lastCreatedVoucher.quotaTotal} Lagu`}\n\nSilakan masukkan kode ini di portal karaoke meja Anda. Selamat bernyanyi! 🎤`
-                    )}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all text-center text-xs flex items-center justify-center gap-1.5"
-                  >
-                    <span>📱 Kirim ke WA</span>
-                  </a>
-                </div>
-              </div>
-            )}
+              )}
             </div>
           </form>
 
-          {/* Section 2: Master PIN Harian */}
+          {/* SECTION 2 — Master PIN Harian */}
           <form
             onSubmit={handleSaveDailyPin}
             className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 space-y-3 text-xs"
@@ -223,7 +251,7 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                   onChange={(e) => setDailyPinEnabled(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500" />
+                <div className="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500" />
               </label>
             </div>
 
@@ -243,23 +271,25 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                 >
                   Simpan PIN
                 </button>
-                {pinSavedMsg && <span className="text-emerald-400 font-semibold text-xs">Tersimpan! ✓</span>}
+                {pinSavedMsg && (
+                  <span className="text-emerald-400 font-semibold">Tersimpan! ✓</span>
+                )}
               </div>
             )}
           </form>
 
-          {/* Section 3: Daftar Voucher Aktif */}
+          {/* SECTION 3 — Daftar Voucher Aktif */}
           <div className="space-y-2.5">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                Daftar Voucher Aktif ({voucherList.length})
-              </h3>
-            </div>
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Daftar Voucher Aktif ({voucherList.length})
+            </h3>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar text-xs">
               {voucherList.length > 0 ? (
                 voucherList.map((v) => {
-                  const isExhausted = v.status === 'exhausted' || (v.quotaTotal !== 999 && v.quotaUsed >= v.quotaTotal);
+                  const isExhausted =
+                    v.status === 'exhausted' ||
+                    (v.quotaTotal !== 999 && v.quotaUsed >= v.quotaTotal);
                   return (
                     <div
                       key={v.code}
@@ -280,7 +310,6 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                           </div>
                         </div>
                       </div>
-
                       <div className="flex items-center gap-2.5 shrink-0">
                         <span
                           className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
@@ -289,9 +318,10 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                               : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                           }`}
                         >
-                          {isExhausted ? 'Habis' : `Terpakai ${v.quotaUsed}/${v.quotaTotal === 999 ? '∞' : v.quotaTotal}`}
+                          {isExhausted
+                            ? 'Habis'
+                            : `Terpakai ${v.quotaUsed}/${v.quotaTotal === 999 ? '∞' : v.quotaTotal}`}
                         </span>
-
                         <button
                           type="button"
                           onClick={() => {
@@ -317,7 +347,7 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
           </div>
         </div>
 
-        {/* Footer Tetap */}
+        {/* ── Footer (shrink-0) ── */}
         <div className="p-4 border-t border-slate-800 bg-slate-900/90 flex justify-end shrink-0">
           <button
             type="button"

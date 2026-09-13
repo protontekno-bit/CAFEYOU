@@ -256,6 +256,25 @@ export function useSyncState<T>(
     }
   }, [key]);
 
+function safeSaveLocalStorage(key: string, data: any) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(data));
+  } catch (err: any) {
+    if (err && (err.name === 'QuotaExceededError' || err.code === 22)) {
+      try {
+        // Pangkas riwayat lagu lama ke 20 item untuk membebaskan kuota LocalStorage
+        const pruned = { ...data };
+        if (Array.isArray(pruned.history)) {
+          pruned.history = pruned.history.slice(0, 20);
+        }
+        window.localStorage.setItem(key, JSON.stringify(pruned));
+      } catch (retryErr) {
+        console.warn('Kapasitas LocalStorage penuh setelah pemangkasan:', retryErr);
+      }
+    }
+  }
+}
+
   // 3. Fungsi Pembaruan State (Multi-target: Local State + LocalStorage + Broadcast + Firebase)
   const updateState = (newValueOrFunction: T | ((prev: T) => T)) => {
     setState((prevState) => {
@@ -266,10 +285,26 @@ export function useSyncState<T>(
 
       const newValue = sanitizeState<T>(computed, initialState, prevState);
 
-      // Update LocalStorage
-      try {
-        window.localStorage.setItem(key, JSON.stringify(newValue));
-      } catch (error) {}
+      // Cek apakah mutasi ini benar-benar mengubah antrean atau riwayat
+      const prevQueue = (prevState as any)?.queue;
+      const nextQueue = (newValue as any)?.queue;
+      const isQueueChanged =
+        prevQueue !== nextQueue &&
+        (Array.isArray(prevQueue) !== Array.isArray(nextQueue) ||
+          (Array.isArray(nextQueue) &&
+            (prevQueue?.length !== nextQueue.length ||
+              JSON.stringify(prevQueue) !== JSON.stringify(nextQueue))));
+
+      const prevHistory = (prevState as any)?.history;
+      const nextHistory = (newValue as any)?.history;
+      const isHistoryChanged =
+        prevHistory !== nextHistory &&
+        Array.isArray(nextHistory) &&
+        (prevHistory?.length !== nextHistory.length ||
+          JSON.stringify(prevHistory) !== JSON.stringify(nextHistory));
+
+      // Update LocalStorage dengan proteksi kuota
+      safeSaveLocalStorage(key, newValue);
 
       // Update BroadcastChannel (Lokal)
       if (channelRef.current) {
@@ -289,26 +324,38 @@ export function useSyncState<T>(
             try {
               const dbRef = ref(db, `cafeyou/${key}`);
               // Pisahkan tableOrders, expenses, dan vouchers agar TIDAK terhapus/tertimpa
-              // Pisahkan juga queue & history karena array perlu di-set secara atomik
-              const { tableOrders: _to, expenses: _exp, vouchers: _vouch, queue: _q, history: _hist, ...cleanState } = newValue as any;
+              // Pisahkan juga queue & history agar tidak tertimpa kecuali benar-benar diubah
+              const {
+                tableOrders: _to,
+                expenses: _exp,
+                vouchers: _vouch,
+                queue: _q,
+                history: _hist,
+                ...cleanState
+              } = newValue as any;
               const sanitizedPayload = JSON.parse(JSON.stringify(cleanState));
-              
-              // Tulis field non-array (lagu, settings, dll) dengan update()
+
+              // Tulis field non-array (lagu aktif, settings, volume, dll) dengan update()
               update(dbRef, sanitizedPayload).catch((err) => {
                 console.warn('Gagal menulis state ke Firebase Cloud:', err);
               });
 
-              // Tulis queue secara atomik ke path sendiri (menghindari Firebase array-as-object bug)
-              const queueRef = ref(db, `cafeyou/${key}/queue`);
-              set(queueRef, Array.isArray(_q) ? _q : []).catch((err) => {
-                console.warn('Gagal menulis queue ke Firebase Cloud:', err);
-              });
+              // HANYA tulis queue jika pembaruan ini memang mengubah susunan/isi antrean
+              // (Mencegah slider volume / setting kafe menimpa lagu baru dari meja tamu)
+              if (isQueueChanged) {
+                const queueRef = ref(db, `cafeyou/${key}/queue`);
+                set(queueRef, Array.isArray(_q) ? _q : []).catch((err) => {
+                  console.warn('Gagal menulis queue ke Firebase Cloud:', err);
+                });
+              }
 
-              // Tulis history secara atomik ke path sendiri
-              const historyRef = ref(db, `cafeyou/${key}/history`);
-              set(historyRef, Array.isArray(_hist) ? _hist : []).catch((err) => {
-                console.warn('Gagal menulis history ke Firebase Cloud:', err);
-              });
+              // HANYA tulis history jika riwayat lagu bertambah
+              if (isHistoryChanged) {
+                const historyRef = ref(db, `cafeyou/${key}/history`);
+                set(historyRef, Array.isArray(_hist) ? _hist : []).catch((err) => {
+                  console.warn('Gagal menulis history ke Firebase Cloud:', err);
+                });
+              }
             } catch (err) {}
           }
         }, 120);

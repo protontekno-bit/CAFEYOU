@@ -5,7 +5,7 @@ import { useKaraoke } from '../../hooks/useKaraoke';
 import { useYouTubePlayer } from '../../hooks/useYouTubePlayer';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { AppRole, LiveReactionEvent } from '../../types';
-import { initFirebaseDatabase, ref, set } from '../../config/firebase';
+import { initFirebaseDatabase, ref, set, onValue } from '../../config/firebase';
 import { STORAGE_KEY } from '../../constants/karaoke';
 
 interface PlayerScreenProps {
@@ -24,7 +24,13 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
   const playerWrapperRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
-  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('cafeyou_player_unlocked') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const lastProcessedReactionRef = useRef<string | null>(null);
 
   // Mencegah layar proyektor redup/mati otomatis
@@ -32,7 +38,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
 
   const { state, currentSong, nextSongs, nextSong } = useKaraoke();
 
-  const { errorNotice } = useYouTubePlayer({
+  const { player, errorNotice } = useYouTubePlayer({
     containerRef,
     appState: state,
     onSongEnd: () => {
@@ -42,6 +48,54 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
       nextSong();
     },
   });
+
+  const handleUnlockAudio = () => {
+    setAudioUnlocked(true);
+    try {
+      sessionStorage.setItem('cafeyou_player_unlocked', 'true');
+    } catch {}
+
+    // Buka kunci Web Audio API
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        const ctx = new AudioContextClass();
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+      }
+    } catch {}
+
+    // Buka kunci suara pada instance YouTube Player
+    try {
+      if (player && typeof player.unMute === 'function') {
+        player.unMute();
+        player.setVolume(state?.volume ?? 100);
+        if (state?.playbackStatus === 'PLAYING' && typeof player.playVideo === 'function') {
+          player.playVideo();
+        }
+      }
+    } catch {}
+  };
+
+  // Dengarkan perintah remote dari Operator (misal: reload layar proyektor)
+  useEffect(() => {
+    const mountTime = Date.now();
+    const db = initFirebaseDatabase();
+    if (!db) return;
+
+    try {
+      const cmdRef = ref(db, `cafeyou/player_commands/${STORAGE_KEY}`);
+      const unsub = onValue(cmdRef, (snap) => {
+        const val = snap.val();
+        if (val && val.command === 'reload' && val.timestamp > mountTime) {
+          console.log('Menerima perintah muat ulang remote dari operator...');
+          window.location.reload();
+        }
+      });
+      return () => unsub();
+    } catch {}
+  }, []);
 
   // Kirim sinyal detak jantung (heartbeat) ke Firebase agar Operator tahu Proyektor online
   useEffect(() => {
@@ -111,6 +165,32 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
       ref={playerWrapperRef}
       className="w-full h-screen bg-black relative group flex items-center justify-center overflow-hidden font-sans select-none"
     >
+      {/* Interactive Audio Unlock Gesture Banner (Mengatasi Autoplay Policy Browser) */}
+      {!audioUnlocked && (
+        <div
+          onClick={handleUnlockAudio}
+          className="absolute inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 cursor-pointer text-center animate-fadeIn group/unlock select-none"
+        >
+          <div className="p-6 rounded-3xl bg-slate-900/95 border border-purple-500/50 shadow-2xl shadow-purple-500/30 max-w-sm flex flex-col items-center gap-3.5 transition-transform duration-300 group-hover/unlock:scale-105">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-3xl shadow-lg shadow-purple-500/40 animate-pulse">
+              🔊
+            </div>
+            <h3 className="text-base font-extrabold text-white tracking-wide">
+              Layar Proyektor TV Siap
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Klik di mana saja pada layar ini untuk membuka kunci suara & pemutaran otomatis YouTube.
+            </p>
+            <button
+              type="button"
+              className="mt-1.5 px-6 py-2.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-500/30 transition-all active:scale-95 cursor-pointer"
+            >
+              Aktifkan Audio Proyektor 🎤
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Floating Header Controls (Muncul saat hover mouse) */}
       <div className="absolute top-4 left-4 right-4 z-40 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-auto">
         <div className="flex items-center gap-2">

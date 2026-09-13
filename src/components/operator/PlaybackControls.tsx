@@ -7,7 +7,7 @@ import {
   VolumeMuteIcon,
 } from '../icons/Icons';
 import { PlaybackStatus, SoundEffectType } from '../../types';
-import { initFirebaseDatabase, ref, onValue } from '../../config/firebase';
+import { initFirebaseDatabase, ref, onValue, set } from '../../config/firebase';
 import { STORAGE_KEY } from '../../constants/karaoke';
 
 interface PlaybackControlsProps {
@@ -59,6 +59,17 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     return () => unsub();
   }, []);
 
+  const handleRemoteReloadPlayer = () => {
+    if (!window.confirm('Kirim sinyal muat ulang (reload) ke layar proyektor TV?')) return;
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const cmdRef = ref(db, `cafeyou/player_commands/${STORAGE_KEY}`);
+        set(cmdRef, { command: 'reload', timestamp: Date.now() }).catch(() => {});
+      }
+    } catch {}
+  };
+
   return (
     <div className="bg-slate-800/95 rounded-2xl p-5 shadow-xl border border-slate-700/60 space-y-4">
       <div className="flex justify-between items-center">
@@ -77,6 +88,17 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
             <span className={`w-2 h-2 rounded-full ${isPlayerOnline ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]' : 'bg-slate-500'}`} />
             <span>TV: {isPlayerOnline ? 'Online' : 'Offline'}</span>
           </span>
+          {isPlayerOnline && (
+            <button
+              type="button"
+              onClick={handleRemoteReloadPlayer}
+              className="text-[10px] font-bold text-slate-300 hover:text-white bg-slate-700/60 hover:bg-slate-700 px-2 py-0.5 rounded-full border border-slate-600/50 flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+              title="Kirim sinyal muat ulang (reload) ke layar proyektor TV jika video macet"
+            >
+              <span>🔄</span>
+              <span>Reload TV</span>
+            </button>
+          )}
           {hasCurrentSong && (
             <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />

@@ -63,6 +63,7 @@ export function useYouTubePlayer({
           rel: 0,
           modestbranding: 1,
           iv_load_policy: 3,
+          playsinline: 1,
         },
         events: {
           onReady: (event: any) => {
@@ -81,12 +82,19 @@ export function useYouTubePlayer({
             const currentSong = queue[0];
             if (currentSong) {
               lastPlayedSongIdRef.current = currentSong.id;
-              event.target.loadVideoById(currentSong.videoId);
+              event.target.loadVideoById({
+                videoId: currentSong.videoId,
+                suggestedQuality: 'hd720',
+              });
             }
           },
           onStateChange: (event: any) => {
             if (event.data === window.YT.PlayerState.ENDED) {
               onSongEnd();
+            } else if (event.data === window.YT.PlayerState.PLAYING) {
+              if (typeof event.target.setPlaybackQuality === 'function') {
+                event.target.setPlaybackQuality('hd720');
+              }
             }
           },
           onError: (event: any) => {
@@ -134,7 +142,10 @@ export function useYouTubePlayer({
         if (isNewSongInstance || playingId !== currentSong.videoId) {
           lastPlayedSongIdRef.current = currentSong.id;
           setErrorNotice(null);
-          player.loadVideoById(currentSong.videoId);
+          player.loadVideoById({
+            videoId: currentSong.videoId,
+            suggestedQuality: 'hd720',
+          });
         }
 
         // 3. Play / Pause flexibility

@@ -321,8 +321,8 @@ export const GuestKaraokeTab: React.FC<GuestKaraokeTabProps> = ({
                 </div>
               )}
 
-              {/* Song Results List */}
-              <div className="space-y-2 max-h-[52vh] overflow-y-auto pr-1 custom-scrollbar">
+              {/* Song Results List — Katalog Lokal Kafe */}
+              <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1 custom-scrollbar">
                 {filteredCatalog.length > 0 ? (
                   filteredCatalog.map((song) => (
                     <div
@@ -361,28 +361,94 @@ export const GuestKaraokeTab: React.FC<GuestKaraokeTabProps> = ({
                       </button>
                     </div>
                   ))
-                ) : (
-                  <div className="py-8 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-slate-800 p-4 space-y-3">
+                ) : searchQuery && !cafeSettings?.youtubeApiKey ? (
+                  <div className="py-6 text-center text-slate-400 text-xs bg-slate-900/40 rounded-2xl border border-slate-800 p-4 space-y-3">
                     <div>Lagu &quot;{searchQuery}&quot; tidak ada di daftar koleksi lokal kafe.</div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchSource('youtube');
-                        if (cafeSettings?.youtubeApiKey) {
-                          performYouTubeSearch(searchQuery.trim());
-                        }
-                      }}
-                      className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-xs rounded-xl shadow-md shadow-red-600/30 transition-all flex items-center gap-2 mx-auto"
-                    >
-                      <span className="text-sm">🔴</span>
-                      <span>Cari &quot;{searchQuery}&quot; di YouTube Langsung ➔</span>
-                    </button>
                     <div className="text-[10px] text-slate-500">
-                      Atau salin link video dari aplikasi YouTube lalu klik tombol <strong>📋 Tempel</strong> di atas.
+                      Salin link video dari aplikasi YouTube lalu klik tombol <strong>📋 Tempel</strong> di atas.
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
+
+              {/* ===== HASIL YOUTUBE OTOMATIS (muncul saat mengetik + ada API key) ===== */}
+              {searchQuery.trim().length >= 2 && cafeSettings?.youtubeApiKey && (
+                <div className="space-y-2 mt-1">
+                  {/* Header Divider YouTube */}
+                  <div className="flex items-center gap-2 text-[11px] text-slate-500 font-bold">
+                    <span className="flex-1 h-px bg-slate-800" />
+                    <span className="flex items-center gap-1.5">
+                      {isSearchingYt ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                          <span className="text-red-400">Mencari di YouTube...</span>
+                        </>
+                      ) : ytSearchResults.length > 0 ? (
+                        <>
+                          <span className="text-red-400">🔴</span>
+                          <span>Hasil YouTube ({ytSearchResults.length})</span>
+                        </>
+                      ) : ytSearchError ? (
+                        <>
+                          <span>⚠️</span>
+                          <span className="text-amber-400">YouTube tidak tersedia</span>
+                        </>
+                      ) : null}
+                    </span>
+                    <span className="flex-1 h-px bg-slate-800" />
+                  </div>
+
+                  {/* Error YouTube */}
+                  {ytSearchError && !isSearchingYt && (
+                    <div className="p-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl text-[11px] text-amber-200 text-center">
+                      Pencarian YouTube penuh. Tempel link dari YouTube atau pilih dari koleksi kafe.
+                    </div>
+                  )}
+
+                  {/* Daftar Hasil YouTube */}
+                  {!isSearchingYt && !ytSearchError && ytSearchResults.length > 0 && (
+                    <div className="space-y-2 max-h-[38vh] overflow-y-auto pr-1 custom-scrollbar">
+                      {ytSearchResults.map((video) => (
+                        <div
+                          key={video.videoId}
+                          className="p-2.5 bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-red-500/40 rounded-2xl flex items-center justify-between gap-3 transition-all shadow-sm"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <img
+                              src={video.thumbnail}
+                              alt={video.title}
+                              className="w-12 h-9 object-cover rounded-xl shrink-0 border border-slate-800 bg-slate-950"
+                              loading="lazy"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-white line-clamp-2 leading-tight">
+                                {video.title}
+                              </div>
+                              {video.channelTitle && (
+                                <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                  📺 {video.channelTitle}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleAddSong(video.videoId, video.title, `https://www.youtube.com/watch?v=${video.videoId}`)}
+                            disabled={isQuotaExhausted || isSubmitting}
+                            className="px-3 py-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl text-xs font-extrabold transition-all shrink-0 active:scale-95 shadow-md shadow-red-600/20 flex items-center gap-1"
+                          >
+                            <span>+ Putar</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 

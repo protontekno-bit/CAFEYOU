@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   KaraokeState,
   MenuItem,
@@ -18,6 +18,9 @@ export function useOrderBilling(
   appState: KaraokeState,
   updateAppState: (updater: (prev: KaraokeState) => KaraokeState) => void
 ) {
+  const updateAppStateRef = useRef(updateAppState);
+  updateAppStateRef.current = updateAppState;
+
   // Dedicated Real-time Listener untuk tableOrders langsung dari Firebase RTDB
   useEffect(() => {
     const db = initFirebaseDatabase();
@@ -28,7 +31,7 @@ export function useOrderBilling(
       const unsubOrders = onValue(ordersRef, (snapshot) => {
         const cloudOrders = snapshot.exists() ? snapshot.val() : {};
         if (cloudOrders && typeof cloudOrders === 'object') {
-          updateAppState((prev) => {
+          updateAppStateRef.current((prev) => {
             const currentOrders = prev?.tableOrders || {};
             const prevStr = JSON.stringify(currentOrders);
             const cloudStr = JSON.stringify(cloudOrders);
@@ -47,7 +50,7 @@ export function useOrderBilling(
     } catch (err) {
       console.warn('Gagal memasang realtime listener tableOrders:', err);
     }
-  }, [updateAppState]);
+  }, []);
 
   const menuItems: Record<string, MenuItem> =
     appState?.menuItems && typeof appState.menuItems === 'object'

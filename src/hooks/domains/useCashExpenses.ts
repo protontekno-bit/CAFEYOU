@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { KaraokeState, ExpenseItem, ExpenseCategory } from '../../types';
 import { STORAGE_KEY } from '../../constants/karaoke';
 import { initFirebaseDatabase, ref, onValue, set } from '../../config/firebase';
@@ -7,6 +7,9 @@ export function useCashExpenses(
   appState: KaraokeState,
   updateAppState: (updater: (prev: KaraokeState) => KaraokeState) => void
 ) {
+  const updateAppStateRef = useRef(updateAppState);
+  updateAppStateRef.current = updateAppState;
+
   // Dedicated Real-time Listener untuk expenses (kas keluar) langsung dari Firebase RTDB
   useEffect(() => {
     const db = initFirebaseDatabase();
@@ -17,7 +20,7 @@ export function useCashExpenses(
       const unsubExpenses = onValue(expensesRef, (snapshot) => {
         const cloudExpenses = snapshot.exists() ? snapshot.val() : {};
         if (cloudExpenses && typeof cloudExpenses === 'object') {
-          updateAppState((prev) => {
+          updateAppStateRef.current((prev) => {
             const currentExpenses = prev?.expenses || {};
             const prevStr = JSON.stringify(currentExpenses);
             const cloudStr = JSON.stringify(cloudExpenses);
@@ -36,7 +39,7 @@ export function useCashExpenses(
     } catch (err) {
       console.warn('Gagal memasang realtime listener expenses:', err);
     }
-  }, [updateAppState]);
+  }, []);
 
   const expenses: Record<string, ExpenseItem> =
     appState?.expenses && typeof appState.expenses === 'object' ? appState.expenses : {};

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { BROADCAST_CHANNEL_NAME } from '../constants/karaoke';
 import { SyncMessage } from '../types';
 import { initFirebaseDatabase, ref, onValue, set, update } from '../config/firebase';
@@ -287,7 +287,7 @@ export function useSyncState<T>(
   }
 
   // 3. Fungsi Pembaruan State (Multi-target: Local State + LocalStorage + Broadcast + Firebase)
-  const updateState = (newValueOrFunction: T | ((prev: T) => T)) => {
+  const updateState = useCallback((newValueOrFunction: T | ((prev: T) => T)) => {
     setState((prevState) => {
       const computed =
         typeof newValueOrFunction === 'function'
@@ -390,7 +390,7 @@ export function useSyncState<T>(
 
       return newValue;
     });
-  };
+  }, [key, initialState]);
 
   return [state, updateState, isCloudConnected];
 }

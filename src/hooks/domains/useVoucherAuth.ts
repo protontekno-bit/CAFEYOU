@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
 import { KaraokeState, Voucher, CafeSettings } from '../../types';
 import { STORAGE_KEY, DEFAULT_CAFE_SETTINGS, DEFAULT_TABLES } from '../../constants/karaoke';
-import { initFirebaseDatabase, ref, onValue, set, get } from '../../config/firebase';
+import { initFirebaseDatabase, ref, set, get } from '../../config/firebase';
 
 import { normalizeTable, isSameTable } from '../../utils/table';
 export { normalizeTable, isSameTable };
@@ -10,59 +9,11 @@ export function useVoucherAuth(
   appState: KaraokeState,
   updateAppState: (updater: (prev: KaraokeState) => KaraokeState) => void
 ) {
-  // 1. Dedicated Real-time Listeners untuk vouchers dan tables dari Firebase RTDB
-  useEffect(() => {
-    const db = initFirebaseDatabase();
-    if (!db) return;
-
-    try {
-      // Realtime listener untuk vouchers
-      const vouchersRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers`);
-      const unsubVouchers = onValue(vouchersRef, (snapshot) => {
-        const cloudVouchers = snapshot.exists() ? snapshot.val() : {};
-        if (cloudVouchers && typeof cloudVouchers === 'object') {
-          updateAppState((prev) => {
-            const current = prev?.vouchers || {};
-            if (JSON.stringify(current) === JSON.stringify(cloudVouchers)) return prev;
-            return {
-              ...prev,
-              vouchers: cloudVouchers,
-            };
-          });
-        }
-      });
-
-      // Realtime listener untuk tables
-      const tablesRef = ref(db, `cafeyou/${STORAGE_KEY}/tables`);
-      const unsubTables = onValue(tablesRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const cloudTables = snapshot.val();
-          const list = Array.isArray(cloudTables)
-            ? cloudTables
-            : typeof cloudTables === 'object' && cloudTables !== null
-            ? Object.values(cloudTables)
-            : null;
-          if (list && list.length > 0) {
-            updateAppState((prev) => {
-              const current = prev?.tables || [];
-              if (JSON.stringify(current) === JSON.stringify(list)) return prev;
-              return {
-                ...prev,
-                tables: list as string[],
-              };
-            });
-          }
-        }
-      });
-
-      return () => {
-        unsubVouchers();
-        unsubTables();
-      };
-    } catch (err) {
-      console.warn('Gagal memasang realtime listener vouchers/tables:', err);
-    }
-  }, [updateAppState]);
+  // CATATAN ARSITEKTUR: Listener Firebase untuk /vouchers dan /tables DIHAPUS dari sini.
+  // Alasan: Listener sub-node ini memanggil updateAppState, yang memicu useSyncState.updateState,
+  // yang menjadwal Firebase write tanpa vouchers (debounce 120ms) → menghapus vouchers dari Firebase.
+  // useSyncState root onValue listener sudah menangani sinkronisasi seluruh state (termasuk
+  // vouchers & tables) secara aman melalui sanitizeState dengan prevState sebagai fallback.
 
   const vouchers =
     appState?.vouchers && typeof appState.vouchers === 'object' ? appState.vouchers : {};

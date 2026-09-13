@@ -72,16 +72,16 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
   const isDirectQr = Boolean(urlTable);
 
   const [tableNumber, setTableNumber] = useState<string>(() => {
-    if (urlTable) return urlTable;
     try {
       const saved = sessionStorage.getItem('cafeyou_guest_table');
-      if (saved) return saved;
+      if (saved && saved.trim()) return saved.trim();
     } catch {}
+    if (urlTable) return urlTable;
     return '';
   });
 
   const [isTableSelectorOpen, setIsTableSelectorOpen] = useState<boolean>(
-    !isDirectQr && !tableNumber
+    !tableNumber
   );
 
   // Digital Receipt Modal for Guests (E-Billing)
@@ -108,15 +108,41 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
   });
 
   const handleSelectTable = (selected: string) => {
-    setTableNumber(selected);
+    const cleanTable = selected.trim();
+    if (!cleanTable) return;
+
+    setTableNumber(cleanTable);
     try {
-      sessionStorage.setItem('cafeyou_guest_table', selected);
+      sessionStorage.setItem('cafeyou_guest_table', cleanTable);
     } catch {}
+
+    // Update query parameter di URL hash / search jika ada agar tidak revert saat refresh
+    try {
+      const hash = window.location.hash;
+      const qIdx = hash.indexOf('?');
+      if (qIdx !== -1) {
+        const baseHash = hash.substring(0, qIdx);
+        const params = new URLSearchParams(hash.substring(qIdx));
+        params.set('table', cleanTable);
+        window.history.replaceState(null, '', `${baseHash}?${params.toString()}`);
+      } else if (window.location.search) {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.has('table')) {
+          searchParams.set('table', cleanTable);
+          window.history.replaceState(
+            null,
+            '',
+            `${window.location.pathname}?${searchParams.toString()}${window.location.hash}`
+          );
+        }
+      }
+    } catch {}
+
     setIsTableSelectorOpen(false);
 
     // Coba restore voucher untuk meja baru
     try {
-      const saved = sessionStorage.getItem(`cafeyou_voucher_${selected}`);
+      const saved = sessionStorage.getItem(`cafeyou_voucher_${cleanTable}`);
       if (saved) {
         setActiveVoucher(JSON.parse(saved));
       } else {
@@ -771,7 +797,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           }}
           validateVoucher={validateVoucher}
           onBackToLanding={setRole ? () => setRole('landing') : undefined}
-          onChangeTable={!isDirectQr ? () => setIsTableSelectorOpen(true) : undefined}
+          onChangeTable={() => setIsTableSelectorOpen(true)}
           onSkipToMenu={() => {
             setIsBrowsingFnbWithoutVoucher(true);
             setMainTab('fnb');
@@ -805,19 +831,15 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
               {cafeSettings?.name || 'CAFEYOU'} Portal
             </div>
             <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
-              {!isDirectQr ? (
-                <button
-                  type="button"
-                  onClick={() => setIsTableSelectorOpen(true)}
-                  className="text-purple-300 hover:text-purple-200 underline underline-offset-2 flex items-center gap-1 font-bold group cursor-pointer"
-                  title="Klik untuk mengganti nomor meja"
-                >
-                  <span>{tableNumber}</span>
-                  <span className="text-[8px] bg-purple-500/25 text-purple-300 px-1 py-0.2 rounded group-hover:bg-purple-500/40">Ganti</span>
-                </button>
-              ) : (
-                <span className="text-purple-300 font-bold">{tableNumber}</span>
-              )}
+              <button
+                type="button"
+                onClick={() => setIsTableSelectorOpen(true)}
+                className="text-purple-300 hover:text-purple-200 underline underline-offset-2 flex items-center gap-1 font-bold group cursor-pointer"
+                title="Klik untuk mengganti nomor meja"
+              >
+                <span>{tableNumber}</span>
+                <span className="text-[8px] bg-purple-500/25 text-purple-300 px-1 py-0.2 rounded group-hover:bg-purple-500/40">Ganti</span>
+              </button>
               <span className={`flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
                 isCloudConnected
                   ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30'

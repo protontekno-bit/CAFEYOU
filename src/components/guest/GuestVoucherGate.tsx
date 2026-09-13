@@ -143,15 +143,19 @@ export const GuestVoucherGate: React.FC<GuestVoucherGateProps> = ({
               {onChangeTable ? (
                 <button
                   type="button"
-                  onClick={onChangeTable}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 rounded-full text-purple-300 text-[10px] font-extrabold uppercase tracking-wider mb-1 transition-colors group cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onChangeTable();
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 border border-purple-500/40 rounded-full text-purple-200 text-xs font-extrabold uppercase tracking-wider mb-1.5 transition-all group cursor-pointer shadow-sm"
                   title="Klik untuk mengganti nomor meja"
                 >
                   <span>📍 {tableNumber || 'Pilih Meja'}</span>
-                  <span className="text-[9px] text-purple-400 group-hover:text-purple-200 underline">Ganti</span>
+                  <span className="text-[9px] bg-purple-400/30 group-hover:bg-purple-400/50 text-white px-1.5 py-0.2 rounded-full font-bold underline">Ganti Meja</span>
                 </button>
               ) : (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-purple-500/15 border border-purple-500/30 rounded-full text-purple-300 text-[10px] font-extrabold uppercase tracking-wider mb-1">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-purple-200 text-xs font-extrabold uppercase tracking-wider mb-1.5">
                   <span>📍 {tableNumber || 'Meja Kafe'}</span>
                 </div>
               )}

@@ -211,7 +211,9 @@ export function useSyncState<T>(
 
       channel.onmessage = (event: MessageEvent<SyncMessage<T>>) => {
         if (event.data && event.data.key === key) {
-          setState(sanitizeState<T>(event.data.value, initialState));
+          // Gunakan setState callback agar prevState tersedia sebagai currentState
+          // Ini mencegah vouchers/tableOrders/expenses terhapus saat sync antar-tab
+          setState((prevState) => sanitizeState<T>(event.data.value, initialState, prevState));
         }
       };
 

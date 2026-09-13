@@ -72,15 +72,18 @@ export function useVoucherAuth(
 
   const createVoucher = (tableNumber: string, quota: number = 3): Voucher => {
     // Generate unique 4-digit code that does not collide with existing vouchers
-    const existingCodes = new Set(Object.keys(vouchers));
-    let randomCode = Math.floor(1000 + Math.random() * 9000).toString();
-    while (existingCodes.has(randomCode)) {
-      randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    // Key selalu uppercase agar konsisten antara Firebase, state lokal, dan validasi tamu
+    const existingCodes = new Set(
+      Object.keys(vouchers).map((k) => k.toUpperCase())
+    );
+    let voucherCode = Math.floor(1000 + Math.random() * 9000).toString();
+    while (existingCodes.has(voucherCode.toUpperCase())) {
+      voucherCode = Math.floor(1000 + Math.random() * 9000).toString();
     }
 
     const normalizedTable = normalizeTable(tableNumber) || 'Meja Umum';
     const newVoucher: Voucher = {
-      code: randomCode,
+      code: voucherCode,          // kode yang ditampilkan ke tamu
       tableNumber: normalizedTable,
       quotaTotal: quota,
       quotaUsed: 0,
@@ -88,12 +91,12 @@ export function useVoucherAuth(
       status: 'active',
     };
 
-    const cleanCode = randomCode.toUpperCase().trim();
     // 1. Tulis langsung ke Firebase RTDB secara atomik
+    //    Key di Firebase = voucherCode (4 digit angka, konsisten dengan state lokal)
     try {
       const db = initFirebaseDatabase();
       if (db) {
-        const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${cleanCode}`);
+        const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${voucherCode}`);
         set(vRef, newVoucher).catch((err) => {
           console.warn('Gagal simpan voucher ke Firebase RTDB:', err);
         });
@@ -101,6 +104,7 @@ export function useVoucherAuth(
     } catch (err) {}
 
     // 2. Pembaruan optimistik ke state lokal
+    //    Key di state lokal = voucherCode (sama dengan Firebase key)
     updateAppState((prev) => {
       const currentVouchers =
         prev?.vouchers && typeof prev.vouchers === 'object' ? { ...prev.vouchers } : {};
@@ -108,7 +112,7 @@ export function useVoucherAuth(
         ...prev,
         vouchers: {
           ...currentVouchers,
-          [randomCode]: newVoucher,
+          [voucherCode]: newVoucher,
         },
       };
     });

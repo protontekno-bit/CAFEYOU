@@ -59,6 +59,79 @@ export function useOrderBilling(
       ? appState.tableOrders
       : {};
 
+  // Helper untuk mencari order berdasarkan ID baik dari key map ataupun id property
+  const findOrder = (orderId: string): TableOrder | null => {
+    if (tableOrders && tableOrders[orderId]) return tableOrders[orderId];
+    if (tableOrders) {
+      const found = Object.values(tableOrders).find((o) => o && o.id === orderId);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  // Helper mutasi atomik langsung ke node Firebase RTDB dan state lokal
+  const mutateAndSyncOrder = (
+    orderId: string,
+    transform: (currentOrder: TableOrder) => TableOrder | null
+  ) => {
+    let orderToSync: TableOrder | null = null;
+    let targetKey = orderId;
+
+    const target = findOrder(orderId);
+    if (target) {
+      targetKey = target.id || orderId;
+      orderToSync = transform(target);
+    }
+
+    if (orderToSync) {
+      try {
+        const db = initFirebaseDatabase();
+        if (db) {
+          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${targetKey}`);
+          set(orderRef, JSON.parse(JSON.stringify(orderToSync))).catch((err) => {
+            console.warn('Gagal sinkronisasi pesanan ke Firebase RTDB:', err);
+          });
+        }
+      } catch (err) {
+        console.warn('Error Firebase RTDB:', err);
+      }
+    }
+
+    updateAppState((prev) => {
+      const currentOrders =
+        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
+
+      const localTarget =
+        currentOrders[orderId] || Object.values(currentOrders).find((o) => o && o.id === orderId);
+      if (!localTarget && !orderToSync) return prev;
+
+      const finalUpdated = orderToSync || (localTarget ? transform(localTarget) : null);
+      if (!finalUpdated) return prev;
+
+      const finalKey = finalUpdated.id || targetKey;
+
+      if (!orderToSync) {
+        try {
+          const db = initFirebaseDatabase();
+          if (db) {
+            const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${finalKey}`);
+            set(orderRef, JSON.parse(JSON.stringify(finalUpdated))).catch((err) => {
+              console.warn('Gagal sinkronisasi fallback ke Firebase RTDB:', err);
+            });
+          }
+        } catch (err) {}
+      }
+
+      return {
+        ...prev,
+        tableOrders: {
+          ...currentOrders,
+          [finalKey]: finalUpdated,
+        },
+      };
+    });
+  };
+
   const createTableOrder = async (
     tableNumber: string,
     customerName: string,
@@ -158,17 +231,14 @@ export function useOrderBilling(
       roundingAmount?: number;
     }
   ) => {
-    let updatedTarget: TableOrder | null = null;
-    updateAppState((prev) => {
-      const currentOrders =
-        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
-      const target = currentOrders[orderId];
-      if (!target) return prev;
+    mutateAndSyncOrder(orderId, (target) => {
+      const isPaid = status === 'paid' || (status as string).toLowerCase() === 'paid';
+      const isCancelled = status === 'cancelled' || (status as string).toLowerCase() === 'cancelled';
 
-      updatedTarget = {
+      return {
         ...target,
         status,
-        ...(status === 'paid' || (status as string).toLowerCase() === 'paid'
+        ...(isPaid
           ? {
               paidAt: Date.now(),
               paymentMethod: paymentMethod || 'cash',
@@ -179,28 +249,9 @@ export function useOrderBilling(
               roundingAmount: financials?.roundingAmount || 0,
             }
           : {}),
-        ...((status === 'cancelled' || (status as string).toLowerCase() === 'cancelled') ? { cancelReason: cancelReason || 'Dibatalkan oleh Kasir' } : {}),
-      };
-
-      currentOrders[orderId] = updatedTarget;
-
-      return {
-        ...prev,
-        tableOrders: currentOrders,
+        ...(isCancelled ? { cancelReason: cancelReason || 'Dibatalkan oleh Kasir' } : {}),
       };
     });
-
-    if (updatedTarget) {
-      try {
-        const db = initFirebaseDatabase();
-        if (db) {
-          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
-          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
-            console.warn('Gagal update status pesanan di Firebase:', err);
-          });
-        }
-      } catch (err) {}
-    }
   };
 
   const addMenuItem = (item: Omit<MenuItem, 'id'>) => {
@@ -291,17 +342,11 @@ export function useOrderBilling(
   };
 
   const moveTableOrder = (orderId: string, newTableNumber: string) => {
-    let updatedTarget: TableOrder | null = null;
-    updateAppState((prev) => {
-      const currentOrders =
-        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
-      const target = currentOrders[orderId];
-      if (!target) return prev;
-
+    mutateAndSyncOrder(orderId, (target) => {
       const oldTable = target.tableNumber;
       const history = target.tableMoveHistory || [];
 
-      updatedTarget = {
+      return {
         ...target,
         tableNumber: newTableNumber,
         tableMoveHistory: [
@@ -309,35 +354,12 @@ export function useOrderBilling(
           { from: oldTable, to: newTableNumber, movedAt: Date.now() },
         ],
       };
-
-      currentOrders[orderId] = updatedTarget;
-
-      return {
-        ...prev,
-        tableOrders: currentOrders,
-      };
     });
-
-    if (updatedTarget) {
-      try {
-        const db = initFirebaseDatabase();
-        if (db) {
-          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
-          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
-            console.warn('Gagal update perpindahan meja di Firebase:', err);
-          });
-        }
-      } catch (err) {}
-    }
   };
 
   const voidOrderItem = (orderId: string, itemIndex: number, reason?: string) => {
-    let updatedTarget: TableOrder | null = null;
-    updateAppState((prev) => {
-      const currentOrders =
-        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
-      const target = currentOrders[orderId];
-      if (!target || !target.items || !target.items[itemIndex]) return prev;
+    mutateAndSyncOrder(orderId, (target) => {
+      if (!target.items || !target.items[itemIndex]) return target;
 
       const updatedItems = target.items.map((it, idx) => {
         if (idx === itemIndex) {
@@ -356,31 +378,12 @@ export function useOrderBilling(
         return acc + it.price * count;
       }, 0);
 
-      updatedTarget = {
+      return {
         ...target,
         items: updatedItems,
         totalAmount: newTotal,
       };
-
-      currentOrders[orderId] = updatedTarget;
-
-      return {
-        ...prev,
-        tableOrders: currentOrders,
-      };
     });
-
-    if (updatedTarget) {
-      try {
-        const db = initFirebaseDatabase();
-        if (db) {
-          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
-          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
-            console.warn('Gagal void item di Firebase:', err);
-          });
-        }
-      } catch (err) {}
-    }
   };
 
   const toggleOrderItemStatus = (
@@ -388,12 +391,8 @@ export function useOrderBilling(
     itemIndex: number,
     field: 'isCooked' | 'isServed'
   ) => {
-    let updatedTarget: TableOrder | null = null;
-    updateAppState((prev) => {
-      const currentOrders =
-        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
-      const target = currentOrders[orderId];
-      if (!target || !target.items || !target.items[itemIndex]) return prev;
+    mutateAndSyncOrder(orderId, (target) => {
+      if (!target.items || !target.items[itemIndex]) return target;
 
       const updatedItems = target.items.map((it, idx) => {
         if (idx === itemIndex) {
@@ -418,30 +417,12 @@ export function useOrderBilling(
         nextStatus = 'READY';
       }
 
-      updatedTarget = {
+      return {
         ...target,
         items: updatedItems,
         status: nextStatus,
       };
-
-      currentOrders[orderId] = updatedTarget;
-      return {
-        ...prev,
-        tableOrders: currentOrders,
-      };
     });
-
-    if (updatedTarget) {
-      try {
-        const db = initFirebaseDatabase();
-        if (db) {
-          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
-          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
-            console.warn('Gagal update item status di Firebase:', err);
-          });
-        }
-      } catch (err) {}
-    }
   };
 
   const updateOrderItemsBulkStatus = (
@@ -450,12 +431,8 @@ export function useOrderBilling(
     value: boolean,
     station: KitchenStationFilter = 'ALL'
   ) => {
-    let updatedTarget: TableOrder | null = null;
-    updateAppState((prev) => {
-      const currentOrders =
-        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
-      const target = currentOrders[orderId];
-      if (!target || !target.items) return prev;
+    mutateAndSyncOrder(orderId, (target) => {
+      if (!target.items) return target;
 
       const updatedItems = target.items.map((it) => {
         if (it.isVoided) return it;
@@ -497,40 +474,16 @@ export function useOrderBilling(
         }
       }
 
-      updatedTarget = {
+      return {
         ...target,
         items: updatedItems,
         status: nextStatus,
       };
-
-      currentOrders[orderId] = updatedTarget;
-      return {
-        ...prev,
-        tableOrders: currentOrders,
-      };
     });
-
-    if (updatedTarget) {
-      try {
-        const db = initFirebaseDatabase();
-        if (db) {
-          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
-          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
-            console.warn('Gagal update bulk item status di Firebase:', err);
-          });
-        }
-      } catch (err) {}
-    }
   };
 
   const revertTableOrderStatus = (orderId: string) => {
-    let updatedTarget: TableOrder | null = null;
-    updateAppState((prev) => {
-      const currentOrders =
-        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
-      const target = currentOrders[orderId];
-      if (!target) return prev;
-
+    mutateAndSyncOrder(orderId, (target) => {
       const s = target.status?.toLowerCase();
       let nextStatus: OrderStatus = 'pending';
       let resetItems = target.items ? [...target.items] : [];
@@ -545,33 +498,15 @@ export function useOrderBilling(
         nextStatus = 'pending';
         resetItems = resetItems.map((it) => ({ ...it, isCooked: false, isServed: false }));
       } else {
-        return prev;
+        return target;
       }
 
-      updatedTarget = {
+      return {
         ...target,
         status: nextStatus,
         items: resetItems,
       };
-
-      currentOrders[orderId] = updatedTarget;
-      return {
-        ...prev,
-        tableOrders: currentOrders,
-      };
     });
-
-    if (updatedTarget) {
-      try {
-        const db = initFirebaseDatabase();
-        if (db) {
-          const orderRef = ref(db, `cafeyou/${STORAGE_KEY}/tableOrders/${orderId}`);
-          set(orderRef, JSON.parse(JSON.stringify(updatedTarget))).catch((err) => {
-            console.warn('Gagal revert status pesanan di Firebase:', err);
-          });
-        }
-      } catch (err) {}
-    }
   };
 
   const confirmTableOrder = (orderId: string) => {
@@ -579,21 +514,21 @@ export function useOrderBilling(
   };
 
   const clearFinishedOrders = () => {
-    let activeOnly: Record<string, TableOrder> = {};
-    updateAppState((prev) => {
-      const currentOrders =
-        prev?.tableOrders && typeof prev.tableOrders === 'object' ? { ...prev.tableOrders } : {};
-      activeOnly = {};
-      Object.entries(currentOrders).forEach(([id, ord]) => {
-        const s = ord.status?.toLowerCase();
-        if (s === 'pending' || s === 'confirmed' || s === 'preparing' || s === 'cooking' || s === 'ready' || s === 'served') {
-          activeOnly[id] = ord;
-        }
-      });
-      return {
-        ...prev,
-        tableOrders: activeOnly,
-      };
+    const currentOrders =
+      tableOrders && typeof tableOrders === 'object' ? { ...tableOrders } : {};
+    const activeOnly: Record<string, TableOrder> = {};
+    Object.entries(currentOrders).forEach(([id, ord]) => {
+      const s = ord.status?.toLowerCase();
+      if (
+        s === 'pending' ||
+        s === 'confirmed' ||
+        s === 'preparing' ||
+        s === 'cooking' ||
+        s === 'ready' ||
+        s === 'served'
+      ) {
+        activeOnly[id] = ord;
+      }
     });
 
     try {
@@ -605,6 +540,11 @@ export function useOrderBilling(
         });
       }
     } catch (err) {}
+
+    updateAppState((prev) => ({
+      ...prev,
+      tableOrders: activeOnly,
+    }));
   };
 
   return {

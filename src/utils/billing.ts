@@ -65,6 +65,22 @@ export const isDrinkItem = (item: { category?: string; name?: string }): boolean
     return true;
   }
   const n = (item.name || '').toLowerCase();
+
+  // Kecualikan makanan yang mungkin memuat substring 'rice', 'steak', dsb
+  if (
+    n.includes('rice') ||
+    n.includes('nasi') ||
+    n.includes('steak') ||
+    n.includes('goreng') ||
+    n.includes('bakar') ||
+    n.includes('mie') ||
+    n.includes('ayam') ||
+    n.includes('sapi') ||
+    n.includes('kentang')
+  ) {
+    return false;
+  }
+
   if (
     n.includes('kopi') ||
     n.includes('coffee') ||
@@ -77,8 +93,10 @@ export const isDrinkItem = (item: { category?: string; name?: string }): boolean
     n.includes('affogato') ||
     n.includes('frappe') ||
     n.includes('brew') ||
-    n.includes('tea') ||
-    n.includes('teh') ||
+    /\b(tea|teh)\b/.test(n) ||
+    n.includes('lemon tea') ||
+    n.includes('green tea') ||
+    n.includes('thai tea') ||
     n.includes('jus') ||
     n.includes('juice') ||
     n.includes('boba') ||
@@ -86,10 +104,7 @@ export const isDrinkItem = (item: { category?: string; name?: string }): boolean
     n.includes('cocktail') ||
     n.includes('squash') ||
     n.includes('soda') ||
-    n.includes('es ') ||
-    n.includes('ice ') ||
-    n.includes('iced ') ||
-    n.includes('hot ') ||
+    /\b(es|ice|iced)\b/.test(n) ||
     n.includes('susu') ||
     n.includes('milk') ||
     n.includes('matcha') ||

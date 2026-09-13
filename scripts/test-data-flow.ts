@@ -84,8 +84,10 @@ console.log('\n🔹 [2/8] Menguji Klasifikasi Stasiun Kerja (Dapur vs Barista)..
   assert(isDrinkItem({ name: 'Soda Squash', category: 'BEVERAGE' }) === true, 'Kategori BEVERAGE terdeteksi sebagai Minuman');
 
   // Makanan
+  assert(isDrinkItem({ name: 'Rice Bowl Daging Sapi Teriyaki' }) === false, 'Rice Bowl Daging Sapi Teriyaki terdeteksi sebagai Makanan (Dapur)');
   assert(isDrinkItem({ name: 'Nasi Goreng Spesial' }) === false, 'Nasi Goreng terdeteksi sebagai Makanan (Dapur)');
   assert(isDrinkItem({ name: 'Ayam Bakar Madu' }) === false, 'Ayam Bakar terdeteksi sebagai Makanan (Dapur)');
+  assert(isDrinkItem({ name: 'Kentang Goreng Keju (French Fries)' }) === false, 'Kentang Goreng Keju terdeteksi sebagai Makanan (Dapur)');
   assert(isDrinkItem({ name: 'Kentang Goreng French Fries', category: 'SNACK' }) === false, 'Snack Kentang terdeteksi sebagai Makanan');
   assert(isDrinkItem({ name: 'Mie Nyemek', category: 'FOOD' }) === false, 'Mie Nyemek terdeteksi sebagai Makanan');
 }

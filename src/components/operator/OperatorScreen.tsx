@@ -60,6 +60,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     replayCurrentSong,
     clearQueue,
     clearHistory,
+    removeHistoryItem,
     togglePlayPause,
     setVolume,
     toggleMute,
@@ -291,6 +292,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
             addSong(videoId, rawUrl, 'Diputar Ulang', title);
           }}
           onClearHistory={clearHistory}
+          onRemoveHistoryItem={removeHistoryItem}
           onSaveToLibrary={saveSongToLibrary}
         />
 

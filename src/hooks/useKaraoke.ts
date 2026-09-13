@@ -64,6 +64,7 @@ export function useKaraoke() {
     replayCurrentSong: player.replayCurrentSong,
     clearQueue: player.clearQueue,
     clearHistory: player.clearHistory,
+    removeHistoryItem: player.removeHistoryItem,
     togglePlayPause: player.togglePlayPause,
     setVolume: player.setVolume,
     toggleMute: player.toggleMute,

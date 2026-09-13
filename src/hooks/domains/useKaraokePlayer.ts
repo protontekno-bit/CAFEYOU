@@ -214,7 +214,9 @@ export function useKaraokePlayer(
 
       const targetSong = rest[targetIndex];
       const newRest = rest.filter((s) => s.id !== id);
-      newRest.unshift(targetSong);
+      // Tandai sebagai prioritas VIP agar tidak tergeser oleh rebalanceFairQueue
+      const prioritizedSong: Song = { ...targetSong, isPrioritized: true };
+      newRest.unshift(prioritizedSong);
 
       return {
         ...prev,
@@ -223,17 +225,25 @@ export function useKaraokePlayer(
     });
   };
 
-  const moveSongUp = (id: string) => {
+  const moveSongUp = (id: string, swapWithId?: string) => {
     updateAppState((prev) => {
       const currentQueue = Array.isArray(prev?.queue) ? prev.queue : [];
       const current = currentQueue[0];
       const rest = [...currentQueue.slice(1)];
       const idx = rest.findIndex((s) => s.id === id);
-      if (idx <= 0) return prev;
+      if (idx === -1) return prev;
 
-      const temp = rest[idx - 1];
-      rest[idx - 1] = rest[idx];
-      rest[idx] = temp;
+      if (swapWithId) {
+        const targetIdx = rest.findIndex((s) => s.id === swapWithId);
+        if (targetIdx === -1 || targetIdx === idx) return prev;
+        const [movedSong] = rest.splice(idx, 1);
+        rest.splice(targetIdx, 0, movedSong);
+      } else {
+        if (idx <= 0) return prev;
+        const temp = rest[idx - 1];
+        rest[idx - 1] = rest[idx];
+        rest[idx] = temp;
+      }
 
       return {
         ...prev,
@@ -242,17 +252,25 @@ export function useKaraokePlayer(
     });
   };
 
-  const moveSongDown = (id: string) => {
+  const moveSongDown = (id: string, swapWithId?: string) => {
     updateAppState((prev) => {
       const currentQueue = Array.isArray(prev?.queue) ? prev.queue : [];
       const current = currentQueue[0];
       const rest = [...currentQueue.slice(1)];
       const idx = rest.findIndex((s) => s.id === id);
-      if (idx === -1 || idx >= rest.length - 1) return prev;
+      if (idx === -1) return prev;
 
-      const temp = rest[idx + 1];
-      rest[idx + 1] = rest[idx];
-      rest[idx] = temp;
+      if (swapWithId) {
+        const targetIdx = rest.findIndex((s) => s.id === swapWithId);
+        if (targetIdx === -1 || targetIdx === idx) return prev;
+        const [movedSong] = rest.splice(idx, 1);
+        rest.splice(targetIdx, 0, movedSong);
+      } else {
+        if (idx >= rest.length - 1) return prev;
+        const temp = rest[idx + 1];
+        rest[idx + 1] = rest[idx];
+        rest[idx] = temp;
+      }
 
       return {
         ...prev,
@@ -364,11 +382,49 @@ export function useKaraokePlayer(
     });
   };
 
-  const clearHistory = () => {
+  const clearHistory = async () => {
     updateAppState((prev) => ({
       ...prev,
       history: [],
     }));
+
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const historyRef = ref(db, `cafeyou/${STORAGE_KEY}/history`);
+        await set(historyRef, []);
+      }
+    } catch (err) {
+      console.warn('Gagal mengosongkan history di Firebase:', err);
+    }
+  };
+
+  const removeHistoryItem = async (historyId: string) => {
+    updateAppState((prev) => {
+      const currentHistory = Array.isArray(prev?.history) ? prev.history : [];
+      return {
+        ...prev,
+        history: currentHistory.filter((item) => item.id !== historyId),
+      };
+    });
+
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const historyRef = ref(db, `cafeyou/${STORAGE_KEY}/history`);
+        await runTransaction(historyRef, (fbHistory) => {
+          let list: SongHistoryItem[] = [];
+          if (Array.isArray(fbHistory)) {
+            list = fbHistory;
+          } else if (fbHistory && typeof fbHistory === 'object') {
+            list = Object.values(fbHistory);
+          }
+          return list.filter((item) => item && item.id !== historyId);
+        });
+      }
+    } catch (err) {
+      console.warn('Gagal menghapus item history di Firebase:', err);
+    }
   };
 
   const deleteFromLibrary = (videoId: string) => {
@@ -522,6 +578,7 @@ export function useKaraokePlayer(
     replayCurrentSong,
     clearQueue,
     clearHistory,
+    removeHistoryItem,
     togglePlayPause,
     setVolume,
     toggleMute,

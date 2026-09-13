@@ -21,6 +21,7 @@ export const OperatorAlerts: React.FC<OperatorAlertsProps> = ({
   } | null>(null);
 
   const prevQueueLengthRef = useRef<number>(queue.length);
+  const lastAlertedSongIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const currentLen = queue.length;
@@ -31,7 +32,12 @@ export const OperatorAlerts: React.FC<OperatorAlertsProps> = ({
         return latest;
       }, null);
 
-      if (newestSong && (newestSong.source === 'guest' || newestSong.tableNumber)) {
+      // Hanya bunyikan lonceng jika lagu ini benar-benar baru masuk (<20 detik) dan belum pernah dibunyikan
+      const isRecentlyAdded = newestSong && Date.now() - (newestSong.addedAt || 0) < 20000;
+      const isNewAlert = newestSong && newestSong.id !== lastAlertedSongIdRef.current;
+
+      if (isRecentlyAdded && isNewAlert && (newestSong.source === 'guest' || newestSong.tableNumber)) {
+        lastAlertedSongIdRef.current = newestSong.id;
         try {
           playSoundEffect('chime');
         } catch {}

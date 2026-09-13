@@ -18,6 +18,15 @@ function sanitizeState<T>(val: any, fallback: T, currentState?: any): T {
       merged.queue = val.queue;
     } else if (val.queue && typeof val.queue === 'object') {
       merged.queue = Object.values(val.queue);
+    } else if (
+      currentState &&
+      Array.isArray(currentState.queue) &&
+      currentState.queue.length > 0 &&
+      (val.queue === undefined || val.queue === null)
+    ) {
+      // Snapshot cloud parsial (misal dari pembaruan voucher/settings/expenses) tidak memuat field queue.
+      // PERTAHANKAN antrean yang sedang aktif agar pemutaran video TV tidak berhenti!
+      merged.queue = currentState.queue;
     } else {
       merged.queue = [];
     }
@@ -28,6 +37,13 @@ function sanitizeState<T>(val: any, fallback: T, currentState?: any): T {
       merged.history = val.history;
     } else if (val.history && typeof val.history === 'object') {
       merged.history = Object.values(val.history);
+    } else if (
+      currentState &&
+      Array.isArray(currentState.history) &&
+      currentState.history.length > 0 &&
+      (val.history === undefined || val.history === null)
+    ) {
+      merged.history = currentState.history;
     } else {
       merged.history = [];
     }
@@ -256,24 +272,19 @@ export function useSyncState<T>(
     }
   }, [key]);
 
-function safeSaveLocalStorage(key: string, data: any) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(data));
-  } catch (err: any) {
-    if (err && (err.name === 'QuotaExceededError' || err.code === 22)) {
-      try {
-        // Pangkas riwayat lagu lama ke 20 item untuk membebaskan kuota LocalStorage
-        const pruned = { ...data };
-        if (Array.isArray(pruned.history)) {
-          pruned.history = pruned.history.slice(0, 20);
-        }
-        window.localStorage.setItem(key, JSON.stringify(pruned));
-      } catch (retryErr) {
-        console.warn('Kapasitas LocalStorage penuh setelah pemangkasan:', retryErr);
+  function safeSaveLocalStorage(storageKey: string, data: any) {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(data));
+    } catch (err: any) {
+      if (err && (err.name === 'QuotaExceededError' || err.code === 22)) {
+        try {
+          const pruned = { ...data };
+          if (Array.isArray(pruned.history)) pruned.history = pruned.history.slice(0, 20);
+          window.localStorage.setItem(storageKey, JSON.stringify(pruned));
+        } catch {}
       }
     }
   }
-}
 
   // 3. Fungsi Pembaruan State (Multi-target: Local State + LocalStorage + Broadcast + Firebase)
   const updateState = (newValueOrFunction: T | ((prev: T) => T)) => {
@@ -333,12 +344,28 @@ function safeSaveLocalStorage(key: string, data: any) {
                 history: _hist,
                 ...cleanState
               } = newValue as any;
-              const sanitizedPayload = JSON.parse(JSON.stringify(cleanState));
 
-              // Tulis field non-array (lagu aktif, settings, volume, dll) dengan update()
-              update(dbRef, sanitizedPayload).catch((err) => {
-                console.warn('Gagal menulis state ke Firebase Cloud:', err);
-              });
+              // Hindari penulisan root ke Firebase jika cleanState sama sekali tidak berubah
+              // (misal saat hanya membuat voucher atau mengubah sub-koleksi yang sudah ditangani secara atomik)
+              const {
+                tableOrders: _pto,
+                expenses: _pexp,
+                vouchers: _pvouch,
+                queue: _pq,
+                history: _phist,
+                ...prevCleanState
+              } = (prevState as any) || {};
+
+              const isCleanStateChanged =
+                JSON.stringify(cleanState) !== JSON.stringify(prevCleanState);
+
+              if (isCleanStateChanged) {
+                const sanitizedPayload = JSON.parse(JSON.stringify(cleanState));
+                // Tulis field non-array (lagu aktif, settings, volume, dll) dengan update()
+                update(dbRef, sanitizedPayload).catch((err) => {
+                  console.warn('Gagal menulis state ke Firebase Cloud:', err);
+                });
+              }
 
               // HANYA tulis queue jika pembaruan ini memang mengubah susunan/isi antrean
               // (Mencegah slider volume / setting kafe menimpa lagu baru dari meja tamu)

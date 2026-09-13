@@ -12,11 +12,20 @@ export function rebalanceFairQueue(queue: Song[]): Song[] {
   const currentPlaying = queue[0];
   const pendingSongs = queue.slice(1);
 
-  // Kelompokkan lagu berdasarkan identitas meja (atau pemesan jika nomor meja tidak ada)
+  // Pisahkan lagu berstatus prioritas VIP agar tetap berada di urutan teratas
+  const prioritySongs = pendingSongs.filter((s) => s.isPrioritized);
+  const normalSongs = pendingSongs.filter((s) => !s.isPrioritized);
+
+  if (normalSongs.length <= 1) {
+    const combined = [...prioritySongs, ...normalSongs];
+    return currentPlaying ? [currentPlaying, ...combined] : combined;
+  }
+
+  // Kelompokkan lagu reguler berdasarkan identitas meja (atau pemesan jika nomor meja tidak ada)
   const tableBuckets = new Map<string, Song[]>();
   const tableOrder: string[] = [];
 
-  for (const song of pendingSongs) {
+  for (const song of normalSongs) {
     const tableKey = song.tableNumber?.trim() || song.requester?.trim() || 'Umum';
     if (!tableBuckets.has(tableKey)) {
       tableBuckets.set(tableKey, []);
@@ -44,7 +53,8 @@ export function rebalanceFairQueue(queue: Song[]): Song[] {
     round++;
   }
 
-  return currentPlaying ? [currentPlaying, ...balancedRest] : balancedRest;
+  const finalPending = [...prioritySongs, ...balancedRest];
+  return currentPlaying ? [currentPlaying, ...finalPending] : finalPending;
 }
 
 /**

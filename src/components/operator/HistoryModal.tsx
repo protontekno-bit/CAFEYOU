@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SongHistoryItem, SavedLibrarySong } from '../../types';
 import { getYouTubeThumbnail, DEFAULT_SONG_THUMBNAIL } from '../../utils/youtube';
+import { TrashIcon } from '../icons/Icons';
 
 interface HistoryModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface HistoryModalProps {
   onClose: () => void;
   onRequeue: (videoId: string, rawUrl: string, title: string) => void;
   onClearHistory: () => void;
+  onRemoveHistoryItem?: (id: string) => void;
   onSaveToLibrary?: (song: SongHistoryItem) => void;
 }
 
@@ -19,6 +21,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
   onClose,
   onRequeue,
   onClearHistory,
+  onRemoveHistoryItem,
   onSaveToLibrary,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,13 +124,19 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                if (window.confirm('Yakin ingin mengosongkan log riwayat lagu?')) {
+                if (
+                  window.confirm(
+                    `Yakin ingin mengosongkan seluruh riwayat lagu (${safeHistory.length} lagu)? Tindakan ini akan menghapus log lagu dari semua perangkat.`
+                  )
+                ) {
                   onClearHistory();
                 }
               }}
-              className="px-3 py-2 bg-red-500/15 hover:bg-red-500/25 text-red-400 rounded-xl text-xs font-semibold transition-colors border border-red-500/30"
+              className="px-3 py-2 bg-red-500/15 hover:bg-red-500/25 active:scale-95 text-red-400 hover:text-red-300 rounded-xl text-xs font-semibold transition-all border border-red-500/30 flex items-center gap-1.5 shadow-sm"
+              title="Kosongkan seluruh riwayat lagu"
             >
-              Hapus Riwayat
+              <span>🗑️</span>
+              <span>Kosongkan Semua ({safeHistory.length})</span>
             </button>
           )}
         </div>
@@ -159,6 +168,11 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                       </div>
                       <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
                         <span className="text-emerald-400 font-medium">👤 {item.requester}</span>
+                        {item.tableNumber && (
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded font-bold">
+                            {item.tableNumber}
+                          </span>
+                        )}
                         <span className="text-slate-500">•</span>
                         <span className="text-slate-400 font-mono">🕒 {formatTime(item.playedAt)}</span>
                       </div>
@@ -197,6 +211,21 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                       <span>🔄</span>
                       <span>Putar Lagi</span>
                     </button>
+
+                    {onRemoveHistoryItem && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Hapus "${item.title}" dari daftar riwayat?`)) {
+                            onRemoveHistoryItem(item.id);
+                          }
+                        }}
+                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ml-0.5 active:scale-95"
+                        title="Hapus lagu ini dari riwayat"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

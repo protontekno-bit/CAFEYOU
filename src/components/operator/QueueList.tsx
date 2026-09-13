@@ -17,8 +17,8 @@ interface QueueListProps {
   currentSong?: Song | null;
   onRemoveSong: (id: string) => void;
   onMoveToTop: (id: string) => void;
-  onMoveUp: (id: string) => void;
-  onMoveDown: (id: string) => void;
+  onMoveUp: (id: string, swapWithId?: string) => void;
+  onMoveDown: (id: string, swapWithId?: string) => void;
   onClearQueue?: () => void;
   onOpenPopularModal?: () => void;
   onToggleFairRotation?: () => void;
@@ -42,7 +42,54 @@ export const QueueList: React.FC<QueueListProps> = ({
 }) => {
   const safeQueue = Array.isArray(queue) ? queue : [];
   const [filterSource, setFilterSource] = useState<'all' | 'guest' | 'operator'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
   const totalCount = (currentSong ? 1 : 0) + safeQueue.length;
+
+  // Hitung jumlah di antrean tunggu (waitlist) secara presisi untuk tab
+  const waitlistGuestCount = useMemo(() => {
+    return safeQueue.filter((s) => s.source === 'guest' || s.tableNumber).length;
+  }, [safeQueue]);
+
+  const waitlistOperatorCount = Math.max(0, safeQueue.length - waitlistGuestCount);
+
+  // Total lagu dari meja tamu (lagu aktif + tunggu) untuk statistik header
+  const totalGuestCount =
+    waitlistGuestCount +
+    (currentSong && (currentSong.source === 'guest' || currentSong.tableNumber) ? 1 : 0);
+
+  // Estimasi durasi antrean: asumsi rata-rata 4 menit per lagu
+  const estimatedWaitMinutes = safeQueue.length * 4;
+
+  // Gabungkan currentSong + safeQueue agar giliran meja (rounds) akurat secara global
+  const fullQueue = useMemo(() => {
+    return currentSong ? [currentSong, ...safeQueue] : safeQueue;
+  }, [currentSong, safeQueue]);
+
+  const roundsMap = useMemo(() => {
+    return calculateAllTableRounds(fullQueue);
+  }, [fullQueue]);
+
+  const filteredQueue = useMemo(() => {
+    let list = safeQueue;
+    if (filterSource === 'guest') {
+      list = list.filter((s) => s.source === 'guest' || s.tableNumber);
+    } else if (filterSource === 'operator') {
+      list = list.filter((s) => s.source !== 'guest' && !s.tableNumber);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (s) =>
+          s.title.toLowerCase().includes(q) ||
+          s.requester.toLowerCase().includes(q) ||
+          (s.tableNumber && s.tableNumber.toLowerCase().includes(q))
+      );
+    }
+
+    return list;
+  }, [safeQueue, filterSource, searchQuery]);
 
   const handleConfirmClearQueue = () => {
     if (!onClearQueue) return;
@@ -51,32 +98,23 @@ export const QueueList: React.FC<QueueListProps> = ({
     }
   };
 
-  const guestCount = useMemo(() => {
-    const fromWaitlist = safeQueue.filter((s) => s.source === 'guest' || s.tableNumber).length;
-    const fromActive = currentSong && (currentSong.source === 'guest' || currentSong.tableNumber) ? 1 : 0;
-    return fromWaitlist + fromActive;
-  }, [safeQueue, currentSong]);
+  const handleMoveUp = (songId: string, idxInFiltered: number) => {
+    if (idxInFiltered <= 0) return;
+    const prevSong = filteredQueue[idxInFiltered - 1];
+    onMoveUp(songId, filterSource !== 'all' || searchQuery ? prevSong?.id : undefined);
+  };
 
-  // Prekalkulasi urutan giliran meja sekali jalan O(N) untuk seluruh antrean
-  const roundsMap = useMemo(() => {
-    return calculateAllTableRounds(safeQueue);
-  }, [safeQueue]);
-
-  const filteredQueue = useMemo(() => {
-    if (filterSource === 'guest') {
-      return safeQueue.filter((s) => s.source === 'guest' || s.tableNumber);
-    }
-    if (filterSource === 'operator') {
-      return safeQueue.filter((s) => s.source !== 'guest' && !s.tableNumber);
-    }
-    return safeQueue;
-  }, [safeQueue, filterSource]);
+  const handleMoveDown = (songId: string, idxInFiltered: number) => {
+    if (idxInFiltered >= filteredQueue.length - 1) return;
+    const nextSong = filteredQueue[idxInFiltered + 1];
+    onMoveDown(songId, filterSource !== 'all' || searchQuery ? nextSong?.id : undefined);
+  };
 
   return (
     <div className="bg-slate-800/95 rounded-2xl p-5 shadow-xl border border-slate-700/60 flex-1 flex flex-col">
       {/* Header & Controls */}
       <div className="flex flex-wrap justify-between items-center gap-2 mb-3 pb-2 border-b border-slate-700/50">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">
             Daftar Antrean Lagu
           </h2>
@@ -86,9 +124,18 @@ export const QueueList: React.FC<QueueListProps> = ({
           >
             {totalCount} Lagu
           </span>
-          {guestCount > 0 && (
+          {totalGuestCount > 0 && (
             <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono">
-              {guestCount} dari Meja Tamu
+              {totalGuestCount} dari Tamu
+            </span>
+          )}
+          {safeQueue.length > 0 && (
+            <span
+              className="text-[11px] font-semibold text-amber-300/90 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 font-mono flex items-center gap-1"
+              title={`Total estimasi antrean sekitar ~${estimatedWaitMinutes} menit`}
+            >
+              <span>⏱️</span>
+              <span>~{estimatedWaitMinutes} mnt antrean</span>
             </span>
           )}
         </div>
@@ -134,7 +181,7 @@ export const QueueList: React.FC<QueueListProps> = ({
         </div>
       </div>
 
-      {/* Filter Tabs & Fair Rotation Banner */}
+      {/* Filter Tabs & Quick Search */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 text-xs">
           <button
@@ -155,7 +202,7 @@ export const QueueList: React.FC<QueueListProps> = ({
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <span>📱 Meja Tamu ({guestCount})</span>
+            <span>📱 Meja Tamu ({waitlistGuestCount})</span>
           </button>
           <button
             onClick={() => setFilterSource('operator')}
@@ -165,9 +212,31 @@ export const QueueList: React.FC<QueueListProps> = ({
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Kasir/Operator ({safeQueue.length - guestCount})
+            Kasir/Operator ({waitlistOperatorCount})
           </button>
         </div>
+
+        {/* Input Pencarian Antrean Cepat */}
+        {safeQueue.length > 2 && (
+          <div className="relative flex-1 min-w-[140px] max-w-xs">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="🔍 Cari lagu / pemesan / meja..."
+              className="w-full bg-slate-900/90 text-xs text-slate-200 placeholder-slate-500 rounded-xl px-2.5 py-1 border border-slate-700/70 focus:outline-none focus:border-blue-500 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs"
+                title="Hapus pencarian"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Info Banner when Fair Rotation is ON */}
@@ -180,46 +249,21 @@ export const QueueList: React.FC<QueueListProps> = ({
         </div>
       )}
 
-      {/* Kartu Status Lagu Aktif (Sedang Diputar) */}
-      {currentSong && (
-        <div className="mb-3 p-3 bg-gradient-to-r from-blue-950/60 via-slate-900 to-emerald-950/40 rounded-xl border border-blue-500/30 flex items-center justify-between gap-3 shadow-inner">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
-            <div className="min-w-0">
-              <div className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                <span>SEDANG DIPUTAR SEKARANG</span>
-                {currentSong.tableNumber && (
-                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded text-[9px] font-bold">
-                    {currentSong.tableNumber}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs font-bold text-white truncate" title={currentSong.title}>
-                {currentSong.title}
-              </p>
-              <div className="text-[11px] text-slate-400 truncate">
-                Oleh: <strong className="text-slate-200">{currentSong.requester}</strong>
-                {currentSong.source === 'guest' && <span className="ml-1.5 text-emerald-400 font-semibold">• Meja Tamu</span>}
-              </div>
-            </div>
-          </div>
-          <span className="text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full shrink-0">
-            ON AIR #1
-          </span>
-        </div>
-      )}
-
       {/* Song Queue List */}
       {filteredQueue.length > 0 ? (
         <div className="space-y-2.5 overflow-y-auto max-h-[500px] pr-1 custom-scrollbar">
           {filteredQueue.map((song, idx) => {
             const round = roundsMap.get(song.id) || { roundNumber: 1, totalInQueue: 1 };
             const isGuest = song.source === 'guest' || song.tableNumber;
+            const estimatedMinutes = (idx + 1) * 4;
+
             return (
               <div
                 key={song.id}
                 className={`flex items-center gap-3 p-3 rounded-xl border transition-all group ${
-                  isGuest
+                  song.isPrioritized
+                    ? 'bg-amber-950/20 border-amber-500/40 hover:border-amber-500/70 shadow-sm'
+                    : isGuest
                     ? 'bg-slate-900/90 border-emerald-500/30 hover:border-emerald-500/60 shadow-sm'
                     : 'bg-slate-900/80 border-slate-700/70 hover:border-slate-600'
                 }`}
@@ -257,6 +301,22 @@ export const QueueList: React.FC<QueueListProps> = ({
                       </span>
                     )}
 
+                    {/* Badge Prioritas VIP */}
+                    {song.isPrioritized && (
+                      <span className="text-[10px] bg-amber-500/25 text-amber-300 border border-amber-500/40 px-1.5 py-0.2 rounded-md font-bold flex items-center gap-0.5">
+                        <span>⭐</span>
+                        <span>VIP</span>
+                      </span>
+                    )}
+
+                    {/* Estimasi Menit Tunggu */}
+                    <span
+                      className="text-[10px] text-slate-400 bg-slate-800/80 px-1.5 py-0.2 rounded border border-slate-700/60 font-mono"
+                      title={`Estimasi giliran diputar dalam ~${estimatedMinutes} menit`}
+                    >
+                      ±{estimatedMinutes}m
+                    </span>
+
                     {/* Badge Giliran Meja jika pemesan memiliki lebih dari 1 lagu */}
                     {round.totalInQueue > 1 && (
                       <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded-md font-mono">
@@ -270,30 +330,34 @@ export const QueueList: React.FC<QueueListProps> = ({
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => onMoveToTop(song.id)}
-                    className="p-1.5 text-amber-400/70 hover:text-amber-300 hover:bg-amber-400/10 rounded-lg transition-colors"
-                    title="Jadikan Prioritas VIP (Putar Berikutnya)"
+                    className={`p-1.5 rounded-lg transition-all active:scale-95 ${
+                      song.isPrioritized
+                        ? 'text-amber-300 bg-amber-500/25 border border-amber-500/40 shadow-sm'
+                        : 'text-amber-400/70 hover:text-amber-300 hover:bg-amber-400/10'
+                    }`}
+                    title={song.isPrioritized ? 'Lagu ini sedang berstatus Prioritas VIP' : 'Jadikan Prioritas VIP (Putar Berikutnya)'}
                   >
                     <StarIcon className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => onMoveUp(song.id)}
+                    onClick={() => handleMoveUp(song.id, idx)}
                     disabled={idx === 0}
-                    className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors active:scale-95"
                     title="Geser Naik"
                   >
                     <ArrowUpIcon className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => onMoveDown(song.id)}
+                    onClick={() => handleMoveDown(song.id, idx)}
                     disabled={idx === filteredQueue.length - 1}
-                    className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors active:scale-95"
                     title="Geser Turun"
                   >
                     <ArrowDownIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => onRemoveSong(song.id)}
-                    className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ml-1"
+                    className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ml-1 active:scale-95"
                     title="Hapus dari Antrean"
                   >
                     <TrashIcon className="w-4 h-4" />
@@ -305,40 +369,27 @@ export const QueueList: React.FC<QueueListProps> = ({
         </div>
       ) : (
         /* Empty State */
-        <div className="flex-1 flex flex-col items-center justify-center py-10 text-center text-slate-400 space-y-3 bg-slate-900/40 rounded-xl border border-dashed border-slate-700/60 p-4">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-inner ${
-            hasCurrentSong
-              ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
-              : 'bg-slate-800 text-slate-300'
-          }`}>
-            {hasCurrentSong ? '🎤' : '🎵'}
+        <div className="flex-1 flex flex-col items-center justify-center py-8 text-center text-slate-400 space-y-2 bg-slate-900/40 rounded-xl border border-dashed border-slate-700/60 p-4">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl bg-slate-800 text-slate-300 shadow-inner">
+            {searchQuery ? '🔍' : '🎵'}
           </div>
           <div>
             <p className="text-sm font-bold text-slate-200">
-              {hasCurrentSong
-                ? 'Lagu #1 Sedang Diputar (ON AIR) di Atas'
-                : 'Daftar Antrean Lagu Sedang Kosong'}
+              {searchQuery ? 'Tidak ada lagu yang cocok dengan pencarian' : 'Daftar Antrean Lagu Sedang Kosong'}
             </p>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm leading-relaxed">
-              {hasCurrentSong ? (
-                <>
-                  Belum ada antrean lagu berikutnya di ruang tunggu. Lagu berikutnya yang dipesan oleh{' '}
-                  <strong className="text-emerald-400">tamu</strong> atau{' '}
-                  <strong className="text-blue-400">operator</strong> akan muncul di sini.
-                </>
-              ) : (
-                'Pilih lagu dari katalog populer atau masukkan tautan video YouTube untuk mulai bernyanyi.'
-              )}
+            <p className="text-xs text-slate-400 mt-0.5 max-w-sm">
+              {searchQuery ? 'Coba gunakan kata kunci judul lagu, nama pemesan, atau meja lain.' : 'Lagu baru yang ditambahkan tamu atau operator akan muncul di sini.'}
             </p>
           </div>
-          {onOpenPopularModal && (
-            <button
-              onClick={onOpenPopularModal}
-              className="mt-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95"
-            >
+          {searchQuery ? (
+            <button onClick={() => setSearchQuery('')} className="mt-1 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold rounded-xl transition-all active:scale-95">
+              Reset Pencarian
+            </button>
+          ) : onOpenPopularModal ? (
+            <button onClick={onOpenPopularModal} className="mt-1 px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95">
               + Buka Katalog Populer Kafe
             </button>
-          )}
+          ) : null}
         </div>
       )}
     </div>

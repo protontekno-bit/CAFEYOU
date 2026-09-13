@@ -136,10 +136,10 @@ export function useYouTubePlayer({
       if (currentSong) {
         // 2. Track switching sync (Uses unique song.id to guarantee reload on duplicate video IDs)
         const isNewSongInstance = lastPlayedSongIdRef.current !== currentSong.id;
-        const videoData = player.getVideoData ? player.getVideoData() : null;
+        const videoData = typeof player.getVideoData === 'function' ? player.getVideoData() : null;
         const playingId = videoData ? videoData.video_id : null;
 
-        if (isNewSongInstance || playingId !== currentSong.videoId) {
+        if (isNewSongInstance || (playingId && playingId !== currentSong.videoId)) {
           lastPlayedSongIdRef.current = currentSong.id;
           setErrorNotice(null);
           player.loadVideoById({

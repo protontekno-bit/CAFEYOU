@@ -13,6 +13,7 @@ export interface Song {
   duration?: string;
   thumbnail?: string;
   addedAt?: number;
+  isPrioritized?: boolean;
 }
 
 export interface SongHistoryItem {

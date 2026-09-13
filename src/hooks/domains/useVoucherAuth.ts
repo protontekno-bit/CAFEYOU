@@ -1,6 +1,7 @@
-import { KaraokeState, Voucher, CafeSettings } from '../../types';
+import { useState, useEffect } from 'react';
+import { KaraokeState, Voucher, CafeSettings, AssistanceRequest } from '../../types';
 import { STORAGE_KEY, DEFAULT_CAFE_SETTINGS, DEFAULT_TABLES } from '../../constants/karaoke';
-import { initFirebaseDatabase, ref, set, get } from '../../config/firebase';
+import { initFirebaseDatabase, ref, set, get, onValue } from '../../config/firebase';
 
 import { normalizeTable, isSameTable } from '../../utils/table';
 export { normalizeTable, isSameTable };
@@ -440,6 +441,49 @@ export function useVoucherAuth(
     });
   };
 
+  // Permintaan Bantuan / Tambah Kuota Lagu dari Meja Tamu
+  const [assistanceRequests, setAssistanceRequests] = useState<Record<string, AssistanceRequest>>({});
+
+  useEffect(() => {
+    try {
+      const db = initFirebaseDatabase();
+      if (!db) return;
+      const reqRef = ref(db, `cafeyou/assistance_requests`);
+      const unsub = onValue(reqRef, (snapshot) => {
+        const val = snapshot.val();
+        if (val && typeof val === 'object') {
+          setAssistanceRequests(val);
+        } else {
+          setAssistanceRequests({});
+        }
+      });
+      return () => unsub();
+    } catch {}
+  }, []);
+
+  const approveTopUpRequest = (tableNumber: string, voucherCode?: string, songsToAdd: number = 1) => {
+    if (voucherCode) {
+      topUpVoucherQuota(voucherCode, songsToAdd);
+    }
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const rRef = ref(db, `cafeyou/assistance_requests/${tableNumber}`);
+        set(rRef, null).catch(() => {});
+      }
+    } catch {}
+  };
+
+  const dismissTopUpRequest = (tableNumber: string) => {
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const rRef = ref(db, `cafeyou/assistance_requests/${tableNumber}`);
+        set(rRef, null).catch(() => {});
+      }
+    } catch {}
+  };
+
   return {
     state: {
       vouchers,
@@ -451,9 +495,12 @@ export function useVoucherAuth(
     dailyPin,
     cafeSettings,
     tables,
+    assistanceRequests,
     createVoucher,
     revokeVoucher,
     topUpVoucherQuota,
+    approveTopUpRequest,
+    dismissTopUpRequest,
     setDailyPin,
     validateVoucher,
     updateCafeSettings,

@@ -14,13 +14,13 @@ import { VoucherManagerModal } from './VoucherManagerModal';
 import { TableQrGeneratorModal } from './TableQrGeneratorModal';
 import { SettingsCenterModal } from './SettingsCenterModal';
 import { OperatorLoginView } from './OperatorLoginView';
+import { PosQuickBillingDrawer } from './PosQuickBillingDrawer';
+import { OperatorAlerts } from './OperatorAlerts';
+import { OperatorTopUpBanner } from './OperatorTopUpBanner';
 import { DeveloperFooter } from '../common/DeveloperFooter';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { AppRole, PopularPresetSong } from '../../types';
-import { initFirebaseDatabase, ref, onValue, set } from '../../config/firebase';
-import { STORAGE_KEY } from '../../constants/karaoke';
-import { playSoundEffect } from '../../utils/soundfx';
 
 interface OperatorScreenProps {
   setRole?: (role: AppRole) => void;
@@ -68,6 +68,9 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     createVoucher,
     revokeVoucher,
     topUpVoucherQuota,
+    approveTopUpRequest,
+    dismissTopUpRequest,
+    assistanceRequests,
     setDailyPin,
     fairRotationEnabled,
     toggleFairRotation,
@@ -85,6 +88,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     saveSongToLibrary,
     menuItems,
     tableOrders,
+    confirmTableOrder,
+    updateTableOrderStatus,
     addMenuItem,
     updateMenuItem,
     deleteMenuItem,
@@ -92,6 +97,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     updateLocalServerIp,
   } = useKaraoke();
 
+  // Modals & Drawers State
   const [isSoundBoardOpen, setIsSoundBoardOpen] = useState(false);
   const [isPopularOpen, setIsPopularOpen] = useState(false);
   const [isRunningTextOpen, setIsRunningTextOpen] = useState(false);
@@ -101,124 +107,13 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const [isVoucherOpen, setIsVoucherOpen] = useState(false);
   const [isTableQrOpen, setIsTableQrOpen] = useState(false);
   const [isSettingsCenterOpen, setIsSettingsCenterOpen] = useState(false);
+  const [isPosBillingDrawerOpen, setIsPosBillingDrawerOpen] = useState(false);
 
-  // Notifikasi Pesanan Meja Baru (Lagu & F&B)
-  const [newOrderAlert, setNewOrderAlert] = useState<{
-    table: string;
-    requester: string;
-    title: string;
-  } | null>(null);
-  const prevQueueLengthRef = React.useRef<number>(state.queue?.length || 0);
-
-  // Pantau penambahan antrean lagu dari Meja Tamu
-  React.useEffect(() => {
-    const currentLen = state.queue?.length || 0;
-    if (currentLen > prevQueueLengthRef.current && currentLen > 0) {
-      const guestSongs = (state.queue || []).filter((s) => s && (s.source === 'guest' || s.tableNumber));
-      const newestSong = guestSongs.reduce<any>((latest, s) => {
-        if (!latest || (s.addedAt || 0) > (latest.addedAt || 0)) return s;
-        return latest;
-      }, null);
-
-      if (newestSong && (newestSong.source === 'guest' || newestSong.tableNumber)) {
-        try {
-          playSoundEffect('chime');
-        } catch {}
-        setNewOrderAlert({
-          table: newestSong.tableNumber || 'Meja Tamu',
-          requester: newestSong.requester || 'Pelanggan',
-          title: `Lagu: ${newestSong.title}`,
-        });
-        setTimeout(() => {
-          setNewOrderAlert(null);
-        }, 6000);
-      }
-    }
-    prevQueueLengthRef.current = currentLen;
-  }, [state.queue?.length]);
-
-  // Pantau penambahan pesanan makanan/minuman (F&B) baru dari Tamu
+  // Hitung jumlah pesanan F&B pending untuk badge header
   const pendingOrdersCount = Object.values(tableOrders || {}).filter(
     (o) => o && o.status?.toLowerCase() === 'pending'
   ).length;
-  const prevPendingCountRef = React.useRef<number>(pendingOrdersCount);
 
-  React.useEffect(() => {
-    if (pendingOrdersCount > prevPendingCountRef.current) {
-      try {
-        playSoundEffect('chime');
-      } catch {}
-      setNewOrderAlert({
-        table: 'Pesanan F&B',
-        requester: 'Meja Tamu',
-        title: `${pendingOrdersCount} Pesanan menu makanan/minuman baru masuk!`,
-      });
-      setTimeout(() => {
-        setNewOrderAlert(null);
-      }, 7000);
-    }
-    prevPendingCountRef.current = pendingOrdersCount;
-  }, [pendingOrdersCount]);
-
-  // Pantau Permintaan Top-Up Kuota Lagu dari Meja Tamu
-  const [assistanceRequests, setAssistanceRequests] = useState<
-    Record<
-      string,
-      {
-        tableNumber: string;
-        voucherCode?: string;
-        type: string;
-        requestedAt: number;
-        status: string;
-      }
-    >
-  >({});
-
-  React.useEffect(() => {
-    try {
-      const db = initFirebaseDatabase();
-      if (!db) return;
-      const reqRef = ref(db, `cafeyou/assistance_requests`);
-      const unsub = onValue(reqRef, (snapshot) => {
-        const val = snapshot.val();
-        if (val && typeof val === 'object') {
-          setAssistanceRequests(val);
-        } else {
-          setAssistanceRequests({});
-        }
-      });
-      return () => unsub();
-    } catch {}
-  }, []);
-
-  const pendingTopUpList = Object.values(assistanceRequests).filter(
-    (r) => r && r.status === 'pending'
-  );
-
-  const handleApproveTopUp = (req: { tableNumber: string; voucherCode?: string }, songsToAdd: number) => {
-    if (req.voucherCode) {
-      topUpVoucherQuota(req.voucherCode, songsToAdd);
-    }
-    try {
-      const db = initFirebaseDatabase();
-      if (db) {
-        const rRef = ref(db, `cafeyou/assistance_requests/${req.tableNumber}`);
-        set(rRef, null).catch(() => {});
-      }
-    } catch {}
-  };
-
-  const handleDismissTopUp = (tableNumber: string) => {
-    try {
-      const db = initFirebaseDatabase();
-      if (db) {
-        const rRef = ref(db, `cafeyou/assistance_requests/${tableNumber}`);
-        set(rRef, null).catch(() => {});
-      }
-    } catch {}
-  };
-
-  // Jika belum login, tampilkan OperatorLoginView Neumorphism
   if (!isLoggedIn) {
     return (
       <OperatorLoginView
@@ -246,9 +141,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     try {
       sessionStorage.removeItem('cafeyou_operator_auth');
       localStorage.removeItem('cafeyou_operator_auth');
-    } catch {
-      // ignore
-    }
+    } catch {}
     setIsLoggedIn(false);
   };
 
@@ -264,7 +157,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           activeVoucherCount={Object.values(vouchers || {}).filter((v) => v?.status === 'active').length}
           isDailyPinActive={dailyPin?.enabled}
           pendingOrdersCount={pendingOrdersCount}
-          onOpenPosOrders={() => window.open('#pos', '_blank')}
+          onOpenPosOrders={() => setIsPosBillingDrawerOpen(true)}
           onOpenKitchenTab={() => window.open('#kitchen', '_blank')}
           onOpenVoucherManager={() => setIsVoucherOpen(true)}
           onOpenProjectorTab={handleOpenProjector}
@@ -275,236 +168,187 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onLogout={handleLogout}
         />
 
-        {/* Floating Toast Alert Pesanan Meja Baru */}
-        {newOrderAlert && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3">
-            <div className="p-3.5 bg-gradient-to-r from-emerald-600/90 via-emerald-700 to-teal-800 border border-emerald-400/50 rounded-2xl shadow-xl flex items-center justify-between text-white animate-fadeIn">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🔔</span>
-                <div>
-                  <div className="text-xs font-black uppercase tracking-wider text-emerald-200">
-                    Pesanan Lagu Baru Masuk dari {newOrderAlert.table}!
-                  </div>
-                  <div className="text-sm font-extrabold text-white">
-                    {newOrderAlert.title} <span className="text-xs font-normal text-emerald-100">(oleh {newOrderAlert.requester})</span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => setNewOrderAlert(null)}
-                className="px-3 py-1 bg-black/30 hover:bg-black/50 text-xs font-bold rounded-xl transition-all"
-              >
-                Tutup ✕
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Notifikasi Cerdas Pesanan Lagu & F&B Terintegrasi */}
+        <OperatorAlerts
+          queue={state.queue}
+          tableOrders={tableOrders}
+          onOpenPosDrawer={() => setIsPosBillingDrawerOpen(true)}
+        />
 
         {/* Banner Permintaan Tambah Kuota Lagu dari Meja Tamu */}
-        {pendingTopUpList.length > 0 && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3 space-y-2">
-            {pendingTopUpList.map((req) => (
-              <div
-                key={req.tableNumber}
-                className="p-3.5 bg-gradient-to-r from-amber-600/90 via-amber-700 to-orange-800 border border-amber-400/50 rounded-2xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white animate-fadeIn"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">⚡</span>
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-wider text-amber-200">
-                      Permintaan Tambah Kuota Lagu • Meja {req.tableNumber}
-                    </div>
-                    <div className="text-sm font-semibold text-white">
-                      Voucher: <span className="font-mono font-bold">{req.voucherCode || '-'}</span> • Tamu kehabisan kuota lagu dan ingin memesan lagu lagi.
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                  <button
-                    onClick={() => handleApproveTopUp(req, 1)}
-                    className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl transition-all shadow active:scale-95 flex items-center gap-1"
-                  >
-                    <span>+1 Lagu</span>
-                  </button>
-                  <button
-                    onClick={() => handleApproveTopUp(req, 3)}
-                    className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition-all shadow active:scale-95 flex items-center gap-1"
-                  >
-                    <span>+3 Lagu</span>
-                  </button>
-                  <button
-                    onClick={() => handleDismissTopUp(req.tableNumber)}
-                    className="px-2.5 py-1.5 bg-black/40 hover:bg-black/60 text-xs font-bold rounded-xl transition-all text-slate-300"
-                  >
-                    Tutup ✕
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <OperatorTopUpBanner
+          requests={assistanceRequests}
+          onApproveTopUp={(table, code, quota) => approveTopUpRequest(table, code, quota || 1)}
+          onDismissTopUp={dismissTopUpRequest}
+        />
 
         <main className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Kolom Kiri: Dek Kendali & Tambah Lagu */}
-        <div className="lg:col-span-5 space-y-6">
+          {/* Kolom Kiri: Dek Kendali & Tambah Lagu */}
+          <div className="lg:col-span-5 space-y-6">
+            <PlaybackControls
+              playbackStatus={state.playbackStatus}
+              volume={state.volume}
+              isMuted={state.isMuted}
+              hasCurrentSong={!!currentSong}
+              onTogglePlay={togglePlayPause}
+              onSkip={skipSong}
+              onReplay={replayCurrentSong}
+              onVolumeChange={setVolume}
+              onToggleMute={toggleMute}
+              onQuickSoundEffect={triggerSoundEffect}
+              onOpenRunningText={() => setIsRunningTextOpen(true)}
+              onOpenSoundBoard={() => setIsSoundBoardOpen(true)}
+            />
 
-          <PlaybackControls
-            playbackStatus={state.playbackStatus}
-            volume={state.volume}
-            isMuted={state.isMuted}
-            hasCurrentSong={!!currentSong}
-            onTogglePlay={togglePlayPause}
-            onSkip={skipSong}
-            onReplay={replayCurrentSong}
-            onVolumeChange={setVolume}
-            onToggleMute={toggleMute}
-            onQuickSoundEffect={triggerSoundEffect}
-            onOpenRunningText={() => setIsRunningTextOpen(true)}
-            onOpenSoundBoard={() => setIsSoundBoardOpen(true)}
-          />
+            <AddSongForm
+              onAddSong={(videoId, rawUrl, requester, customTitle) => {
+                addSong(videoId, rawUrl, requester, customTitle);
+              }}
+              onOpenPopularModal={() => setIsPopularOpen(true)}
+              songLibrary={songLibrary}
+              history={history}
+              tables={tables}
+              youtubeApiKey={cafeSettings?.youtubeApiKey}
+            />
+          </div>
 
-          <AddSongForm
-            onAddSong={(videoId, rawUrl, requester, customTitle) => {
-              addSong(videoId, rawUrl, requester, customTitle);
-            }}
-            onOpenPopularModal={() => setIsPopularOpen(true)}
-            songLibrary={songLibrary}
-            history={history}
-            tables={tables}
-            youtubeApiKey={cafeSettings?.youtubeApiKey}
-          />
-        </div>
+          {/* Kolom Kanan: Sedang Diputar & Daftar Antrean */}
+          <div className="lg:col-span-7 space-y-6 flex flex-col">
+            <NowPlayingCard
+              currentSong={currentSong}
+              isSavedInLibrary={Boolean(currentSong && songLibrary && songLibrary[currentSong.videoId])}
+              onSaveToLibrary={saveSongToLibrary}
+            />
 
-        {/* Kolom Kanan: Sedang Diputar & Daftar Antrean */}
-        <div className="lg:col-span-7 space-y-6 flex flex-col">
-          <NowPlayingCard
-            currentSong={currentSong}
-            isSavedInLibrary={Boolean(currentSong && songLibrary && songLibrary[currentSong.videoId])}
-            onSaveToLibrary={saveSongToLibrary}
-          />
+            <QueueList
+              queue={nextSongs}
+              currentSong={currentSong}
+              hasCurrentSong={Boolean(currentSong)}
+              currentSongTitle={currentSong?.title}
+              fairRotationEnabled={fairRotationEnabled}
+              onRemoveSong={removeSong}
+              onMoveToTop={moveToTop}
+              onMoveUp={moveSongUp}
+              onMoveDown={moveSongDown}
+              onClearQueue={() => clearQueue(true)}
+              onOpenPopularModal={() => setIsPopularOpen(true)}
+              onToggleFairRotation={toggleFairRotation}
+              onRebalanceFairly={rebalanceQueueFairly}
+            />
+          </div>
+        </main>
 
-          <QueueList
-            queue={nextSongs}
-            currentSong={currentSong}
-            hasCurrentSong={Boolean(currentSong)}
-            currentSongTitle={currentSong?.title}
-            fairRotationEnabled={fairRotationEnabled}
-            onRemoveSong={removeSong}
-            onMoveToTop={moveToTop}
-            onMoveUp={moveSongUp}
-            onMoveDown={moveSongDown}
-            onClearQueue={() => clearQueue(true)}
-            onOpenPopularModal={() => setIsPopularOpen(true)}
-            onToggleFairRotation={toggleFairRotation}
-            onRebalanceFairly={rebalanceQueueFairly}
-          />
-        </div>
-      </main>
+        {/* Drawer Tagihan POS Kasir Cepat */}
+        <PosQuickBillingDrawer
+          isOpen={isPosBillingDrawerOpen}
+          onClose={() => setIsPosBillingDrawerOpen(false)}
+          tableOrders={tableOrders}
+          cafeSettings={cafeSettings}
+          onConfirmOrder={confirmTableOrder}
+          onUpdateOrderStatus={updateTableOrderStatus}
+          onOpenFullPos={() => window.open('#pos', '_blank')}
+        />
 
-      {/* Modals */}
-      <SoundBoardModal
-        isOpen={isSoundBoardOpen}
-        onClose={() => setIsSoundBoardOpen(false)}
-        onTriggerSound={(type) => {
-          triggerSoundEffect(type);
-        }}
-      />
+        {/* Modals Terisolasi */}
+        <SoundBoardModal
+          isOpen={isSoundBoardOpen}
+          onClose={() => setIsSoundBoardOpen(false)}
+          onTriggerSound={triggerSoundEffect}
+        />
 
-      <PopularSongsModal
-        isOpen={isPopularOpen}
-        onClose={() => setIsPopularOpen(false)}
-        onSelectSong={handleSelectPopularSong}
-      />
+        <PopularSongsModal
+          isOpen={isPopularOpen}
+          onClose={() => setIsPopularOpen(false)}
+          onSelectSong={handleSelectPopularSong}
+        />
 
-      <RunningTextModal
-        isOpen={isRunningTextOpen}
-        currentText={state.runningText}
-        onClose={() => setIsRunningTextOpen(false)}
-        onSave={setRunningText}
-      />
+        <RunningTextModal
+          isOpen={isRunningTextOpen}
+          currentText={state.runningText}
+          onClose={() => setIsRunningTextOpen(false)}
+          onSave={setRunningText}
+        />
 
-      <FirebaseConfigModal
-        isOpen={isFirebaseOpen}
-        isConnected={isCloudConnected}
-        onClose={() => setIsFirebaseOpen(false)}
-      />
+        <FirebaseConfigModal
+          isOpen={isFirebaseOpen}
+          isConnected={isCloudConnected}
+          onClose={() => setIsFirebaseOpen(false)}
+        />
 
-      <QrShareModal
-        isOpen={isQrShareOpen}
-        initialIp={cafeSettings?.localServerIp}
-        onSaveIp={updateLocalServerIp}
-        onClose={() => setIsQrShareOpen(false)}
-      />
+        <QrShareModal
+          isOpen={isQrShareOpen}
+          initialIp={cafeSettings?.localServerIp}
+          onSaveIp={updateLocalServerIp}
+          onClose={() => setIsQrShareOpen(false)}
+        />
 
-      <HistoryModal
-        isOpen={isHistoryOpen}
-        history={history}
-        songLibrary={songLibrary}
-        onClose={() => setIsHistoryOpen(false)}
-        onRequeue={(videoId, rawUrl, title) => {
-          addSong(videoId, rawUrl, 'Diputar Ulang', title);
-        }}
-        onClearHistory={clearHistory}
-        onSaveToLibrary={saveSongToLibrary}
-      />
+        <HistoryModal
+          isOpen={isHistoryOpen}
+          history={history}
+          songLibrary={songLibrary}
+          onClose={() => setIsHistoryOpen(false)}
+          onRequeue={(videoId, rawUrl, title) => {
+            addSong(videoId, rawUrl, 'Diputar Ulang', title);
+          }}
+          onClearHistory={clearHistory}
+          onSaveToLibrary={saveSongToLibrary}
+        />
 
-      <VoucherManagerModal
-        isOpen={isVoucherOpen}
-        vouchers={vouchers}
-        dailyPin={dailyPin}
-        tables={tables}
-        onClose={() => setIsVoucherOpen(false)}
-        onCreateVoucher={createVoucher}
-        onRevokeVoucher={revokeVoucher}
-        onSetDailyPin={setDailyPin}
-      />
+        <VoucherManagerModal
+          isOpen={isVoucherOpen}
+          vouchers={vouchers}
+          dailyPin={dailyPin}
+          tables={tables}
+          onClose={() => setIsVoucherOpen(false)}
+          onCreateVoucher={createVoucher}
+          onRevokeVoucher={revokeVoucher}
+          onSetDailyPin={setDailyPin}
+        />
 
-      <TableQrGeneratorModal
-        isOpen={isTableQrOpen}
-        cafeName={cafeSettings?.name}
-        tables={tables}
-        initialIp={cafeSettings?.localServerIp}
-        onSaveIp={updateLocalServerIp}
-        onClose={() => setIsTableQrOpen(false)}
-        onOpenVoucherManager={() => setIsVoucherOpen(true)}
-      />
+        <TableQrGeneratorModal
+          isOpen={isTableQrOpen}
+          cafeName={cafeSettings?.name}
+          tables={tables}
+          initialIp={cafeSettings?.localServerIp}
+          onSaveIp={updateLocalServerIp}
+          onClose={() => setIsTableQrOpen(false)}
+          onOpenVoucherManager={() => setIsVoucherOpen(true)}
+        />
 
-      {/* Pusat Pengaturan Kafe (Sidebar Layout) */}
-      <SettingsCenterModal
-        isOpen={isSettingsCenterOpen}
-        onClose={() => setIsSettingsCenterOpen(false)}
-        cafeSettings={cafeSettings}
-        onUpdateCafeSettings={updateCafeSettings}
-        runningText={state.runningText || ''}
-        onSaveRunningText={setRunningText}
-        onOpenProjectorTab={handleOpenProjector}
-        onOpenQrShare={() => setIsQrShareOpen(true)}
-        tables={tables}
-        onAddTable={addTable}
-        onRemoveTable={removeTable}
-        onResetTables={resetTables}
-        onOpenTableQrModal={() => setIsTableQrOpen(true)}
-        vouchers={vouchers}
-        dailyPin={dailyPin}
-        onCreateVoucher={createVoucher}
-        onRevokeVoucher={revokeVoucher}
-        onSetDailyPin={setDailyPin}
-        onOpenVoucherModal={() => setIsVoucherOpen(true)}
-        menuItems={Object.values(menuItems || {})}
-        onAddMenuItem={addMenuItem}
-        onUpdateMenuItem={updateMenuItem}
-        onDeleteMenuItem={deleteMenuItem}
-        onResetMenuToDefault={resetMenuToDefault}
-        songLibrary={songLibrary}
-        onDeleteFromLibrary={deleteFromLibrary}
-        onClearLibrary={clearLibrary}
-        autoSaveLibrary={autoSaveLibrary}
-        onToggleAutoSaveLibrary={toggleAutoSaveLibrary}
-        isCloudConnected={isCloudConnected}
-        onOpenFirebaseConfig={() => setIsFirebaseOpen(true)}
-        onPasswordChangedLogout={handleLogout}
-      />
-
+        <SettingsCenterModal
+          isOpen={isSettingsCenterOpen}
+          onClose={() => setIsSettingsCenterOpen(false)}
+          cafeSettings={cafeSettings}
+          onUpdateCafeSettings={updateCafeSettings}
+          runningText={state.runningText || ''}
+          onSaveRunningText={setRunningText}
+          onOpenProjectorTab={handleOpenProjector}
+          onOpenQrShare={() => setIsQrShareOpen(true)}
+          tables={tables}
+          onAddTable={addTable}
+          onRemoveTable={removeTable}
+          onResetTables={resetTables}
+          onOpenTableQrModal={() => setIsTableQrOpen(true)}
+          vouchers={vouchers}
+          dailyPin={dailyPin}
+          onCreateVoucher={createVoucher}
+          onRevokeVoucher={revokeVoucher}
+          onSetDailyPin={setDailyPin}
+          onOpenVoucherModal={() => setIsVoucherOpen(true)}
+          menuItems={Object.values(menuItems || {})}
+          onAddMenuItem={addMenuItem}
+          onUpdateMenuItem={updateMenuItem}
+          onDeleteMenuItem={deleteMenuItem}
+          onResetMenuToDefault={resetMenuToDefault}
+          songLibrary={songLibrary}
+          onDeleteFromLibrary={deleteFromLibrary}
+          onClearLibrary={clearLibrary}
+          autoSaveLibrary={autoSaveLibrary}
+          onToggleAutoSaveLibrary={toggleAutoSaveLibrary}
+          isCloudConnected={isCloudConnected}
+          onOpenFirebaseConfig={() => setIsFirebaseOpen(true)}
+          onPasswordChangedLogout={handleLogout}
+        />
       </div>
 
       <DeveloperFooter className="px-4" />

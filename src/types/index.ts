@@ -50,6 +50,14 @@ export interface DailyPinConfig {
   code: string;
 }
 
+export interface AssistanceRequest {
+  tableNumber: string;
+  voucherCode?: string;
+  type: string;
+  requestedAt: number;
+  status: 'pending' | 'resolved' | string;
+}
+
 export interface LiveReactionEvent {
   id: string;
   emoji: string;

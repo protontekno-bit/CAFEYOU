@@ -292,6 +292,30 @@ export function useKaraokePlayer(
     });
   };
 
+  const replayCurrentSong = () => {
+    updateAppState((prev) => ({
+      ...prev,
+      forceReplay: Date.now(),
+      playbackStatus: 'PLAYING',
+    }));
+  };
+
+  const clearQueue = (keepCurrentSong: boolean = true) => {
+    updateAppState((prev) => {
+      const currentQueue = Array.isArray(prev?.queue) ? prev.queue : [];
+      if (keepCurrentSong && currentQueue.length > 0) {
+        return {
+          ...prev,
+          queue: [currentQueue[0]],
+        };
+      }
+      return {
+        ...prev,
+        queue: [],
+      };
+    });
+  };
+
   const clearHistory = () => {
     updateAppState((prev) => ({
       ...prev,
@@ -447,6 +471,8 @@ export function useKaraokePlayer(
     moveSongDown,
     skipSong,
     nextSong,
+    replayCurrentSong,
+    clearQueue,
     clearHistory,
     togglePlayPause,
     setVolume,

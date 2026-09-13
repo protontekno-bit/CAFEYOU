@@ -41,6 +41,7 @@ export const DEFAULT_KARAOKE_STATE: KaraokeState = {
   volume: 100,
   isMuted: false,
   forceSkip: 0,
+  forceReplay: 0,
   runningText: 'Selamat Datang di CAFEYOU Karaoke Lounge • Pesan Lagu Favorit Anda di Kasir!',
   soundEffect: null,
   history: [],

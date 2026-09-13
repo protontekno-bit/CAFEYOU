@@ -60,6 +60,8 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     moveSongUp,
     moveSongDown,
     skipSong,
+    replayCurrentSong,
+    clearQueue,
     clearHistory,
     togglePlayPause,
     setVolume,
@@ -357,9 +359,12 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
             hasCurrentSong={!!currentSong}
             onTogglePlay={togglePlayPause}
             onSkip={skipSong}
+            onReplay={replayCurrentSong}
             onVolumeChange={setVolume}
             onToggleMute={toggleMute}
             onQuickSoundEffect={triggerSoundEffect}
+            onOpenRunningText={() => setIsRunningTextOpen(true)}
+            onOpenSoundBoard={() => setIsSoundBoardOpen(true)}
           />
 
           <AddSongForm
@@ -391,6 +396,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
             onMoveToTop={moveToTop}
             onMoveUp={moveSongUp}
             onMoveDown={moveSongDown}
+            onClearQueue={() => clearQueue(true)}
             onOpenPopularModal={() => setIsPopularOpen(true)}
             onToggleFairRotation={toggleFairRotation}
             onRebalanceFairly={rebalanceQueueFairly}

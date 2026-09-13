@@ -20,6 +20,8 @@ export function useYouTubePlayer({
   const [isApiReady, setIsApiReady] = useState(false);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const lastSoundTimestampRef = useRef<number>(0);
+  const lastPlayedSongIdRef = useRef<string | null>(null);
+  const lastReplayTimestampRef = useRef<number>(0);
 
   // appStateRef to access latest state inside callbacks
   const appStateRef = useRef(appState);
@@ -64,16 +66,21 @@ export function useYouTubePlayer({
         },
         events: {
           onReady: (event: any) => {
-            const currentVolume = appStateRef.current?.isMuted
-              ? 0
-              : appStateRef.current?.volume ?? 100;
-            event.target.setVolume(currentVolume);
+            if (appStateRef.current?.isMuted) {
+              if (typeof event.target.mute === 'function') event.target.mute();
+              event.target.setVolume(0);
+            } else {
+              if (typeof event.target.unMute === 'function') event.target.unMute();
+              const currentVolume = appStateRef.current?.volume ?? 100;
+              event.target.setVolume(currentVolume);
+            }
 
             const queue = Array.isArray(appStateRef.current?.queue)
               ? appStateRef.current.queue
               : [];
             const currentSong = queue[0];
             if (currentSong) {
+              lastPlayedSongIdRef.current = currentSong.id;
               event.target.loadVideoById(currentSong.videoId);
             }
           },
@@ -107,26 +114,55 @@ export function useYouTubePlayer({
     const currentSong = queue[0];
 
     try {
-      if (typeof player.setVolume === 'function') {
-        player.setVolume(appState?.isMuted ? 0 : (appState?.volume ?? 100));
+      // 1. Mute / Unmute & Volume sync
+      if (appState?.isMuted) {
+        if (typeof player.mute === 'function') player.mute();
+        if (typeof player.setVolume === 'function') player.setVolume(0);
+      } else {
+        if (typeof player.unMute === 'function') player.unMute();
+        if (typeof player.setVolume === 'function') {
+          player.setVolume(appState?.volume ?? 100);
+        }
       }
 
+      // 2. Play / Pause flexibility
       const state = player.getPlayerState();
-      if (appState?.playbackStatus === 'PAUSED' && state === window.YT.PlayerState.PLAYING) {
-        player.pauseVideo();
-      } else if (appState?.playbackStatus === 'PLAYING' && state === window.YT.PlayerState.PAUSED) {
-        player.playVideo();
+      if (appState?.playbackStatus === 'PAUSED') {
+        if (state === window.YT.PlayerState.PLAYING || state === window.YT.PlayerState.BUFFERING) {
+          player.pauseVideo();
+        }
+      } else if (appState?.playbackStatus === 'PLAYING') {
+        if (state !== window.YT.PlayerState.PLAYING && state !== window.YT.PlayerState.BUFFERING) {
+          player.playVideo();
+        }
       }
 
-      // Track switching sync
+      // 3. Force Replay signal from Operator
+      if (
+        appState?.forceReplay &&
+        appState.forceReplay > lastReplayTimestampRef.current
+      ) {
+        lastReplayTimestampRef.current = appState.forceReplay;
+        if (typeof player.seekTo === 'function') {
+          player.seekTo(0, true);
+        }
+        if (typeof player.playVideo === 'function') {
+          player.playVideo();
+        }
+      }
+
+      // 4. Track switching sync (Uses unique song.id to guarantee reload on duplicate video IDs)
       if (currentSong) {
+        const isNewSongInstance = lastPlayedSongIdRef.current !== currentSong.id;
         const videoData = player.getVideoData ? player.getVideoData() : null;
         const playingId = videoData ? videoData.video_id : null;
 
-        if (playingId !== currentSong.videoId) {
+        if (isNewSongInstance || playingId !== currentSong.videoId) {
+          lastPlayedSongIdRef.current = currentSong.id;
           player.loadVideoById(currentSong.videoId);
         }
       } else {
+        lastPlayedSongIdRef.current = null;
         if (state === window.YT.PlayerState.PLAYING || state === window.YT.PlayerState.PAUSED) {
           player.stopVideo();
         }
@@ -140,6 +176,7 @@ export function useYouTubePlayer({
     appState?.volume,
     appState?.isMuted,
     appState?.forceSkip,
+    appState?.forceReplay,
   ]);
 
   return {

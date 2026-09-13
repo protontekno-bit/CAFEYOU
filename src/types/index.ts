@@ -215,6 +215,7 @@ export interface KaraokeState {
   volume: number;
   isMuted?: boolean;
   forceSkip: number;
+  forceReplay?: number;
   runningText?: string;
   soundEffect?: SoundEffectEvent | null;
   history?: SongHistoryItem[];

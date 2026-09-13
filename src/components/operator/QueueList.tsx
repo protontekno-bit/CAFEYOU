@@ -18,6 +18,7 @@ interface QueueListProps {
   onMoveToTop: (id: string) => void;
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
+  onClearQueue?: () => void;
   onOpenPopularModal?: () => void;
   onToggleFairRotation?: () => void;
   onRebalanceFairly?: () => void;
@@ -32,12 +33,20 @@ export const QueueList: React.FC<QueueListProps> = ({
   onMoveToTop,
   onMoveUp,
   onMoveDown,
+  onClearQueue,
   onOpenPopularModal,
   onToggleFairRotation,
   onRebalanceFairly,
 }) => {
   const safeQueue = Array.isArray(queue) ? queue : [];
   const [filterSource, setFilterSource] = useState<'all' | 'guest' | 'operator'>('all');
+
+  const handleConfirmClearQueue = () => {
+    if (!onClearQueue) return;
+    if (window.confirm(`Kosongkan seluruh ${safeQueue.length} antrean lagu tunggu?`)) {
+      onClearQueue();
+    }
+  };
 
   const guestCount = useMemo(() => {
     return safeQueue.filter((s) => s.source === 'guest' || s.tableNumber).length;
@@ -76,7 +85,7 @@ export const QueueList: React.FC<QueueListProps> = ({
           )}
         </div>
 
-        {/* Smart Fair Rotation Controls */}
+        {/* Smart Fair Rotation & Queue Management Controls */}
         <div className="flex items-center gap-2">
           {onToggleFairRotation && (
             <button
@@ -101,6 +110,17 @@ export const QueueList: React.FC<QueueListProps> = ({
             >
               <span>🔄</span>
               <span className="hidden sm:inline">Ratakan Giliran</span>
+            </button>
+          )}
+
+          {onClearQueue && safeQueue.length > 0 && (
+            <button
+              onClick={handleConfirmClearQueue}
+              className="px-2.5 py-1 bg-red-500/15 hover:bg-red-500/25 active:scale-95 text-red-300 hover:text-red-200 rounded-xl text-xs font-semibold border border-red-500/30 transition-all flex items-center gap-1 shadow-sm"
+              title="Hapus seluruh antrean lagu tunggu"
+            >
+              <span>🗑️</span>
+              <span className="hidden sm:inline">Kosongkan</span>
             </button>
           )}
         </div>

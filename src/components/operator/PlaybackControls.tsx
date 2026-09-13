@@ -17,9 +17,12 @@ interface PlaybackControlsProps {
   hasCurrentSong: boolean;
   onTogglePlay: () => void;
   onSkip: () => void;
+  onReplay?: () => void;
   onVolumeChange: (newVolume: number) => void;
   onToggleMute: () => void;
   onQuickSoundEffect: (type: SoundEffectType) => void;
+  onOpenRunningText?: () => void;
+  onOpenSoundBoard?: () => void;
 }
 
 export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
@@ -29,9 +32,12 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   hasCurrentSong,
   onTogglePlay,
   onSkip,
+  onReplay,
   onVolumeChange,
   onToggleMute,
   onQuickSoundEffect,
+  onOpenRunningText,
+  onOpenSoundBoard,
 }) => {
   const isPlaying = playbackStatus === 'PLAYING';
   const [isPlayerOnline, setIsPlayerOnline] = useState<boolean>(false);
@@ -80,37 +86,49 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         </div>
       </div>
 
-      {/* Tombol Playback Utama */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Tombol Playback Utama: Putar, Replay, Lewati */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <button
           onClick={onTogglePlay}
           disabled={!hasCurrentSong}
-          className={`py-3.5 px-4 rounded-xl flex justify-center items-center gap-2.5 text-sm font-bold transition-all shadow-lg active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
+          className={`py-3 px-2 sm:px-3 rounded-xl flex flex-col sm:flex-row justify-center items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold transition-all shadow-lg active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
             isPlaying
               ? 'bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 shadow-yellow-500/20'
               : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-emerald-500/20'
           }`}
+          title={isPlaying ? 'Jeda pemutaran lagu' : 'Putar lagu'}
         >
           {isPlaying ? (
             <>
-              <PauseIcon className="w-5 h-5" />
-              <span>Jeda (Pause)</span>
+              <PauseIcon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span>Jeda</span>
             </>
           ) : (
             <>
-              <PlayIcon className="w-5 h-5" />
-              <span>Putar (Play)</span>
+              <PlayIcon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span>Putar</span>
             </>
           )}
         </button>
 
         <button
+          onClick={onReplay}
+          disabled={!hasCurrentSong}
+          className="py-3 px-2 sm:px-3 bg-slate-700/80 hover:bg-slate-700 active:scale-95 text-indigo-300 hover:text-indigo-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl flex flex-col sm:flex-row justify-center items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold transition-all border border-slate-600/60 shadow-md"
+          title="Putar ulang lagu yang sedang aktif dari awal (detik 0)"
+        >
+          <span className="text-base sm:text-lg">🔄</span>
+          <span>Ulangi</span>
+        </button>
+
+        <button
           onClick={onSkip}
           disabled={!hasCurrentSong}
-          className="py-3.5 px-4 bg-slate-700 hover:bg-slate-600 active:scale-95 text-blue-400 hover:text-blue-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl flex justify-center items-center gap-2 text-sm font-bold transition-all border border-slate-600/50 shadow-md"
+          className="py-3 px-2 sm:px-3 bg-slate-700/80 hover:bg-slate-700 active:scale-95 text-blue-400 hover:text-blue-300 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl flex flex-col sm:flex-row justify-center items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold transition-all border border-slate-600/60 shadow-md"
+          title="Lewati ke lagu berikutnya di antrean"
         >
-          <SkipIcon className="w-5 h-5" />
-          <span>Lewati (Skip)</span>
+          <SkipIcon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+          <span>Lewati</span>
         </button>
       </div>
 
@@ -180,6 +198,34 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Pintasan Cepat Proyektor (Running Text & Soundboard) */}
+      {(onOpenRunningText || onOpenSoundBoard) && (
+        <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between gap-2">
+          {onOpenRunningText && (
+            <button
+              type="button"
+              onClick={onOpenRunningText}
+              className="flex-1 py-2 px-3 bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-amber-300 border border-slate-700/80 hover:border-amber-500/40 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm"
+              title="Atur pesan running text di layar TV"
+            >
+              <span>📢</span>
+              <span>Running Text</span>
+            </button>
+          )}
+          {onOpenSoundBoard && (
+            <button
+              type="button"
+              onClick={onOpenSoundBoard}
+              className="flex-1 py-2 px-3 bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-indigo-300 border border-slate-700/80 hover:border-indigo-500/40 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm"
+              title="Buka panel soundboard lengkap"
+            >
+              <span>🎛️</span>
+              <span>FX Penuh</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SparklesIcon, CloudIcon } from '../icons/Icons';
+import { SearchIcon, SparklesIcon } from '../icons/Icons';
 import {
   extractYouTubeID,
   getYouTubeThumbnail,
@@ -26,26 +26,21 @@ export const AddSongYouTubeTab: React.FC<AddSongYouTubeTabProps> = ({
   onAddSong,
   onClearQuery,
 }) => {
-  // State untuk Pilihan 1: Live Search
   const [ytResults, setYtResults] = useState<YouTubeSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [ytError, setYtError] = useState<string | null>(null);
 
-  // State untuk Pilihan 2: Deteksi & Input Link YouTube
-  const [manualUrlInput, setManualUrlInput] = useState('');
+  // State deteksi link YouTube otomatis
   const [detectedVideoId, setDetectedVideoId] = useState<string | null>(null);
   const [detectedTitle, setDetectedTitle] = useState('');
   const [customTitle, setCustomTitle] = useState('');
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
 
-  // Cek apakah searchQuery utama atau manualUrlInput adalah link YouTube
-  const activeUrlCandidate = extractYouTubeID(searchQuery)
-    ? searchQuery
-    : manualUrlInput;
-  const currentVideoId = extractYouTubeID(activeUrlCandidate);
+  const currentVideoId = extractYouTubeID(searchQuery);
 
-  // Otomatis fetch judul saat link terdeteksi
+  // Otomatis fetch judul saat link YouTube terdeteksi di kolom pencarian
   useEffect(() => {
     if (currentVideoId) {
       setDetectedVideoId(currentVideoId);
@@ -74,13 +69,13 @@ export const AddSongYouTubeTab: React.FC<AddSongYouTubeTabProps> = ({
     }
   }, [currentVideoId]);
 
-  // Handler Pencarian Live YouTube (Pilihan 1)
+  // Handler Pencarian Live YouTube berdasarkan judul
   const handleLiveSearch = async (term?: string) => {
     const q = (term !== undefined ? term : searchQuery).trim();
-    if (!q) return;
+    if (!q || extractYouTubeID(q)) return;
 
     if (!youtubeApiKey) {
-      setYtError('API Key YouTube belum dikonfigurasi di Pengaturan Kafe.');
+      setYtError('Kunci API YouTube belum dikonfigurasi di Pengaturan Kafe.');
       return;
     }
 
@@ -88,20 +83,20 @@ export const AddSongYouTubeTab: React.FC<AddSongYouTubeTabProps> = ({
     setYtError(null);
     try {
       const targetQuery = q.toLowerCase().includes('karaoke') ? q : `${q} karaoke`;
-      const res = await searchYouTubeVideos(targetQuery, youtubeApiKey, 6);
+      const res = await searchYouTubeVideos(targetQuery, youtubeApiKey, 8);
       if (res.success) {
         setYtResults(res.results);
       } else {
-        setYtError(res.error || 'Gagal mencari video di YouTube.');
+        setYtError(res.error || 'Gagal memuat video YouTube.');
       }
     } catch (err: any) {
-      setYtError(err?.message || 'Terjadi gangguan jaringan saat menghubungi YouTube.');
+      setYtError(err?.message || 'Terjadi kendala saat menghubungi YouTube.');
     } finally {
       setIsSearching(false);
     }
   };
 
-  // Otomatis picu live search jika tab dibuka dan ada kata kunci teks (bukan URL)
+  // Otomatis picu live search dengan debounce saat user mengetik judul
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (trimmed && !extractYouTubeID(trimmed) && youtubeApiKey) {
@@ -109,10 +104,37 @@ export const AddSongYouTubeTab: React.FC<AddSongYouTubeTabProps> = ({
         handleLiveSearch(trimmed);
       }, 500);
       return () => clearTimeout(timer);
+    } else if (!trimmed) {
+      setYtResults([]);
+      setYtError(null);
     }
   }, [searchQuery, youtubeApiKey]);
 
-  // Handler Tambah dari Deteksi Link (Pilihan 2)
+  // Handler Tempel Cepat dari Clipboard
+  const handleSmartPaste = async () => {
+    try {
+      if (!navigator.clipboard?.readText) {
+        setPasteNotice('Clipboard tidak didukung.');
+        setTimeout(() => setPasteNotice(null), 2500);
+        return;
+      }
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) {
+        setPasteNotice('Clipboard kosong.');
+        setTimeout(() => setPasteNotice(null), 2500);
+        return;
+      }
+      const trimmed = text.trim();
+      onSearchQueryChange(trimmed);
+      setPasteNotice(extractYouTubeID(trimmed) ? 'Link YouTube ditempel! ✓' : 'Teks pencarian ditempel! ✓');
+      setTimeout(() => setPasteNotice(null), 2500);
+    } catch {
+      setPasteNotice('Izin clipboard ditolak.');
+      setTimeout(() => setPasteNotice(null), 2500);
+    }
+  };
+
+  // Handler Tambah dari Link Terdeteksi
   const handleQueueDetectedVideo = async () => {
     if (!detectedVideoId) return;
     setIsSubmitting(true);
@@ -121,7 +143,6 @@ export const AddSongYouTubeTab: React.FC<AddSongYouTubeTabProps> = ({
       const rawUrl = `https://www.youtube.com/watch?v=${detectedVideoId}`;
       const titleToUse = customTitle.trim() || detectedTitle || 'YouTube Video';
       await onAddSong(detectedVideoId, rawUrl, req, titleToUse);
-      setManualUrlInput('');
       onClearQuery();
     } finally {
       setIsSubmitting(false);
@@ -130,15 +151,73 @@ export const AddSongYouTubeTab: React.FC<AddSongYouTubeTabProps> = ({
 
   return (
     <div className="space-y-3 font-sans">
-      {/* ========================================================
-          KARTU DETEKSI LINK YOUTUBE OTOMATIS (Jika URL Terdeteksi)
-          ======================================================== */}
+      {/* 1. KOLOM PENCARIAN UTAMA YOUTUBE (BISA LANGSUNG DIKETIK ATAU DITEMPEL) */}
+      <div className="space-y-1">
+        <div className="flex justify-between items-center px-0.5">
+          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <span className="text-red-400">🔴</span>
+            <span>Cari Judul / Tempel Tautan YouTube:</span>
+          </label>
+          <div className="flex items-center gap-2">
+            {pasteNotice && (
+              <span className="text-[10px] text-emerald-400 font-semibold animate-fadeIn">
+                {pasteNotice}
+              </span>
+            )}
+            {youtubeApiKey ? (
+              <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-semibold">
+                Live Search Aktif ✓
+              </span>
+            ) : (
+              <span className="text-[9px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-semibold">
+                Bantuan Web ↗
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="relative flex items-center gap-1.5">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Ketik judul lagu karaoke atau tempel link YouTube..."
+              value={searchQuery}
+              onChange={(e) => onSearchQueryChange(e.target.value)}
+              autoFocus
+              className="w-full bg-slate-900/90 border border-slate-700 focus:border-red-500 rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition-all shadow-inner"
+            />
+            <SearchIcon className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={onClearQuery}
+                className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300 text-xs p-0.5 rounded-full cursor-pointer"
+                title="Hapus teks"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSmartPaste}
+            className="px-3 py-2.5 bg-slate-900 hover:bg-slate-700 active:scale-95 text-red-300 border border-red-500/30 hover:border-red-500/60 rounded-xl text-xs font-bold transition-all shadow flex items-center gap-1 shrink-0 cursor-pointer"
+            title="Tempel dari Clipboard"
+          >
+            <span>📋</span>
+            <span className="hidden sm:inline">Tempel</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. KARTU VIDEO TERDETEKSI (Jika yang dimasukkan adalah link URL) */}
       {detectedVideoId && (
-        <div className="p-3.5 bg-gradient-to-r from-red-950/60 via-slate-900 to-slate-900 border border-red-500/50 rounded-2xl space-y-2.5 shadow-lg animate-fadeIn">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="p-3.5 bg-gradient-to-r from-red-950/70 via-slate-900 to-slate-900 border border-red-500/50 rounded-2xl space-y-2.5 shadow-lg animate-fadeIn">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5 text-[11px]">
               <SparklesIcon className="w-3.5 h-3.5 text-amber-400" />
-              <span>Link YouTube Terdeteksi</span>
+              <span>Link Video YouTube Valid</span>
             </span>
             <span className="text-[10px] bg-red-500/20 text-red-300 font-mono px-2 py-0.5 rounded">
               ID: {detectedVideoId}
@@ -159,7 +238,7 @@ export const AddSongYouTubeTab: React.FC<AddSongYouTubeTabProps> = ({
                 <div className="text-xs text-red-300 animate-pulse">Mengambil data video...</div>
               ) : (
                 <>
-                  <label className="text-[10px] text-slate-400 block">Judul Lagu (Dapat Diedit):</label>
+                  <label className="text-[10px] text-slate-400 block">Judul Lagu (Bisa Diedit):</label>
                   <input
                     type="text"
                     value={customTitle}
@@ -184,178 +263,119 @@ export const AddSongYouTubeTab: React.FC<AddSongYouTubeTabProps> = ({
         </div>
       )}
 
-      {/* ========================================================
-          PILIHAN 1: PENCARIAN LIVE YOUTUBE BERDASARKAN JUDUL
-          ======================================================== */}
-      <div className="p-3 bg-slate-900/80 rounded-2xl border border-slate-700/60 space-y-2.5">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-bold text-slate-200 flex items-center gap-1.5">
-            <span className="text-red-400">🔴</span>
-            <span>Pilihan 1: Pencarian Live YouTube</span>
-          </span>
-          {youtubeApiKey ? (
-            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-semibold">
-              API Aktif ✓
-            </span>
-          ) : (
-            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-semibold">
-              Mode Bantuan ↗
-            </span>
-          )}
-        </div>
-
-        {/* Kondisi Jika API Key Tersedia */}
-        {youtubeApiKey ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <span>Hasil pencarian video karaoke YouTube secara realtime:</span>
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => handleLiveSearch()}
-                  disabled={isSearching}
-                  className="text-[10px] text-red-400 hover:text-red-300 font-semibold cursor-pointer"
-                >
-                  {isSearching ? 'Mencari...' : '🔄 Segarkan'}
-                </button>
-              )}
+      {/* 3. HASIL PENCARIAN LIVE YOUTUBE (Jika yang dimasukkan adalah judul lagu) */}
+      {!detectedVideoId && (
+        <>
+          {isSearching && (
+            <div className="py-6 text-center text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl animate-pulse space-y-1">
+              <div className="font-bold">Mencari video karaoke di YouTube...</div>
+              <div className="text-[10px] text-slate-400">Menghubungkan ke Google Cloud Data API</div>
             </div>
+          )}
 
-            {/* Error Message */}
-            {ytError && (
-              <div className="p-2.5 bg-red-500/15 border border-red-500/40 rounded-xl text-red-300 text-xs flex items-center gap-2">
-                <span>⚠️</span>
-                <span>{ytError}</span>
-              </div>
-            )}
+          {ytError && (
+            <div className="p-2.5 bg-red-500/15 border border-red-500/40 rounded-xl text-red-300 text-xs flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{ytError}</span>
+            </div>
+          )}
 
-            {/* Loading Indicator */}
-            {isSearching && (
-              <div className="py-6 text-center text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl animate-pulse space-y-1">
-                <div className="font-bold">Mencari video karaoke di YouTube...</div>
-                <div className="text-[10px] text-slate-400">Menghubungkan ke Google Cloud Data API</div>
-              </div>
-            )}
-
-            {/* List Hasil Pencarian Live */}
-            {!isSearching && ytResults.length > 0 && (
-              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-                {ytResults.map((video) => (
-                  <div
-                    key={video.videoId}
-                    className="flex items-center justify-between p-2.5 bg-slate-950/80 hover:bg-slate-900 rounded-xl border border-slate-700/60 hover:border-red-500/40 transition-all group"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <img
-                        src={video.thumbnail}
-                        alt="Thumbnail"
-                        className="w-12 h-8 object-cover rounded bg-slate-800 border border-slate-700 shrink-0"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
-                        }}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-slate-100 truncate" title={video.title}>
-                          {video.title}
-                        </p>
-                        <p className="text-[10px] text-slate-400 truncate">
-                          {video.channelTitle || 'YouTube'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const req = requesterName.trim() || 'Kasir';
-                        const url = `https://www.youtube.com/watch?v=${video.videoId}`;
-                        onAddSong(video.videoId, url, req, video.title);
-                        onClearQuery();
-                      }}
-                      className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-all shrink-0 ml-2 shadow-sm active:scale-95 cursor-pointer"
-                    >
-                      + Antrekan
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!isSearching && ytResults.length === 0 && searchQuery && (
-              <div className="py-4 text-center text-slate-400 text-xs bg-slate-950/40 rounded-xl border border-slate-800">
-                Tekan tombol di bawah untuk mencari <strong>"{searchQuery}"</strong> di YouTube:
-                <div className="mt-2">
+          {/* List Hasil Video */}
+          {!isSearching && ytResults.length > 0 && (
+            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+              <div className="flex justify-between items-center text-[11px] text-slate-400 px-1 mb-1">
+                <span>Ditemukan: <strong className="text-red-400">{ytResults.length}</strong> video YouTube</span>
+                {searchQuery && (
                   <button
                     type="button"
                     onClick={() => handleLiveSearch()}
-                    className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer active:scale-95"
+                    className="text-[10px] text-red-400 hover:text-red-300 font-semibold cursor-pointer"
                   >
-                    🔍 Cari "{searchQuery}" Sekarang
+                    🔄 Segarkan
+                  </button>
+                )}
+              </div>
+              {ytResults.map((video) => (
+                <div
+                  key={video.videoId}
+                  className="flex items-center justify-between p-2.5 bg-slate-900/80 hover:bg-slate-900 rounded-xl border border-slate-700/60 hover:border-red-500/40 transition-all group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img
+                      src={video.thumbnail}
+                      alt="Thumbnail"
+                      className="w-12 h-8 object-cover rounded bg-slate-800 border border-slate-700 shrink-0"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = DEFAULT_SONG_THUMBNAIL;
+                      }}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-100 truncate" title={video.title}>
+                        {video.title}
+                      </p>
+                      <p className="text-[10px] text-slate-400 truncate">
+                        {video.channelTitle || 'YouTube'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const req = requesterName.trim() || 'Kasir';
+                      const url = `https://www.youtube.com/watch?v=${video.videoId}`;
+                      onAddSong(video.videoId, url, req, video.title);
+                      onClearQuery();
+                    }}
+                    className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-all shrink-0 ml-2 shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    + Antrekan
                   </button>
                 </div>
-              </div>
-            )}
-
-            {!isSearching && !searchQuery && ytResults.length === 0 && (
-              <div className="py-4 text-center text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-slate-800">
-                Ketik judul lagu di kotak pencarian di atas untuk memunculkan video karaoke live.
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Kondisi Jika API Key Belum Dikonfigurasi (Fallback Bantuan) */
-          <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-xs space-y-2">
-            <p className="text-slate-300 leading-relaxed text-[11px]">
-              Kunci API YouTube belum diisi di Pengaturan Kafe. Anda dapat mencari video langsung di situs YouTube, lalu salin tautan video dan tempelkan ke aplikasi.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                const q = searchQuery.trim()
-                  ? (searchQuery.toLowerCase().includes('karaoke') ? searchQuery : `${searchQuery} karaoke`)
-                  : 'karaoke indonesia';
-                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank');
-              }}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-purple-200 border border-purple-500/30 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer w-full"
-            >
-              <span>Buka YouTube Web ↗</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ========================================================
-          PILIHAN 2: INPUT TAUTAN YOUTUBE MANUAL (OPSIONAL)
-          ======================================================== */}
-      <div className="p-3 bg-slate-900/60 rounded-2xl border border-slate-800/80 space-y-2">
-        <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-          <CloudIcon className="w-3.5 h-3.5 text-blue-400" />
-          <span>Pilihan 2: Tempel Link YouTube Manual (Opsional)</span>
-        </label>
-        <div className="flex gap-1.5">
-          <input
-            type="text"
-            placeholder="https://www.youtube.com/watch?v=... atau youtu.be/..."
-            value={manualUrlInput}
-            onChange={(e) => setManualUrlInput(e.target.value)}
-            className="flex-1 bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 outline-none transition-all"
-          />
-          {manualUrlInput && (
-            <button
-              type="button"
-              onClick={() => setManualUrlInput('')}
-              className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-xs"
-              title="Bersihkan"
-            >
-              ✕
-            </button>
+              ))}
+            </div>
           )}
-        </div>
-        <p className="text-[10px] text-slate-500">
-          Tip: Anda juga bisa langsung menempel tautan URL di Kotak Pencarian Utama di atas.
-        </p>
-      </div>
+
+          {/* Kondisi saat belum mengetik / belum ada hasil */}
+          {!isSearching && ytResults.length === 0 && (
+            <div className="py-4 px-3 text-center text-slate-400 text-xs bg-slate-900/40 rounded-xl border border-slate-700/40 space-y-2">
+              {searchQuery ? (
+                <div>
+                  <p>Tidak ada video live ditemukan untuk <strong>"{searchQuery}"</strong>.</p>
+                  <button
+                    type="button"
+                    onClick={() => handleLiveSearch()}
+                    className="mt-2 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl shadow transition-all active:scale-95 cursor-pointer"
+                  >
+                    🔍 Coba Cari Ulang
+                  </button>
+                </div>
+              ) : (
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Ketik judul lagu pada kolom di atas untuk mencari video YouTube secara live, atau tempelkan link video langsung.
+                </p>
+              )}
+
+              {/* Bantuan Fallback Web jika tanpa API atau ingin cari di luar */}
+              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const q = searchQuery.trim()
+                      ? (searchQuery.toLowerCase().includes('karaoke') ? searchQuery : `${searchQuery} karaoke`)
+                      : 'karaoke indonesia';
+                    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank');
+                  }}
+                  className="text-[11px] text-purple-300 hover:text-purple-200 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Buka YouTube di Tab Baru ↗</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

@@ -1,10 +1,12 @@
 import React from 'react';
-import { SparklesIcon } from '../icons/Icons';
+import { SearchIcon, SparklesIcon } from '../icons/Icons';
 import { SavedLibrarySong } from '../../types';
 import { getYouTubeThumbnail, DEFAULT_SONG_THUMBNAIL } from '../../utils/youtube';
 
 interface AddSongSearchTabProps {
   searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
+  onClearQuery: () => void;
   searchResults: SavedLibrarySong[];
   totalSavedCount: number;
   onSelectFromLibrary: (song: SavedLibrarySong) => void;
@@ -14,6 +16,8 @@ interface AddSongSearchTabProps {
 
 export const AddSongSearchTab: React.FC<AddSongSearchTabProps> = ({
   searchQuery,
+  onSearchQueryChange,
+  onClearQuery,
   searchResults,
   totalSavedCount,
   onSelectFromLibrary,
@@ -21,18 +25,42 @@ export const AddSongSearchTab: React.FC<AddSongSearchTabProps> = ({
   onSwitchToYouTube,
 }) => {
   return (
-    <div className="space-y-2.5 font-sans">
-      <div className="flex justify-between items-center px-0.5">
-        <span className="text-xs font-semibold text-slate-300">
-          {searchQuery ? 'Hasil Pencarian Koleksi Kafe:' : 'Lagu Tersedia & Riwayat Kafe:'}
-        </span>
-        <span className="text-[11px] text-slate-400">
-          Ditemukan: <strong className="text-emerald-400">{searchResults.length}</strong>{' '}
-          {searchQuery ? `dari ${totalSavedCount}` : 'lagu'}
-        </span>
+    <div className="space-y-3 font-sans">
+      {/* Kolom Pencarian Langsung Koleksi Kafe */}
+      <div className="space-y-1">
+        <div className="flex justify-between items-center px-0.5">
+          <label className="text-xs font-semibold text-slate-300">
+            Cari Lagu di Koleksi Kafe:
+          </label>
+          <span className="text-[11px] text-slate-400">
+            Ditemukan: <strong className="text-emerald-400 font-mono">{searchResults.length}</strong>{' '}
+            {searchQuery ? `dari ${totalSavedCount}` : 'lagu'}
+          </span>
+        </div>
+
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Ketik judul lagu atau nama penyanyi..."
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChange(e.target.value)}
+            className="w-full bg-slate-900/90 border border-slate-700 focus:border-purple-500 rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition-all shadow-inner"
+          />
+          <SearchIcon className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={onClearQuery}
+              className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300 text-xs p-0.5 rounded-full cursor-pointer"
+              title="Hapus pencarian"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Hasil Daftar Lagu Koleksi Kafe */}
+      {/* Daftar Lagu Koleksi Kafe */}
       <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
         {searchResults.length > 0 ? (
           searchResults.map((song) => (
@@ -80,7 +108,7 @@ export const AddSongSearchTab: React.FC<AddSongSearchTabProps> = ({
         ) : (
           <div className="py-6 px-3 text-center text-slate-400 text-xs bg-slate-900/40 rounded-xl border border-slate-700/40 space-y-3">
             <p className="text-slate-300">
-              Lagu <strong>"{searchQuery}"</strong> belum tersimpan di koleksi kafe.
+              Lagu <strong>"{searchQuery}"</strong> belum ada di database kafe.
             </p>
             <button
               type="button"

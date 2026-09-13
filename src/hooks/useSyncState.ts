@@ -24,10 +24,18 @@ function sanitizeState<T>(val: any, fallback: T, currentState?: any): T {
         : (fallback as any).songLibrary || {};
   }
   if ('vouchers' in (fallback as any)) {
-    merged.vouchers =
-      val.vouchers && typeof val.vouchers === 'object'
-        ? val.vouchers
-        : (fallback as any).vouchers || {};
+    if (val.vouchers && typeof val.vouchers === 'object' && Object.keys(val.vouchers).length > 0) {
+      merged.vouchers = val.vouchers;
+    } else if (
+      currentState &&
+      currentState.vouchers &&
+      typeof currentState.vouchers === 'object' &&
+      Object.keys(currentState.vouchers).length > 0
+    ) {
+      merged.vouchers = currentState.vouchers;
+    } else {
+      merged.vouchers = (fallback as any).vouchers || {};
+    }
   }
   if ('dailyPin' in (fallback as any)) {
     merged.dailyPin =
@@ -248,8 +256,8 @@ export function useSyncState<T>(
           if (db) {
             try {
               const dbRef = ref(db, `cafeyou/${key}`);
-              // Pisahkan tableOrders dan expenses agar TIDAK terhapus/tertimpa saat sinkronisasi state umum (lagu, player, antrean)
-              const { tableOrders: _to, expenses: _exp, ...cleanState } = newValue as any;
+              // Pisahkan tableOrders, expenses, dan vouchers agar TIDAK terhapus/tertimpa saat sinkronisasi state umum (lagu, player, antrean)
+              const { tableOrders: _to, expenses: _exp, vouchers: _vouch, ...cleanState } = newValue as any;
               const sanitizedPayload = JSON.parse(JSON.stringify(cleanState));
               update(dbRef, sanitizedPayload).catch((err) => {
                 console.warn('Gagal menulis ke Firebase Cloud:', err);

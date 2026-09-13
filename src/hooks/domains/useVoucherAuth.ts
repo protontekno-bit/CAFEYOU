@@ -88,11 +88,12 @@ export function useVoucherAuth(
       status: 'active',
     };
 
+    const cleanCode = randomCode.toUpperCase().trim();
     // 1. Tulis langsung ke Firebase RTDB secara atomik
     try {
       const db = initFirebaseDatabase();
       if (db) {
-        const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${randomCode}`);
+        const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${cleanCode}`);
         set(vRef, newVoucher).catch((err) => {
           console.warn('Gagal simpan voucher ke Firebase RTDB:', err);
         });
@@ -228,8 +229,8 @@ export function useVoucherAuth(
       const db = initFirebaseDatabase();
       if (db) {
         try {
-          // Direct lookup leaf node first
-          const singleRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${trimmed}`);
+          // Direct lookup leaf node first (case-insensitive key)
+          const singleRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${trimmed.toUpperCase()}`);
           const singleSnap = await get(singleRef);
           if (singleSnap.exists()) {
             foundVoucher = singleSnap.val() as Voucher;

@@ -79,6 +79,9 @@ export function useKaraoke() {
     saveSongToLibrary: player.saveSongToLibrary,
     sendPlayerCommand: player.sendPlayerCommand,
     sendStageCue: player.sendStageCue,
+    seekSong: player.seekSong,
+    seekSongTo: player.seekSongTo,
+    stopCurrentToStandby: player.stopCurrentToStandby,
     // Order & Billing domain
     menuItems: billing.menuItems,
     tableOrders: billing.tableOrders,

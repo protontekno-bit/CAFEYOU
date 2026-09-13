@@ -90,6 +90,9 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     saveSongToLibrary,
     sendPlayerCommand,
     sendStageCue,
+    seekSong,
+    seekSongTo,
+    stopCurrentToStandby,
     menuItems,
     tableOrders,
     confirmTableOrder,
@@ -203,6 +206,10 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
               onQuickSoundEffect={triggerSoundEffect}
               onOpenRunningText={() => setIsRunningTextOpen(true)}
               onOpenSoundBoard={() => setIsSoundBoardOpen(true)}
+              onSeek={seekSong}
+              onSeekTo={seekSongTo}
+              onStopToStandby={stopCurrentToStandby}
+              onRemotePlayerCommand={sendPlayerCommand}
             />
 
             <AddSongForm

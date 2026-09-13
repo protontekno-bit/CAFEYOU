@@ -571,19 +571,48 @@ export function useKaraokePlayer(
     });
   };
 
-  const sendPlayerCommand = useCallback(async (command: 'reload' | 'mute' | 'unmute') => {
-    try {
-      const db = initFirebaseDatabase();
-      if (!db) return;
-      const cmdRef = ref(db, `cafeyou/player_commands/${STORAGE_KEY}`);
-      await set(cmdRef, {
-        command,
-        timestamp: Date.now(),
-      });
-    } catch (err) {
-      console.warn('Gagal mengirim perintah remote player:', err);
-    }
-  }, []);
+  const sendPlayerCommand = useCallback(
+    async (
+      command: 'reload' | 'mute' | 'unmute' | 'seek' | 'seekTo' | 'stop_standby',
+      payload?: { seconds?: number; targetTime?: number }
+    ) => {
+      try {
+        const db = initFirebaseDatabase();
+        if (!db) return;
+        const cmdRef = ref(db, `cafeyou/player_commands/${STORAGE_KEY}`);
+        await set(cmdRef, {
+          command,
+          ...(payload || {}),
+          timestamp: Date.now(),
+        });
+      } catch (err) {
+        console.warn('Gagal mengirim perintah remote player:', err);
+      }
+    },
+    []
+  );
+
+  const seekSong = useCallback(
+    async (seconds: number) => {
+      await sendPlayerCommand('seek', { seconds });
+    },
+    [sendPlayerCommand]
+  );
+
+  const seekSongTo = useCallback(
+    async (targetTime: number) => {
+      await sendPlayerCommand('seekTo', { targetTime });
+    },
+    [sendPlayerCommand]
+  );
+
+  const stopCurrentToStandby = useCallback(async () => {
+    updateAppState((prev) => ({
+      ...prev,
+      playbackStatus: 'PAUSED',
+    }));
+    await sendPlayerCommand('stop_standby');
+  }, [sendPlayerCommand, updateAppState]);
 
   const sendStageCue = useCallback(async (tableNumber: string, songTitle?: string) => {
     const cleanTable = tableNumber?.trim();
@@ -644,5 +673,8 @@ export function useKaraokePlayer(
     saveSongToLibrary,
     sendPlayerCommand,
     sendStageCue,
+    seekSong,
+    seekSongTo,
+    stopCurrentToStandby,
   };
 }

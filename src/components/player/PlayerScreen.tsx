@@ -2,6 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { BackIcon, FullscreenIcon } from '../icons/Icons';
 import { PlayerPlaceholder } from './PlayerPlaceholder';
 import { PlayerLockedOverlay } from './PlayerLockedOverlay';
+import { PlayerFloatingReactions, FloatingReaction } from './PlayerFloatingReactions';
+import { PlayerStageBanners } from './PlayerStageBanners';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { useYouTubePlayer } from '../../hooks/useYouTubePlayer';
 import { useWakeLock } from '../../hooks/useWakeLock';
@@ -12,13 +14,6 @@ import { STORAGE_KEY } from '../../constants/karaoke';
 
 interface PlayerScreenProps {
   setRole?: (role: AppRole) => void;
-}
-
-interface FloatingReaction {
-  id: string;
-  emoji: string;
-  tableNumber: string;
-  leftPercent: number;
 }
 
 export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
@@ -34,6 +29,8 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
     }
   });
   const lastProcessedReactionRef = useRef<string | null>(null);
+  const lastProcessedCmdRef = useRef<number>(Date.now());
+  const [isEmergencyStandby, setIsEmergencyStandby] = useState<boolean>(false);
 
   // Mencegah layar proyektor redup/mati otomatis
   useWakeLock(true);
@@ -120,19 +117,65 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
       const cmdRef = ref(db, `cafeyou/player_commands/${STORAGE_KEY}`);
       const unsub = onValue(cmdRef, (snap) => {
         const val = snap.val();
-        if (val && val.timestamp > mountTime) {
+        if (val && val.timestamp > lastProcessedCmdRef.current) {
+          lastProcessedCmdRef.current = val.timestamp;
           if (val.command === 'reload') {
             window.location.reload();
           } else if (val.command === 'mute') {
             playerRef.current?.mute?.();
           } else if (val.command === 'unmute' && !isMirror) {
             playerRef.current?.unMute?.();
+          } else if (val.command === 'seek' && typeof val.seconds === 'number') {
+            try {
+              const current = playerRef.current?.getCurrentTime?.() || 0;
+              const duration = playerRef.current?.getDuration?.() || 0;
+              const target = Math.max(0, Math.min(duration || 9999, current + val.seconds));
+              playerRef.current?.seekTo?.(target, true);
+            } catch {}
+          } else if (val.command === 'seekTo' && typeof val.targetTime === 'number') {
+            try {
+              playerRef.current?.seekTo?.(Math.max(0, val.targetTime), true);
+            } catch {}
+          } else if (val.command === 'stop_standby') {
+            try {
+              playerRef.current?.pauseVideo?.();
+              setIsEmergencyStandby(true);
+            } catch {}
           }
         }
       });
       return () => unsub();
     } catch {}
   }, [isMirror]);
+
+  // Laporkan posisi durasi pemutaran lagu ke Firebase (Hanya Layar Master)
+  useEffect(() => {
+    if (!isMaster) return;
+    const db = initFirebaseDatabase();
+    if (!db) return;
+
+    const progressRef = ref(db, `cafeyou/player_progress/${STORAGE_KEY}`);
+    const interval = setInterval(() => {
+      try {
+        const p = playerRef.current;
+        if (p && typeof p.getCurrentTime === 'function' && typeof p.getDuration === 'function') {
+          const duration = Math.round(p.getDuration() || 0);
+          if (duration > 0) {
+            const currentTime = Math.round(p.getCurrentTime() || 0);
+            const stateCode = typeof p.getPlayerState === 'function' ? p.getPlayerState() : -1;
+            set(progressRef, {
+              currentTime,
+              duration,
+              isPlaying: stateCode === 1,
+              timestamp: Date.now(),
+            }).catch(() => {});
+          }
+        }
+      } catch {}
+    }, 1200);
+
+    return () => clearInterval(interval);
+  }, [isMaster]);
 
   // Kirim sinyal detak jantung proyektor ke Firebase agar Operator tahu Proyektor online
   useEffect(() => {
@@ -188,7 +231,14 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
     };
   }, []);
 
-  const hasNoSongs = !currentSong && (!state?.queue || state.queue.length === 0);
+  // Reset emergency standby saat tombol play ditekan atau lagu berganti
+  useEffect(() => {
+    if (state?.playbackStatus === 'PLAYING') {
+      setIsEmergencyStandby(false);
+    }
+  }, [state?.playbackStatus, currentSong?.id]);
+
+  const hasNoSongs = isEmergencyStandby || (!currentSong && (!state?.queue || state.queue.length === 0));
 
   return (
     <div
@@ -280,73 +330,11 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
         />
       )}
 
-      {/* 5. OVERLAY: Sedang Bernyanyi (Now Singing Banner) */}
-      {currentSong && (
-        <div className="absolute top-6 left-6 z-30 pointer-events-none animate-fadeIn">
-          <div className="bg-slate-950/85 backdrop-blur-md border border-blue-500/40 rounded-2xl p-3 sm:p-4 shadow-2xl flex items-center gap-3.5 max-w-sm sm:max-w-md">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-xl shadow-lg shadow-blue-500/30 shrink-0">
-              🎤
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  Sedang Bernyanyi
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">ON STAGE</span>
-              </div>
-              <div className="text-white font-extrabold text-sm sm:text-base truncate mt-0.5">
-                {currentSong.requester}
-              </div>
-              <div className="text-slate-300 text-xs truncate mt-0.5 opacity-80">
-                {currentSong.title}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 6. OVERLAY: Lagu Berikutnya (Up Next Ticker) */}
-      {nextSongItem && currentSong && (
-        <div className="absolute top-6 right-6 z-30 pointer-events-none animate-fadeIn hidden md:block">
-          <div className="bg-slate-950/80 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3 shadow-2xl flex items-center gap-3 max-w-xs">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm font-bold shrink-0">
-              ⏭️
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
-                Berikutnya:
-              </div>
-              <div className="text-white font-bold text-xs truncate">
-                {nextSongItem.requester}
-              </div>
-              <div className="text-slate-400 text-[11px] truncate">
-                {nextSongItem.title}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 5. OVERLAY: Banner Panggung (Sedang Bernyanyi & Lagu Berikutnya) */}
+      <PlayerStageBanners currentSong={currentSong} nextSongItem={nextSongItem} />
 
       {/* 7. OVERLAY: Floating Live Crowd Reactions */}
-      <div className="absolute inset-0 pointer-events-none z-35 overflow-hidden">
-        {floatingReactions.map((rx) => (
-          <div
-            key={rx.id}
-            style={{
-              left: `${rx.leftPercent}%`,
-              bottom: '15%',
-            }}
-            className="absolute flex flex-col items-center animate-floatUp"
-          >
-            <div className="text-5xl sm:text-6xl filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] transform hover:scale-125 transition-transform">
-              {rx.emoji}
-            </div>
-            <div className="px-2.5 py-0.5 mt-1 bg-slate-950/80 backdrop-blur-md border border-blue-500/30 rounded-full text-[10px] font-bold text-blue-300 shadow-lg">
-              {rx.tableNumber}
-            </div>
-          </div>
-        ))}
-      </div>
+      <PlayerFloatingReactions reactions={floatingReactions} />
 
       {/* 8. OVERLAY: Running Text Banner (Pengumuman Kafe) */}
       {state?.runningText && (

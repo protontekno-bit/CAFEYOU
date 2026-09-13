@@ -169,6 +169,20 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
           <span className="hidden sm:inline">Pengaturan Kasir</span>
         </button>
 
+        {/* Buka Layar Dapur Mandiri (KDS) di Tab Baru */}
+        <button
+          onClick={() => {
+            const currentUrl = window.location.href.split('#')[0];
+            window.open(currentUrl + '#kitchen', '_blank');
+          }}
+          className="px-3 py-1.5 bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/40 hover:border-orange-500/60 rounded-xl text-xs font-bold text-orange-300 hover:text-orange-200 transition-all flex items-center gap-1.5 shadow-sm"
+          title="Buka Layar Dapur Mandiri (KDS) di Tab / Monitor Baru"
+        >
+          <span>🍳</span>
+          <span className="hidden lg:inline">Layar Dapur</span>
+          <span className="text-[10px] opacity-75">↗</span>
+        </button>
+
         {/* Navigasi Cepat ke Dasbor Karaoke */}
         {onOpenOperator && (
           <button

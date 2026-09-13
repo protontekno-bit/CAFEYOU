@@ -20,6 +20,9 @@ const GuestScreen = lazy(() =>
 const PosScreen = lazy(() =>
   import('./components/pos/PosScreen').then((m) => ({ default: m.PosScreen }))
 );
+const KitchenScreen = lazy(() =>
+  import('./components/kitchen/KitchenScreen').then((m) => ({ default: m.KitchenScreen }))
+);
 
 // Fallback spinner elegan bertema gelap
 const ScreenFallback = () => (
@@ -46,6 +49,7 @@ export default function App() {
     if (hash.startsWith('#split')) return 'split';
     if (hash.startsWith('#guest')) return 'guest';
     if (hash.startsWith('#pos')) return 'pos';
+    if (hash.startsWith('#kitchen') || hash.startsWith('#kds')) return 'kitchen';
     return 'landing';
   });
 
@@ -58,6 +62,7 @@ export default function App() {
       else if (hash.startsWith('#split')) setRole('split');
       else if (hash.startsWith('#guest')) setRole('guest');
       else if (hash.startsWith('#pos')) setRole('pos');
+      else if (hash.startsWith('#kitchen') || hash.startsWith('#kds')) setRole('kitchen');
       else setRole('landing');
     };
 
@@ -88,6 +93,8 @@ export default function App() {
         return <GuestScreen setRole={setRole} />;
       case 'pos':
         return <PosScreen setRole={setRole} />;
+      case 'kitchen':
+        return <KitchenScreen setRole={setRole} />;
       default:
         return <LandingScreen setRole={setRole} />;
     }

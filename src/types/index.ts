@@ -1,6 +1,6 @@
 export type PlaybackStatus = 'PLAYING' | 'PAUSED';
 
-export type AppRole = 'landing' | 'operator' | 'player' | 'split' | 'guest' | 'pos';
+export type AppRole = 'landing' | 'operator' | 'player' | 'split' | 'guest' | 'pos' | 'kitchen';
 
 export interface Song {
   id: string;

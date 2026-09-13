@@ -67,11 +67,11 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
           </p>
         </div>
 
-        {/* Pilihan Peran Utama (4 Kartu) */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto mb-6">
+        {/* Pilihan Peran Utama (5 Kartu Lengkap Ekosistem Kafe) */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 max-w-6xl w-full mx-auto mb-6">
           <RoleCard
             title="Dasbor Operator"
-            description="Kelola antrean lagu, kontrol volume, dan cetak voucher dari layar laptop operator."
+            description="Kelola antrean lagu, kontrol volume player, dan kelola voucher karaoke."
             themeColor="blue"
             onClick={handleOperatorClick}
             icon={
@@ -87,11 +87,19 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
           />
 
           <RoleCard
-            title="Kasir & Dapur (POS)"
-            description="Kelola pesanan F&B meja, alur dapur KDS, kalkulator pembayaran, dan struk."
+            title="Kasir (POS)"
+            description="Kelola tagihan meja, pembayaran tunai/QRIS, cetak struk thermal, dan rekap omzet."
             themeColor="amber"
             onClick={handlePosClick}
-            icon={<span className="text-3xl">🍽️</span>}
+            icon={<span className="text-3xl">💵</span>}
+          />
+
+          <RoleCard
+            title="Layar Dapur (KDS)"
+            description="Layar tablet / Smart TV koki & barista untuk pantau pesanan masuk, masak, dan siap saji."
+            themeColor="orange"
+            onClick={() => setRole('kitchen')}
+            icon={<span className="text-3xl">🍳</span>}
           />
 
           <RoleCard

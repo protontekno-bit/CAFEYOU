@@ -23,6 +23,12 @@ export function useYouTubePlayer({
   const lastPlayedSongIdRef = useRef<string | null>(null);
   const lastReplayTimestampRef = useRef<number>(appState?.forceReplay || 0);
 
+  const onSongEndRef = useRef(onSongEnd);
+  onSongEndRef.current = onSongEnd;
+
+  const onErrorFallbackRef = useRef(onErrorFallback);
+  onErrorFallbackRef.current = onErrorFallback;
+
   // appStateRef to access latest state inside callbacks
   const appStateRef = useRef(appState);
   useEffect(() => {
@@ -90,7 +96,7 @@ export function useYouTubePlayer({
           },
           onStateChange: (event: any) => {
             if (event.data === window.YT.PlayerState.ENDED) {
-              onSongEnd();
+              onSongEndRef.current();
             } else if (event.data === window.YT.PlayerState.PLAYING) {
               if (typeof event.target.setPlaybackQuality === 'function') {
                 event.target.setPlaybackQuality('hd720');
@@ -104,14 +110,14 @@ export function useYouTubePlayer({
               setErrorNotice('Video dibatasi oleh lisensi YouTube. Memutar lagu berikutnya...');
               setTimeout(() => {
                 setErrorNotice(null);
-                onErrorFallback();
+                onErrorFallbackRef.current();
               }, 2500);
             }
           },
         },
       });
     }
-  }, [isApiReady, containerRef, onSongEnd, onErrorFallback]);
+  }, [isApiReady, containerRef]);
 
   // Real-time synchronization to player
   useEffect(() => {

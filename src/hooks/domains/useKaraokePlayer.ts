@@ -96,11 +96,14 @@ export function useKaraokePlayer(
         ? rebalanceFairQueue(rawNewQueue)
         : rawNewQueue;
 
+      const isQueueStarting = currentQueue.length === 0;
+
       return {
         ...prev,
         queue: updatedQueue,
         songLibrary: updatedLibrary,
         vouchers: currentVouchers,
+        playbackStatus: isQueueStarting ? 'PLAYING' : (prev?.playbackStatus || 'PLAYING'),
       };
     });
 
@@ -369,6 +372,7 @@ export function useKaraokePlayer(
         queue: remainingQueue,
         history,
         songLibrary,
+        playbackStatus: remainingQueue.length > 0 ? 'PLAYING' : (prev?.playbackStatus || 'PLAYING'),
       };
     });
   };

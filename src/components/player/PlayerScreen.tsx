@@ -45,6 +45,9 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
     enableMirrorMode,
   } = usePlayerSessionLock();
 
+  const isMasterRef = useRef(isMaster);
+  isMasterRef.current = isMaster;
+
   const { state, currentSong, nextSongs, nextSong } = useKaraoke();
 
   // Inisialisasi YouTube Player
@@ -53,12 +56,12 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ setRole }) => {
     containerRef,
     appState: state,
     onSongEnd: () => {
-      if (isMaster) {
+      if (isMasterRef.current) {
         nextSong();
       }
     },
     onErrorFallback: () => {
-      if (isMaster) {
+      if (isMasterRef.current) {
         nextSong();
       }
     },

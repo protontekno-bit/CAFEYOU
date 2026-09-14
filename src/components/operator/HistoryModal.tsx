@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { SongHistoryItem, SavedLibrarySong } from '../../types';
 import { getYouTubeThumbnail, DEFAULT_SONG_THUMBNAIL } from '../../utils/youtube';
 import { TrashIcon } from '../icons/Icons';
@@ -27,9 +27,15 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [justSavedIds, setJustSavedIds] = useState<Record<string, boolean>>({});
 
-  if (!isOpen) return null;
+  // Urutkan riwayat lagu: Lagu yang paling baru selesai diputar selalu berada di PALING ATAS (Newest First)
+  const safeHistory = useMemo(() => {
+    const list = Array.isArray(history) ? [...history] : [];
+    return list
+      .filter((item): item is SongHistoryItem => Boolean(item && typeof item === 'object' && item.videoId))
+      .sort((a, b) => (b?.playedAt || 0) - (a?.playedAt || 0));
+  }, [history]);
 
-  const safeHistory = Array.isArray(history) ? history : [];
+  if (!isOpen) return null;
 
   const filteredHistory = safeHistory.filter((item) => {
     const term = searchTerm.toLowerCase();
@@ -68,9 +74,26 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
   const formatTime = (timestamp: number) => {
     if (!timestamp) return '-';
     const date = new Date(timestamp);
+    const now = new Date();
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes} WIB`;
+    const timeStr = `${hours}:${minutes} WIB`;
+
+    const isToday =
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday =
+      date.getDate() === yesterday.getDate() &&
+      date.getMonth() === yesterday.getMonth() &&
+      date.getFullYear() === yesterday.getFullYear();
+
+    if (isToday) return `Hari ini • ${timeStr}`;
+    if (isYesterday) return `Kemarin • ${timeStr}`;
+    return `${date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} • ${timeStr}`;
   };
 
   return (

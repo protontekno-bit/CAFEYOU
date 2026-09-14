@@ -530,9 +530,14 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         sessionStorage.setItem('cafeyou_customer_name', cName);
       } catch {}
 
+      if (!isCloudConnected && !window.navigator.onLine) {
+        throw new Error('Koneksi internet tidak stabil atau terputus. Pastikan smartphone terhubung ke Wi-Fi kafe atau paket data aktif.');
+      }
+
       const items: OrderItem[] = Object.values(cart).map((c) => ({
         menuItemId: c.item.id,
         name: c.item.name,
+        category: c.item.category,
         price: c.unitPrice || c.item.price,
         quantity: c.quantity,
         notes: c.notes.trim() || undefined,

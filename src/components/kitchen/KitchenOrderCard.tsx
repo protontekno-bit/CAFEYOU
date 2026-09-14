@@ -131,6 +131,11 @@ export const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-base font-black text-white">{order.tableNumber}</span>
             {renderOrderTypeBadge()}
+            {order.status?.toLowerCase() === 'paid' && (
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                <span>✅</span> Lunas
+              </span>
+            )}
           </div>
           <span className="text-xs text-slate-400 block mt-0.5">
             Pemesan: <strong className="text-slate-200">{order.customerName}</strong>

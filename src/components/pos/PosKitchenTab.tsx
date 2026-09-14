@@ -1,5 +1,6 @@
 import React from 'react';
 import { TableOrder, OrderStatus } from '../../types';
+import { isSameTable } from '../../utils/table';
 
 export interface PosKitchenTabProps {
   activeOrders: TableOrder[];
@@ -75,7 +76,7 @@ export const PosKitchenTab: React.FC<PosKitchenTabProps> = ({
                 activeOrders.filter(
                   (o) =>
                     o.status?.toLowerCase() === 'pending' &&
-                    (kdsFilterTable === 'ALL' || o.tableNumber === kdsFilterTable)
+                    (kdsFilterTable === 'ALL' || isSameTable(o.tableNumber, kdsFilterTable))
                 ).length
               }
             </span>
@@ -86,7 +87,7 @@ export const PosKitchenTab: React.FC<PosKitchenTabProps> = ({
               .filter(
                 (o) =>
                   o.status?.toLowerCase() === 'pending' &&
-                  (kdsFilterTable === 'ALL' || o.tableNumber === kdsFilterTable)
+                  (kdsFilterTable === 'ALL' || isSameTable(o.tableNumber, kdsFilterTable))
               )
               .map((ord) => (
                 <div
@@ -181,9 +182,11 @@ export const PosKitchenTab: React.FC<PosKitchenTabProps> = ({
               {
                 activeOrders.filter((o) => {
                   const s = o.status?.toLowerCase();
+                  const isPrep = s === 'confirmed' || s === 'preparing' || s === 'cooking';
+                  const isPaidPrep = s === 'paid' && (o.items || []).some((it) => !it.isVoided && !it.isCooked && !it.isServed);
                   return (
-                    (s === 'confirmed' || s === 'preparing' || s === 'cooking') &&
-                    (kdsFilterTable === 'ALL' || o.tableNumber === kdsFilterTable)
+                    (isPrep || isPaidPrep) &&
+                    (kdsFilterTable === 'ALL' || isSameTable(o.tableNumber, kdsFilterTable))
                   );
                 }).length
               }
@@ -194,9 +197,11 @@ export const PosKitchenTab: React.FC<PosKitchenTabProps> = ({
             {activeOrders
               .filter((o) => {
                 const s = o.status?.toLowerCase();
+                const isPrep = s === 'confirmed' || s === 'preparing' || s === 'cooking';
+                const isPaidPrep = s === 'paid' && (o.items || []).some((it) => !it.isVoided && !it.isCooked && !it.isServed);
                 return (
-                  (s === 'confirmed' || s === 'preparing' || s === 'cooking') &&
-                  (kdsFilterTable === 'ALL' || o.tableNumber === kdsFilterTable)
+                  (isPrep || isPaidPrep) &&
+                  (kdsFilterTable === 'ALL' || isSameTable(o.tableNumber, kdsFilterTable))
                 );
               })
               .map((ord) => (
@@ -276,9 +281,11 @@ export const PosKitchenTab: React.FC<PosKitchenTabProps> = ({
               {
                 activeOrders.filter((o) => {
                   const s = o.status?.toLowerCase();
+                  const isReady = s === 'ready' || s === 'served';
+                  const isPaidReady = s === 'paid' && (o.items || []).every((it) => it.isVoided || it.isCooked || it.isServed) && (o.items || []).some((it) => !it.isVoided && !it.isServed);
                   return (
-                    (s === 'ready' || s === 'served') &&
-                    (kdsFilterTable === 'ALL' || o.tableNumber === kdsFilterTable)
+                    (isReady || isPaidReady) &&
+                    (kdsFilterTable === 'ALL' || isSameTable(o.tableNumber, kdsFilterTable))
                   );
                 }).length
               }
@@ -289,9 +296,11 @@ export const PosKitchenTab: React.FC<PosKitchenTabProps> = ({
             {activeOrders
               .filter((o) => {
                 const s = o.status?.toLowerCase();
+                const isReady = s === 'ready' || s === 'served';
+                const isPaidReady = s === 'paid' && (o.items || []).every((it) => it.isVoided || it.isCooked || it.isServed) && (o.items || []).some((it) => !it.isVoided && !it.isServed);
                 return (
-                  (s === 'ready' || s === 'served') &&
-                  (kdsFilterTable === 'ALL' || o.tableNumber === kdsFilterTable)
+                  (isReady || isPaidReady) &&
+                  (kdsFilterTable === 'ALL' || isSameTable(o.tableNumber, kdsFilterTable))
                 );
               })
               .map((ord) => (

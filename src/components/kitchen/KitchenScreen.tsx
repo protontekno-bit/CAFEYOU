@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useKaraoke } from '../../hooks/useKaraoke';
+import { useKaraoke, isSameTable } from '../../hooks/useKaraoke';
 import { AppRole, TableOrder, KitchenStationFilter } from '../../types';
 import { DeveloperFooter } from '../common/DeveloperFooter';
 import { KitchenOrderCard } from './KitchenOrderCard';
@@ -64,7 +64,9 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
 
   // Bel Notifikasi Suara saat pesanan baru masuk
   const ordersList: TableOrder[] = useMemo(() => {
-    return Object.values(tableOrders || {}).sort((a, b) => a.createdAt - b.createdAt); // FIFO untuk koki
+    return Object.values(tableOrders || {})
+      .filter((o): o is TableOrder => Boolean(o && typeof o === 'object' && o.id))
+      .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); // FIFO untuk koki
   }, [tableOrders]);
 
   const pendingOrders = ordersList.filter((o) => o.status?.toLowerCase() === 'pending');
@@ -91,8 +93,8 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
 
   // Filter Pesanan berdasarkan Stasiun, Meja & Tipe
   const filteredOrders = ordersList.filter((o) => {
-    // 1. Filter Meja
-    if (filterTable !== 'ALL' && o.tableNumber !== filterTable) return false;
+    // 1. Filter Meja (dengan normalisasi fleksibel e.g. "1" vs "Meja 1")
+    if (filterTable !== 'ALL' && !isSameTable(o.tableNumber, filterTable)) return false;
 
     // 2. Filter Tipe Pesanan
     const isTakeaway =
@@ -111,36 +113,61 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
 
     // 3. Filter Stasiun Kerja (Dapur Koki vs Barista Minuman)
     if (stationFilter === 'BAR') {
-      const hasDrink = o.items.some((it) => !it.isVoided && isDrinkItem(it));
+      const hasDrink = (o.items || []).some((it) => !it.isVoided && isDrinkItem(it));
       if (!hasDrink) return false;
     } else if (stationFilter === 'KITCHEN') {
-      const hasFood = o.items.some((it) => !it.isVoided && !isDrinkItem(it));
+      const hasFood = (o.items || []).some((it) => !it.isVoided && !isDrinkItem(it));
       if (!hasFood) return false;
     }
 
     return true;
   });
 
-  // Kelompok 4 Kolom Alur Dapur
+  // Kelompok 4 Kolom Alur Dapur (Mendukung pesanan PAID yang belum selesai disajikan)
   const pendingList = filteredOrders.filter((o) => o.status?.toLowerCase() === 'pending');
   const preparingList = filteredOrders.filter((o) => {
     const s = o.status?.toLowerCase();
-    return s === 'confirmed' || s === 'preparing' || s === 'cooking';
+    if (s === 'confirmed' || s === 'preparing' || s === 'cooking') return true;
+    if (s === 'paid') {
+      return (o.items || []).some((it) => !it.isVoided && !it.isCooked && !it.isServed);
+    }
+    return false;
   });
-  const readyList = filteredOrders.filter((o) => o.status?.toLowerCase() === 'ready');
-  const servedList = filteredOrders.filter((o) => o.status?.toLowerCase() === 'served');
+  const readyList = filteredOrders.filter((o) => {
+    const s = o.status?.toLowerCase();
+    if (s === 'ready') return true;
+    if (s === 'paid') {
+      const allCooked = (o.items || []).every((it) => it.isVoided || it.isCooked || it.isServed);
+      const hasUnserved = (o.items || []).some((it) => !it.isVoided && !it.isServed);
+      return allCooked && hasUnserved;
+    }
+    return false;
+  });
+  const servedList = filteredOrders.filter((o) => {
+    const s = o.status?.toLowerCase();
+    if (s === 'served') return true;
+    if (s === 'paid') {
+      return (o.items || []).every((it) => it.isVoided || it.isServed);
+    }
+    return false;
+  });
 
   const handleClearShift = () => {
-    const countPaidOrCancelled = ordersList.filter(
-      (o) => o.status?.toLowerCase() === 'paid' || o.status?.toLowerCase() === 'cancelled'
-    ).length;
-    if (countPaidOrCancelled === 0) {
-      alert('Tidak ada tiket yang berstatus Lunas atau Batal untuk diarsipkan saat ini.');
+    const countFinished = ordersList.filter((o) => {
+      const s = o.status?.toLowerCase();
+      if (s === 'cancelled' || s === 'served') return true;
+      if (s === 'paid') {
+        return (o.items || []).every((it) => it.isVoided || it.isServed);
+      }
+      return false;
+    }).length;
+    if (countFinished === 0) {
+      alert('Tidak ada tiket yang telah Selesai Disajikan atau Batal untuk diarsipkan saat ini.');
       return;
     }
     if (
       window.confirm(
-        `Arsipkan ${countPaidOrCancelled} tiket yang telah Lunas/Batal untuk merapikan layar dapur?`
+        `Arsipkan ${countFinished} tiket yang telah selesai disajikan untuk merapikan layar dapur?`
       )
     ) {
       clearFinishedOrders();

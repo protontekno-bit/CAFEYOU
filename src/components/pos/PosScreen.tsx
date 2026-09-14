@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { TableOrder, OrderStatus, AppRole } from '../../types';
 import { useKaraoke, isSameTable } from '../../hooks/useKaraoke';
 import { useWakeLock } from '../../hooks/useWakeLock';
@@ -269,6 +269,18 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     return s !== 'paid' && s !== 'cancelled';
   });
 
+  // Pesanan yang masih aktif di dapur (termasuk pesanan yang sudah bayar di depan tapi belum selesai disajikan)
+  const kitchenActiveOrders = useMemo(() => {
+    return ordersList.filter((o) => {
+      const s = o.status?.toLowerCase();
+      if (s === 'cancelled' || s === 'served') return false;
+      if (s === 'paid') {
+        return (o.items || []).some((it) => !it.isVoided && !it.isServed);
+      }
+      return true;
+    });
+  }, [ordersList]);
+
   const historyOrders = ordersList.filter((o) => {
     const s = o.status?.toLowerCase();
     return s === 'paid' || s === 'cancelled';
@@ -471,7 +483,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         {/* TAB 2: ALUR DAPUR / KITCHEN DISPLAY SYSTEM (KDS) */}
         {activeTab === 'kitchen' && (
           <PosKitchenTab
-            activeOrders={activeOrders}
+            activeOrders={kitchenActiveOrders}
             tables={tables}
             kdsFilterTable={kdsFilterTable}
             setKdsFilterTable={setKdsFilterTable}

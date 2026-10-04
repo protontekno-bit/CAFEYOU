@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DeveloperFooter } from '../common/DeveloperFooter';
-import { AppRole } from '../../types';
 
 export interface PosAuthGateProps {
   authPin: string;
@@ -8,7 +7,6 @@ export interface PosAuthGateProps {
   authError: string | null;
   onSubmitLogin: (e?: React.FormEvent) => void;
   onBackToLanding?: () => void;
-  onSwitchRole?: (role: AppRole) => void;
   cafeName?: string;
   currentTime?: string;
   isCloudConnected?: boolean;
@@ -28,7 +26,6 @@ export const PosAuthGate: React.FC<PosAuthGateProps> = ({
   authError,
   onSubmitLogin,
   onBackToLanding,
-  onSwitchRole,
   cafeName,
   currentTime,
   isCloudConnected,
@@ -198,44 +195,7 @@ export const PosAuthGate: React.FC<PosAuthGateProps> = ({
           )}
         </div>
 
-        {/* Quick Workstation Switcher Buttons */}
-        {onSwitchRole ? (
-          <div className="flex items-center gap-1.5">
-            {roleName !== 'Dapur' && (
-              <button
-                type="button"
-                onClick={() => onSwitchRole('kitchen')}
-                className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-amber-300 border border-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
-                title="Beralih langsung ke Layar Dapur (KDS)"
-              >
-                <span>🍳</span>
-                <span className="hidden sm:inline">Dapur</span>
-              </button>
-            )}
-            {roleName !== 'Kasir' && (
-              <button
-                type="button"
-                onClick={() => onSwitchRole('pos')}
-                className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-emerald-300 border border-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
-                title="Beralih langsung ke Kasir POS"
-              >
-                <span>💵</span>
-                <span className="hidden sm:inline">Kasir</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => onSwitchRole('operator')}
-              className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-blue-300 border border-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
-              title="Beralih ke Dasbor Operator Karaoke"
-            >
-              <span>🎤</span>
-              <span className="hidden sm:inline">Operator</span>
-            </button>
-          </div>
-        ) : (
-          <div />
-        )}
+        <div />
       </header>
 
       {/* 2. CARD MODAL UTAMA */}
@@ -341,37 +301,6 @@ export const PosAuthGate: React.FC<PosAuthGateProps> = ({
             {isLocked ? `🔒 Terkunci (${lockoutRemaining}s)` : submitLabel}
           </button>
 
-          {/* Quick Workstation Switcher di Bagian Bawah Form */}
-          {onSwitchRole && (
-            <div className="pt-2 border-t border-slate-800/60 flex items-center justify-center gap-2 text-xs">
-              <span className="text-[11px] text-slate-500">Pindah:</span>
-              {roleName !== 'Dapur' && (
-                <button
-                  type="button"
-                  onClick={() => onSwitchRole('kitchen')}
-                  className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-amber-300 rounded-xl text-[11px] font-bold border border-slate-800 transition-colors"
-                >
-                  🍳 Dapur
-                </button>
-              )}
-              {roleName !== 'Kasir' && (
-                <button
-                  type="button"
-                  onClick={() => onSwitchRole('pos')}
-                  className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-emerald-300 rounded-xl text-[11px] font-bold border border-slate-800 transition-colors"
-                >
-                  💵 Kasir
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => onSwitchRole('operator')}
-                className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-blue-300 rounded-xl text-[11px] font-bold border border-slate-800 transition-colors"
-              >
-                🎤 Operator
-              </button>
-            </div>
-          )}
 
           {/* Catatan Bantuan Lupa PIN */}
           <div className="pt-1 text-[10px] text-slate-500 leading-relaxed">

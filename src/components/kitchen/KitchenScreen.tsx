@@ -32,18 +32,24 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
     triggerSoundEffect,
   } = useKaraoke();
 
-  // Proteksi Gerbang Akses Layar Dapur (KDS Gate)
+  // Proteksi Gerbang Akses Layar Dapur (KDS Gate) — wajib token dapur sendiri
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      const token = sessionStorage.getItem('cafeyou_kitchen_auth_token');
-      return (
-        verifyRoleSessionToken(token, 'kitchen') ||
-        Boolean(sessionStorage.getItem('cafeyou_pos_auth'))
-      );
+      return verifyRoleSessionToken(sessionStorage.getItem('cafeyou_kitchen_auth_token'), 'kitchen');
     } catch {
       return false;
     }
   });
+
+  // Akhiri sesi dapur: PIN wajib dimasukkan ulang untuk masuk kembali
+  const handleLogout = (goHome = false) => {
+    try {
+      sessionStorage.removeItem('cafeyou_kitchen_auth_token');
+    } catch {}
+    setAuthPin('');
+    setIsAuthenticated(false);
+    if (goHome && setRole) setRole('landing');
+  };
   const [authPin, setAuthPin] = useState<string>('');
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -229,7 +235,6 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
         authError={authError}
         onSubmitLogin={handleLoginSubmit}
         onBackToLanding={setRole ? () => setRole('landing') : undefined}
-        onSwitchRole={setRole}
         cafeName={cafeSettings?.name}
         currentTime={currentTime}
         isCloudConnected={isCloudConnected}
@@ -335,35 +340,29 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
             <span>{isFullscreen ? '🗗' : '⛶'}</span>
           </button>
 
-          {/* Navigasi Beranda / Kasir / Operator */}
-          {setRole && (
-            <div className="flex items-center gap-1.5 border-l border-slate-800 pl-2">
+          {/* Navigasi Aman: hanya Beranda & Kunci (keduanya mengakhiri sesi dapur) */}
+          <div className="flex items-center gap-1.5 border-l border-slate-800 pl-2">
+            {setRole && (
               <button
                 type="button"
-                onClick={() => setRole('pos')}
-                className="px-2.5 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-bold transition-all"
-                title="Buka Dasbor Kasir POS"
+                onClick={() => handleLogout(true)}
+                className="px-2.5 py-2 bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-750 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
+                title="Keluar ke Beranda Utama (sesi dapur diakhiri)"
               >
-                💵 POS
+                <span>🏠</span>
+                <span className="hidden md:inline">Beranda</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setRole('operator')}
-                className="px-2.5 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all"
-                title="Buka Dasbor Operator Karaoke"
-              >
-                🎤
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('landing')}
-                className="p-2 bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-750 rounded-xl text-xs transition-all"
-                title="Kembali ke Beranda"
-              >
-                🏠
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={() => handleLogout(false)}
+              className="px-2.5 py-2 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-slate-700 hover:border-red-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
+              title="Kunci Layar Dapur (wajib PIN untuk masuk kembali)"
+            >
+              <span>🔒</span>
+              <span className="hidden md:inline">Kunci</span>
+            </button>
+          </div>
         </div>
       </header>
 

@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LockIcon, CheckIcon, BackIcon } from '../icons/Icons';
 import { DeveloperFooter } from '../common/DeveloperFooter';
-import {
-  loadOperatorCredentials,
-  verifyPassword,
-  DEFAULT_PASSWORD_PLAIN,
-} from '../../utils/credentials';
+import { loadOperatorCredentials, verifyPassword } from '../../utils/credentials';
 import { createRoleSessionToken } from '../../utils/sessionToken';
 
 interface OperatorLoginViewProps {
@@ -55,7 +51,6 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
     const stored = getStoredLockout().until;
     return stored ? Math.max(0, Math.ceil((stored - Date.now()) / 1000)) : 0;
   });
-  const [isFirstLogin, setIsFirstLogin] = useState(false);
 
   // Countdown timer untuk lockout
   useEffect(() => {
@@ -75,12 +70,6 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
     }, 500);
     return () => clearInterval(interval);
   }, [lockoutUntil]);
-
-  // Cek apakah ini login pertama (belum ada credentials tersimpan)
-  useEffect(() => {
-    const raw = localStorage.getItem('cafeyou_op_credentials');
-    if (!raw) setIsFirstLogin(true);
-  }, []);
 
   const isLocked = lockoutUntil !== null && Date.now() < lockoutUntil;
 
@@ -257,15 +246,6 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
           </form>
         )}
       </div>
-
-      {/* Info login pertama kali */}
-      {isFirstLogin && !isSuccess && (
-        <div className="mt-5 text-center text-[11px] text-amber-400/80 bg-amber-950/30 border border-amber-700/30 rounded-xl px-4 py-2 z-10 max-w-xs">
-          🔑 Login pertama: Password default <strong className="text-amber-300">{DEFAULT_PASSWORD_PLAIN}</strong>
-          <br />
-          <span className="text-slate-400">Segera ganti password setelah masuk.</span>
-        </div>
-      )}
 
       <DeveloperFooter compact className="mt-4" />
     </div>

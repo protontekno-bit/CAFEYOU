@@ -54,14 +54,10 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     deleteExpense,
   } = useKaraoke();
 
-  // 1. Status Autentikasi Kasir / Staff Security Gate
+  // 1. Status Autentikasi Kasir — hanya token sesi bertanda tangan yang dipercaya
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      const token = sessionStorage.getItem('cafeyou_pos_auth_token');
-      return (
-        verifyRoleSessionToken(token, 'pos') ||
-        Boolean(sessionStorage.getItem('cafeyou_pos_auth'))
-      );
+      return verifyRoleSessionToken(sessionStorage.getItem('cafeyou_pos_auth_token'), 'pos');
     } catch {
       return false;
     }
@@ -162,7 +158,6 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
       try {
         const token = createRoleSessionToken('pos');
         sessionStorage.setItem('cafeyou_pos_auth_token', token);
-        sessionStorage.setItem('cafeyou_pos_auth', 'true');
         localStorage.removeItem('cafeyou_lockout_kasir');
       } catch {}
       setIsAuthenticated(true);
@@ -172,12 +167,15 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
     }
   };
 
-  const handleLogout = () => {
+  // Akhiri sesi kasir: PIN wajib dimasukkan ulang untuk masuk kembali
+  const handleLogout = (goHome = false) => {
     try {
       sessionStorage.removeItem('cafeyou_pos_auth');
       sessionStorage.removeItem('cafeyou_pos_auth_token');
     } catch {}
+    setAuthPin('');
     setIsAuthenticated(false);
+    if (goHome && setRole) setRole('landing');
   };
 
   const renderOrderBadge = (ord: TableOrder) => {
@@ -395,7 +393,6 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         authError={authError}
         onSubmitLogin={handleLoginSubmit}
         onBackToLanding={setRole ? () => setRole('landing') : undefined}
-        onSwitchRole={setRole}
         cafeName={cafeSettings?.name}
         currentTime={currentTime}
         isCloudConnected={isCloudConnected}
@@ -424,9 +421,8 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         isSoundAlertEnabled={isSoundAlertEnabled}
         onToggleSoundAlert={() => setIsSoundAlertEnabled(!isSoundAlertEnabled)}
         onOpenSettings={() => setIsPosSettingsOpen(true)}
-        onOpenOperator={setRole ? () => setRole('operator') : undefined}
-        onBack={setRole ? () => setRole('landing') : undefined}
-        onLogout={handleLogout}
+        onBack={setRole ? () => handleLogout(true) : undefined}
+        onLogout={() => handleLogout(false)}
       />
 
       {/* 2. KONTEN UTAMA SESUAI TAB */}

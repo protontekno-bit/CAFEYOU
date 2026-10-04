@@ -15,7 +15,6 @@ export interface PosHeaderProps {
   isSoundAlertEnabled: boolean;
   onToggleSoundAlert: () => void;
   onOpenSettings: () => void;
-  onOpenOperator?: () => void;
   onBack?: () => void;
   onLogout: () => void;
 }
@@ -32,7 +31,6 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
   isSoundAlertEnabled,
   onToggleSoundAlert,
   onOpenSettings,
-  onOpenOperator,
   onBack,
   onLogout,
 }) => {
@@ -184,18 +182,6 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
           <span className="hidden lg:inline">Layar Dapur</span>
           <span className="text-[10px] opacity-75">↗</span>
         </button>
-
-        {/* Navigasi Cepat ke Dasbor Karaoke */}
-        {onOpenOperator && (
-          <button
-            onClick={onOpenOperator}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600 rounded-xl text-xs font-bold text-slate-300 hover:text-white transition-all flex items-center gap-1.5"
-            title="Buka Layar Operator Karaoke"
-          >
-            <span>🎤</span>
-            <span className="hidden sm:inline">Dasbor Karaoke</span>
-          </button>
-        )}
 
         {/* Beranda */}
         {onBack && (

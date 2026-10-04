@@ -17,6 +17,7 @@ export const DEFAULT_CAFE_SETTINGS: CafeSettings = {
   isTaxIncluded: false,
   servicePercentage: 0,
   posPassword: '1234',
+  kitchenPassword: '1234',
   operatorPassword: '1234',
   localServerIp: '',
 };

@@ -4,7 +4,7 @@
  * tidak pernah bocor ke portal smartphone tamu (Guest Screen).
  */
 
-import { CafeSettings, DailyPinConfig, Voucher } from '../types';
+import type { CafeSettings, DailyPinConfig, Voucher } from '../types';
 
 /**
  * Membersihkan CafeSettings sebelum diberikan ke antarmuka Tamu (GuestScreen).
@@ -20,6 +20,7 @@ export function sanitizeSettingsForGuest(settings?: CafeSettings): CafeSettings 
   const sanitized: CafeSettings = {
     ...settings,
     posPassword: '',
+    kitchenPassword: '',
     operatorPassword: '',
     youtubeApiKey: '',
   };

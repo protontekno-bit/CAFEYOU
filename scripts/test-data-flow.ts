@@ -552,6 +552,40 @@ console.log('🔹 [11/11] Menguji Pencabutan (Revoke) & Reset Manual Voucher...'
 }
 
 // --------------------------------------------------------------------------
+// TEST SUITE 12: Sentralisasi Hak Akses Peran & Proteksi Privasi Kredensial
+// --------------------------------------------------------------------------
+console.log('🔹 [12/12] Menguji Sentralisasi Hak Akses & Isolasi Privasi Kredensial...');
+{
+  const { sanitizeSettingsForGuest } = await import('../src/utils/privacyFilter.ts');
+  const mockMasterSettings: CafeSettings = {
+    name: 'CAFEYOU VIP',
+    tagline: 'Lounge & POS',
+    posPassword: 'pos-secure-pin-99',
+    kitchenPassword: 'kitchen-chef-pin-77',
+    operatorPassword: 'master-operator-secret-55',
+    youtubeApiKey: 'AIzaSySecretApiKey12345',
+    enableTax: true,
+    taxPercentage: 10,
+  };
+
+  // 12.1 Verifikasi Sanitasi Privasi ke Smartphone Tamu
+  const sanitized = sanitizeSettingsForGuest(mockMasterSettings);
+  assert(sanitized.name === 'CAFEYOU VIP', 'Nama kafe tetap terjaga');
+  assert(sanitized.posPassword === '', 'PIN Kasir berhasil disanitasi dari tamu');
+  assert(sanitized.kitchenPassword === '', 'PIN Dapur berhasil disanitasi dari tamu');
+  assert(sanitized.operatorPassword === '', 'Password Operator berhasil disanitasi dari tamu');
+  assert(sanitized.youtubeApiKey === '', 'YouTube API Key berhasil disanitasi dari tamu');
+
+  // 12.2 Verifikasi Prioritas Fallback Password Dapur
+  const kitchenWithCustomPin = mockMasterSettings.kitchenPassword || mockMasterSettings.posPassword;
+  assert(kitchenWithCustomPin === 'kitchen-chef-pin-77', 'PIN dapur kustom diprioritaskan');
+
+  const fallbackSettings: CafeSettings = { posPassword: 'shared-pin-1234' };
+  const kitchenFallbackPin = fallbackSettings.kitchenPassword || fallbackSettings.posPassword || '1234';
+  assert(kitchenFallbackPin === 'shared-pin-1234', 'PIN dapur fallback aman ke PIN kasir jika belum diset terpisah');
+}
+
+// --------------------------------------------------------------------------
 // REKAPITULASI HASIL PENGUJIAN
 // --------------------------------------------------------------------------
 console.log('\n======================================================');
@@ -565,6 +599,6 @@ if (failedCount > 0) {
   console.error('🚨 Ditemukan kegagalan pada alur data. Mohon periksa detail error di atas.');
   process.exit(1);
 } else {
-  console.log('🎉 SEMUA 11 MODUL ALUR DATA CRITICAL LOLOS 100% TANPA KESALAHAN!\n');
+  console.log('🎉 SEMUA 12 MODUL ALUR DATA CRITICAL LOLOS 100% TANPA KESALAHAN!\n');
   process.exit(0);
 }

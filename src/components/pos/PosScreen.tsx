@@ -597,7 +597,6 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         onClose={() => setIsPosSettingsOpen(false)}
         cafeSettings={cafeSettings}
         onUpdateCafeSettings={updateCafeSettings}
-        onUpdatePosPassword={(newPin) => updateRolePasswords(undefined, newPin)}
       />
 
       {/* 8. MODAL KAS KELUAR & PENGELUARAN (PETTY CASH) */}

@@ -50,6 +50,7 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const expectedPassword =
+      cafeSettings?.kitchenPassword?.trim() ||
       cafeSettings?.posPassword?.trim() ||
       cafeSettings?.operatorPassword?.trim() ||
       '1234';

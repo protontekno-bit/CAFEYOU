@@ -6,7 +6,6 @@ interface PosSettingsModalProps {
   onClose: () => void;
   cafeSettings: CafeSettings;
   onUpdateCafeSettings: (settings: CafeSettings) => void;
-  onUpdatePosPassword?: (newPin: string) => Promise<{ success: boolean; message?: string }> | void;
 }
 
 export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
@@ -14,7 +13,6 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
   onClose,
   cafeSettings,
   onUpdateCafeSettings,
-  onUpdatePosPassword,
 }) => {
   const getInitialTaxMode = (settings?: CafeSettings): 'NONE' | 'INCLUDED' | 'ADDED' => {
     if (settings?.enableTax === false || settings?.taxPercentage === 0) return 'NONE';
@@ -35,20 +33,12 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
   const [danaPhoneNumber, setDanaPhoneNumber] = useState<string>(cafeSettings?.danaPhoneNumber || '');
   const [qrisSuccess, setQrisSuccess] = useState<boolean>(false);
 
-  // State: PIN Kasir
-  const [currentPin, setCurrentPin] = useState<string>('');
-  const [newPin, setNewPin] = useState<string>('');
-  const [confirmPin, setConfirmPin] = useState<string>('');
-  const [pinFeedback, setPinFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [isPinSaving, setIsPinSaving] = useState(false);
-
   // State: Feedback umum
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      const mode = getInitialTaxMode(cafeSettings);
-      setTaxMode(mode);
+      setTaxMode(getInitialTaxMode(cafeSettings));
       setTaxPercentage(cafeSettings?.taxPercentage || 10);
       setIsTaxIncluded(cafeSettings?.isTaxIncluded ?? false);
       setServicePercentage(cafeSettings?.servicePercentage ?? 0);
@@ -56,10 +46,6 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
       setQrisMerchantName(cafeSettings?.qrisMerchantName || '');
       setDanaPhoneNumber(cafeSettings?.danaPhoneNumber || '');
       setQrisSuccess(false);
-      setCurrentPin('');
-      setNewPin('');
-      setConfirmPin('');
-      setPinFeedback(null);
       setSaveSuccess(false);
     }
   }, [isOpen, cafeSettings]);
@@ -111,55 +97,6 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
     setTimeout(() => setSaveSuccess(false), 2500);
   };
 
-  const handleSavePin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPinFeedback(null);
-
-    const actualExpectedPin = cafeSettings?.posPassword?.trim() || '1234';
-
-    if (currentPin.trim() !== actualExpectedPin) {
-      setPinFeedback({ type: 'error', text: 'PIN Lama tidak sesuai.' });
-      return;
-    }
-
-    if (!newPin.trim() || newPin.trim().length < 4) {
-      setPinFeedback({ type: 'error', text: 'PIN Baru minimal 4 karakter / angka.' });
-      return;
-    }
-
-    if (newPin.trim() !== confirmPin.trim()) {
-      setPinFeedback({ type: 'error', text: 'Konfirmasi PIN Baru tidak cocok.' });
-      return;
-    }
-
-    setIsPinSaving(true);
-    try {
-      if (onUpdatePosPassword) {
-        const res = await onUpdatePosPassword(newPin.trim());
-        if (res && res.success === false) {
-          setPinFeedback({ type: 'error', text: res.message || 'Gagal mengubah PIN kasir.' });
-          setIsPinSaving(false);
-          return;
-        }
-      } else {
-        onUpdateCafeSettings({
-          ...cafeSettings,
-          posPassword: newPin.trim(),
-        });
-      }
-
-      setPinFeedback({ type: 'success', text: 'PIN Kasir berhasil diubah dan disinkronkan ke Cloud!' });
-      setCurrentPin('');
-      setNewPin('');
-      setConfirmPin('');
-    } catch (err: any) {
-      setPinFeedback({ type: 'error', text: err?.message || 'Terjadi kesalahan sistem saat menyimpan PIN.' });
-    } finally {
-      setIsPinSaving(false);
-      setTimeout(() => setPinFeedback(null), 4000);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl animate-scaleUp text-slate-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -203,10 +140,7 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
                 {/* 1. Bebas Pajak (Non-PB1) */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setTaxMode('NONE');
-                    setIsTaxIncluded(false);
-                  }}
+                  onClick={() => { setTaxMode('NONE'); setIsTaxIncluded(false); }}
                   className={`p-3 rounded-xl border text-left transition-all ${
                     taxMode === 'NONE'
                       ? 'bg-emerald-500/20 border-emerald-500/60 text-white shadow-sm ring-1 ring-emerald-500/30'
@@ -224,10 +158,7 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
                 {/* 2. Sudah Termasuk di Menu */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setTaxMode('INCLUDED');
-                    setIsTaxIncluded(true);
-                  }}
+                  onClick={() => { setTaxMode('INCLUDED'); setIsTaxIncluded(true); }}
                   className={`p-3 rounded-xl border text-left transition-all ${
                     taxMode === 'INCLUDED'
                       ? 'bg-amber-500/20 border-amber-500/60 text-white shadow-sm ring-1 ring-amber-500/30'
@@ -245,10 +176,7 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
                 {/* 3. Tambahan di Kasir */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setTaxMode('ADDED');
-                    setIsTaxIncluded(false);
-                  }}
+                  onClick={() => { setTaxMode('ADDED'); setIsTaxIncluded(false); }}
                   className={`p-3 rounded-xl border text-left transition-all ${
                     taxMode === 'ADDED'
                       ? 'bg-blue-500/20 border-blue-500/60 text-white shadow-sm ring-1 ring-blue-500/30'
@@ -448,87 +376,22 @@ export const PosSettingsModal: React.FC<PosSettingsModalProps> = ({
           </div>
         </form>
 
-        {/* 3. Pengaturan Keamanan PIN Kasir (Cloud Sync) */}
-        <form onSubmit={handleSavePin} className="space-y-4 bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80">
-          <div className="flex items-center gap-2 text-xs font-black text-blue-400 uppercase tracking-wider">
-            <span>🔒</span>
-            <span>Ubah PIN Akses Kasir (POS Security)</span>
+        {/* Kebijakan Keamanan Akses Terpusat */}
+        <div className="bg-slate-950/40 p-3.5 rounded-2xl border border-slate-800/80 flex items-start gap-3">
+          <span className="text-base shrink-0">🔒</span>
+          <div className="text-[11px] text-slate-400 leading-relaxed">
+            <span className="font-bold text-slate-300 block mb-0.5">Keamanan Hak Akses Terpusat</span>
+            PIN Akses Kasir & Dapur dikelola secara terpusat oleh Pemilik / Operator Kafe melalui Dasbor Operator.
           </div>
-          <p className="text-[11px] text-slate-400">
-            PIN ini tersimpan di Firebase Cloud dan digunakan staf untuk membuka dasbor POS (<code>#/pos</code>).
-          </p>
-
-          {pinFeedback && (
-            <div
-              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
-                pinFeedback.type === 'success'
-                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
-                  : 'bg-red-500/15 border-red-500/30 text-red-300'
-              }`}
-            >
-              <span>{pinFeedback.type === 'success' ? '✅' : '⚠️'}</span>
-              <span>{pinFeedback.text}</span>
-            </div>
-          )}
-
-          <div className="space-y-2.5">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-slate-300">PIN Kasir Saat Ini:</label>
-              <input
-                type="password"
-                value={currentPin}
-                onChange={(e) => setCurrentPin(e.target.value)}
-                placeholder="Masukkan PIN lama"
-                required
-                className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3 py-2 text-xs text-white font-mono tracking-widest focus:outline-none focus:border-blue-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-300">PIN Baru:</label>
-                <input
-                  type="password"
-                  value={newPin}
-                  onChange={(e) => setNewPin(e.target.value)}
-                  placeholder="Min 4 angka"
-                  required
-                  className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3 py-2 text-xs text-white font-mono tracking-widest focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-300">Ulangi PIN Baru:</label>
-                <input
-                  type="password"
-                  value={confirmPin}
-                  onChange={(e) => setConfirmPin(e.target.value)}
-                  placeholder="Konfirmasi PIN"
-                  required
-                  className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3 py-2 text-xs text-white font-mono tracking-widest focus:outline-none focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isPinSaving}
-              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition-all disabled:opacity-50"
-            >
-              {isPinSaving ? 'Menyimpan ke Cloud...' : 'Ubah PIN Kasir ➔'}
-            </button>
-          </div>
-        </form>
-
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all"
-          >
-            Tutup
-          </button>
         </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all"
+        >
+          Tutup
+        </button>
       </div>
     </div>
   );

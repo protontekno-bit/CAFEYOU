@@ -527,7 +527,7 @@ export function useVoucherAuth(
     }));
   };
 
-  const updateRolePasswords = (operatorPass?: string, posPass?: string) => {
+  const updateRolePasswords = (operatorPass?: string, posPass?: string, kitchenPass?: string) => {
     updateAppState((prev) => {
       const current = prev?.cafeSettings || DEFAULT_CAFE_SETTINGS;
       return {
@@ -536,6 +536,7 @@ export function useVoucherAuth(
           ...current,
           ...(operatorPass !== undefined ? { operatorPassword: operatorPass.trim() } : {}),
           ...(posPass !== undefined ? { posPassword: posPass.trim() } : {}),
+          ...(kitchenPass !== undefined ? { kitchenPassword: kitchenPass.trim() } : {}),
         },
       };
     });

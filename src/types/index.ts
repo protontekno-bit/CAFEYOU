@@ -85,6 +85,7 @@ export interface CafeSettings {
   isTaxIncluded?: boolean;
   servicePercentage?: number;
   posPassword?: string;
+  kitchenPassword?: string;
   operatorPassword?: string;
   localServerIp?: string;
   qrisImageUrl?: string;

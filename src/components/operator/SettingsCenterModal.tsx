@@ -298,6 +298,8 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
             <SettingsSecurityTab
               onClose={onClose}
               onPasswordChangedLogout={onPasswordChangedLogout}
+              cafeSettings={cafeSettings}
+              onUpdateCafeSettings={onUpdateCafeSettings}
             />
           )}
 

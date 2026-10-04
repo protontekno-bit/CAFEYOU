@@ -74,25 +74,52 @@ export function useVoucherAuth(
 
   const revokeVoucher = (code: string) => {
     const trimmed = code.trim();
+    if (!trimmed) return;
+    const trimmedUpper = trimmed.toUpperCase();
+
+    // Kumpulkan semua kemungkinan key yang merujuk ke voucher ini
+    const currentVouchers = { ...vouchers };
+    const targetKeys = new Set<string>([trimmed, trimmedUpper]);
+
+    Object.entries(currentVouchers).forEach(([key, v]) => {
+      if (
+        key.trim().toUpperCase() === trimmedUpper ||
+        (v && typeof v.code === 'string' && v.code.trim().toUpperCase() === trimmedUpper)
+      ) {
+        targetKeys.add(key);
+        if (v && v.code) targetKeys.add(v.code.trim());
+      }
+    });
+
     // 1. Hapus dari Firebase RTDB secara atomik
     try {
       const db = initFirebaseDatabase();
       if (db) {
-        const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${trimmed}`);
-        set(vRef, null).catch((err) => {
-          console.warn('Gagal hapus voucher di Firebase RTDB:', err);
+        targetKeys.forEach((key) => {
+          const vRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers/${key}`);
+          set(vRef, null).catch((err) => {
+            console.warn('Gagal hapus voucher di Firebase RTDB:', err);
+          });
         });
       }
     } catch (err) {}
 
     // 2. Hapus dari state lokal
     updateAppState((prev) => {
-      const currentVouchers =
+      const updated =
         prev?.vouchers && typeof prev.vouchers === 'object' ? { ...prev.vouchers } : {};
-      delete currentVouchers[trimmed];
+      targetKeys.forEach((key) => {
+        delete updated[key];
+      });
+      // Pastikan voucher dengan code yang sama juga terhapus
+      Object.keys(updated).forEach((k) => {
+        if (updated[k]?.code?.trim().toUpperCase() === trimmedUpper) {
+          delete updated[k];
+        }
+      });
       return {
         ...prev,
-        vouchers: currentVouchers,
+        vouchers: updated,
       };
     });
   };
@@ -132,6 +159,25 @@ export function useVoucherAuth(
         },
       };
     });
+  };
+
+  const resetAllVouchers = () => {
+    // 1. Hapus seluruh node vouchers dari Firebase RTDB
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const allVouchersRef = ref(db, `cafeyou/${STORAGE_KEY}/vouchers`);
+        set(allVouchersRef, null).catch((err) => {
+          console.warn('Gagal reset seluruh voucher di Firebase RTDB:', err);
+        });
+      }
+    } catch (err) {}
+
+    // 2. Kosongkan state lokal secara instan
+    updateAppState((prev) => ({
+      ...prev,
+      vouchers: {},
+    }));
   };
 
   const clearExhaustedVouchers = () => {
@@ -527,6 +573,7 @@ export function useVoucherAuth(
     assistanceRequests,
     createVoucher,
     revokeVoucher,
+    resetAllVouchers,
     topUpVoucherQuota,
     clearExhaustedVouchers,
     approveTopUpRequest,

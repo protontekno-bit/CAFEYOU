@@ -43,6 +43,7 @@ interface SettingsCenterModalProps {
   vouchers?: Record<string, Voucher>;
   dailyPin?: DailyPinConfig;
   onRevokeVoucher?: (code: string) => void;
+  onResetAllVouchers?: () => void;
   onSetDailyPin?: (enabled: boolean, code: string) => void;
   onOpenVoucherModal?: () => void;
   // Menu F&B (POS)
@@ -82,6 +83,7 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
   vouchers = {},
   dailyPin,
   onRevokeVoucher,
+  onResetAllVouchers,
   onSetDailyPin,
   onOpenVoucherModal,
   menuItems = [],
@@ -258,6 +260,7 @@ export const SettingsCenterModal: React.FC<SettingsCenterModalProps> = ({
               vouchers={vouchers}
               dailyPin={dailyPin}
               onRevokeVoucher={onRevokeVoucher}
+              onResetAllVouchers={onResetAllVouchers}
               onSetDailyPin={onSetDailyPin}
               onOpenVoucherModal={onOpenVoucherModal}
             />

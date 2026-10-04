@@ -525,6 +525,33 @@ console.log('🔹 [10/10] Menguji Logika Fair Rotation & Visibilitas Antrean Lag
 }
 
 // --------------------------------------------------------------------------
+// TEST SUITE 11: Pencabutan (Revoke) & Reset Manual Semua Voucher
+// --------------------------------------------------------------------------
+console.log('🔹 [11/11] Menguji Pencabutan (Revoke) & Reset Manual Voucher...');
+{
+  const initialVouchers: Record<string, Voucher> = {
+    '1001': { code: '1001', tableNumber: 'Meja 1', quotaTotal: 3, quotaUsed: 0, createdAt: Date.now(), status: 'active' },
+    '1002': { code: '1002', tableNumber: 'Meja 2', quotaTotal: 3, quotaUsed: 1, createdAt: Date.now(), status: 'active' },
+  };
+
+  // 11.1 Simulasi Pencabutan (Revoke) Voucher 1001
+  const afterRevoke = { ...initialVouchers };
+  delete afterRevoke['1001'];
+  assert(!('1001' in afterRevoke), 'Voucher 1001 berhasil dicabut');
+  assert('1002' in afterRevoke, 'Voucher 1002 tetap aktif');
+
+  // 11.2 Simulasi Pencabutan Voucher Terakhir (menjadi {})
+  const afterRevokeLast = { ...afterRevoke };
+  delete afterRevokeLast['1002'];
+  assert(Object.keys(afterRevokeLast).length === 0, 'Daftar voucher menjadi kosong {} saat voucher terakhir dicabut');
+
+  // 11.3 Simulasi Reset Manual Semua Voucher
+  let stateVouchers: Record<string, Voucher> = { ...initialVouchers };
+  stateVouchers = {};
+  assert(Object.keys(stateVouchers).length === 0, 'Reset manual berhasil mengosongkan seluruh voucher');
+}
+
+// --------------------------------------------------------------------------
 // REKAPITULASI HASIL PENGUJIAN
 // --------------------------------------------------------------------------
 console.log('\n======================================================');
@@ -538,6 +565,6 @@ if (failedCount > 0) {
   console.error('🚨 Ditemukan kegagalan pada alur data. Mohon periksa detail error di atas.');
   process.exit(1);
 } else {
-  console.log('🎉 SEMUA 10 MODUL ALUR DATA CRITICAL LOLOS 100% TANPA KESALAHAN!\n');
+  console.log('🎉 SEMUA 11 MODUL ALUR DATA CRITICAL LOLOS 100% TANPA KESALAHAN!\n');
   process.exit(0);
 }

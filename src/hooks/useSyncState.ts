@@ -39,15 +39,13 @@ function sanitizeState<T>(val: any, fallback: T, currentState?: any): T {
         : (fallback as any).songLibrary || {};
   }
   if ('vouchers' in (fallback as any)) {
-    if (val.vouchers && typeof val.vouchers === 'object' && Object.keys(val.vouchers).length > 0) {
+    if (val && typeof val === 'object' && 'vouchers' in val) {
+      merged.vouchers =
+        val.vouchers && typeof val.vouchers === 'object'
+          ? val.vouchers
+          : {};
+    } else if (val && val.vouchers && typeof val.vouchers === 'object') {
       merged.vouchers = val.vouchers;
-    } else if (
-      currentState &&
-      currentState.vouchers &&
-      typeof currentState.vouchers === 'object' &&
-      Object.keys(currentState.vouchers).length > 0
-    ) {
-      merged.vouchers = currentState.vouchers;
     } else {
       merged.vouchers = (fallback as any).vouchers || {};
     }

@@ -10,17 +10,19 @@
       "$storageKey": {
         ".read": true,
         "tableOrders": {
+          ".write": true,
           "$orderId": {
             // Tamu diizinkan membuat pesanan baru (insert)
-            // Kasir diizinkan mengubah status tiket pesanan
+            // Kasir diizinkan mengubah status tiket pesanan atau void/delete
             ".write": true,
-            ".validate": "newData.hasChildren(['id', 'tableNumber', 'items', 'totalAmount', 'status', 'createdAt'])"
+            ".validate": "!newData.exists() || newData.hasChildren(['id', 'tableNumber', 'items', 'totalAmount', 'status', 'createdAt'])"
           }
         },
         "vouchers": {
+          ".write": true,
           "$voucherCode": {
             ".write": true,
-            ".validate": "newData.hasChildren(['code', 'tableNumber', 'quotaTotal', 'quotaUsed', 'status'])"
+            ".validate": "!newData.exists() || newData.hasChildren(['code', 'tableNumber', 'quotaTotal', 'quotaUsed', 'status'])"
           }
         },
         "queue": {

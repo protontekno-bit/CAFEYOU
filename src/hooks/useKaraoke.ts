@@ -113,6 +113,7 @@ export function useKaraoke() {
     assistanceRequests: auth.assistanceRequests,
     createVoucher: auth.createVoucher,
     revokeVoucher: auth.revokeVoucher,
+    resetAllVouchers: auth.resetAllVouchers,
     topUpVoucherQuota: auth.topUpVoucherQuota,
     clearExhaustedVouchers: auth.clearExhaustedVouchers,
     approveTopUpRequest: auth.approveTopUpRequest,

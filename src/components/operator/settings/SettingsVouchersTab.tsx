@@ -6,6 +6,7 @@ interface SettingsVouchersTabProps {
   vouchers?: Record<string, Voucher>;
   dailyPin?: DailyPinConfig;
   onRevokeVoucher?: (code: string) => void;
+  onResetAllVouchers?: () => void;
   onSetDailyPin?: (enabled: boolean, code: string) => void;
   onOpenVoucherModal?: () => void;
 }
@@ -14,6 +15,7 @@ export const SettingsVouchersTab: React.FC<SettingsVouchersTabProps> = ({
   vouchers = {},
   dailyPin,
   onRevokeVoucher,
+  onResetAllVouchers,
   onSetDailyPin,
   onOpenVoucherModal,
 }) => {
@@ -126,6 +128,20 @@ export const SettingsVouchersTab: React.FC<SettingsVouchersTabProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs font-bold text-slate-300">
           <span>Daftar Voucher Aktif ({activeVouchersList.length}):</span>
+          {onResetAllVouchers && activeVouchersList.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('PERINGATAN: Apakah Anda yakin ingin MENGHAPUS / MERESET SEMUA VOUCHER? Semua kode voucher yang aktif akan dicabut secara permanen!')) {
+                  onResetAllVouchers();
+                }
+              }}
+              className="px-2 py-0.5 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+              title="Reset seluruh voucher"
+            >
+              <span>🗑️ Reset Semua</span>
+            </button>
+          )}
         </div>
         {activeVouchersList.length === 0 ? (
           <div className="p-4 bg-slate-950/40 rounded-2xl border border-slate-800 text-center text-xs text-slate-500">

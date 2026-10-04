@@ -79,6 +79,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
     triggerSoundEffect,
     createVoucher,
     revokeVoucher,
+    resetAllVouchers,
     topUpVoucherQuota,
     clearExhaustedVouchers,
     approveTopUpRequest,
@@ -329,6 +330,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           onClose={() => setIsVoucherOpen(false)}
           onCreateVoucher={createVoucher}
           onRevokeVoucher={revokeVoucher}
+          onResetAllVouchers={resetAllVouchers}
           onTopUpVoucher={topUpVoucherQuota}
           onClearExhaustedVouchers={clearExhaustedVouchers}
           onSetDailyPin={setDailyPin}
@@ -361,6 +363,7 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
           vouchers={vouchers}
           dailyPin={dailyPin}
           onRevokeVoucher={revokeVoucher}
+          onResetAllVouchers={resetAllVouchers}
           onSetDailyPin={setDailyPin}
           onOpenVoucherModal={() => setIsVoucherOpen(true)}
           menuItems={Object.values(menuItems || {})}

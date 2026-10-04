@@ -11,6 +11,7 @@ interface VoucherManagerModalProps {
   onClose: () => void;
   onCreateVoucher: (tableNumber: string, quota: number) => Voucher;
   onRevokeVoucher: (code: string) => void;
+  onResetAllVouchers?: () => void;
   onTopUpVoucher?: (code: string, additionalQuota: number) => void;
   onClearExhaustedVouchers?: () => void;
   onSetDailyPin: (enabled: boolean, code: string) => void;
@@ -24,6 +25,7 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
   onClose,
   onCreateVoucher,
   onRevokeVoucher,
+  onResetAllVouchers,
   onTopUpVoucher,
   onClearExhaustedVouchers,
   onSetDailyPin,
@@ -284,27 +286,43 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
 
           {/* SECTION 3 — Daftar Voucher Aktif */}
           <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                 Daftar Voucher ({voucherList.length})
               </h3>
-              {onClearExhaustedVouchers && voucherList.some((v) => v.status === 'exhausted' || (v.quotaTotal !== 999 && v.quotaUsed >= v.quotaTotal)) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const exhaustedCount = voucherList.filter(
-                      (v) => v.status === 'exhausted' || (v.quotaTotal !== 999 && v.quotaUsed >= v.quotaTotal)
-                    ).length;
-                    if (confirm(`Bersihkan ${exhaustedCount} voucher yang sudah habis dari daftar?`)) {
-                      onClearExhaustedVouchers();
-                    }
-                  }}
-                  className="px-2.5 py-1 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
-                  title="Hapus semua voucher yang kuotanya sudah habis"
-                >
-                  <span>🧹 Bersihkan Voucher Habis</span>
-                </button>
-              )}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {onClearExhaustedVouchers && voucherList.some((v) => v.status === 'exhausted' || (v.quotaTotal !== 999 && v.quotaUsed >= v.quotaTotal)) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const exhaustedCount = voucherList.filter(
+                        (v) => v.status === 'exhausted' || (v.quotaTotal !== 999 && v.quotaUsed >= v.quotaTotal)
+                      ).length;
+                      if (confirm(`Bersihkan ${exhaustedCount} voucher yang sudah habis dari daftar?`)) {
+                        onClearExhaustedVouchers();
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                    title="Hapus semua voucher yang kuotanya sudah habis"
+                  >
+                    <span>🧹 Bersihkan Voucher Habis</span>
+                  </button>
+                )}
+                {onResetAllVouchers && voucherList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm('PERINGATAN: Apakah Anda yakin ingin MENGHAPUS / MERESET SEMUA VOUCHER? Semua kode voucher yang aktif akan dicabut secara permanen!')) {
+                        onResetAllVouchers();
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                    title="Hapus seluruh voucher aktif dan selesai (Reset shift)"
+                  >
+                    <span>🗑️ Reset Semua Voucher</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar text-xs">

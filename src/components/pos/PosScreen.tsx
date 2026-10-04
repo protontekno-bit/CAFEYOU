@@ -388,6 +388,10 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         authError={authError}
         onSubmitLogin={handleLoginSubmit}
         onBackToLanding={setRole ? () => setRole('landing') : undefined}
+        onSwitchRole={setRole}
+        cafeName={cafeSettings?.name}
+        currentTime={currentTime}
+        isCloudConnected={isCloudConnected}
         title="Akses Kasir (POS)"
         description="Masukkan PIN Kasir untuk membuka dasbor operasional dan billing kasir."
         icon="💵"

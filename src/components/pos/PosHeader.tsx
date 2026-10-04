@@ -70,10 +70,10 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
       </div>
 
       {/* 4 Tab Navigasi Utama Kasir */}
-      <div className="flex items-center bg-slate-950/80 border border-slate-800 p-1 rounded-2xl">
+      <div className="flex items-center bg-slate-950/80 border border-slate-800 p-1 rounded-2xl max-w-full overflow-x-auto custom-scrollbar shrink-0">
         <button
           onClick={() => setActiveTab('billing')}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 shrink-0 ${
             activeTab === 'billing'
               ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md shadow-amber-500/20'
               : 'text-slate-400 hover:text-white'
@@ -96,7 +96,7 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
 
         <button
           onClick={() => setActiveTab('kitchen')}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 shrink-0 ${
             activeTab === 'kitchen'
               ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md shadow-amber-500/20'
               : 'text-slate-400 hover:text-white'
@@ -113,7 +113,7 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
 
         <button
           onClick={() => setActiveTab('reports')}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 shrink-0 ${
             activeTab === 'reports'
               ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md shadow-amber-500/20'
               : 'text-slate-400 hover:text-white'
@@ -125,7 +125,7 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
 
         <button
           onClick={() => setActiveTab('menu')}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 shrink-0 ${
             activeTab === 'menu'
               ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md shadow-amber-500/20'
               : 'text-slate-400 hover:text-white'
@@ -201,20 +201,22 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
         {onBack && (
           <button
             onClick={onBack}
-            className="p-2 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-750 rounded-xl text-xs font-bold transition-all"
+            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-750 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
             title="Kembali ke Beranda Utama"
           >
-            🏠
+            <span>🏠</span>
+            <span className="hidden md:inline">Beranda</span>
           </button>
         )}
 
         {/* Kunci / Logout */}
         <button
           onClick={onLogout}
-          className="p-2 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-slate-700 hover:border-red-500/30 rounded-xl text-xs font-bold transition-all"
+          className="px-2.5 py-1.5 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-slate-700 hover:border-red-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
           title="Kunci / Keluar dari Sesi Kasir"
         >
-          🔒
+          <span>🔒</span>
+          <span className="hidden md:inline">Kunci</span>
         </button>
       </div>
     </header>

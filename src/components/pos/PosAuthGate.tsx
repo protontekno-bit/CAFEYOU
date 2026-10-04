@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DeveloperFooter } from '../common/DeveloperFooter';
+import { AppRole } from '../../types';
 
 export interface PosAuthGateProps {
   authPin: string;
@@ -7,6 +8,10 @@ export interface PosAuthGateProps {
   authError: string | null;
   onSubmitLogin: (e?: React.FormEvent) => void;
   onBackToLanding?: () => void;
+  onSwitchRole?: (role: AppRole) => void;
+  cafeName?: string;
+  currentTime?: string;
+  isCloudConnected?: boolean;
   title?: string;
   description?: string;
   icon?: string;
@@ -23,6 +28,10 @@ export const PosAuthGate: React.FC<PosAuthGateProps> = ({
   authError,
   onSubmitLogin,
   onBackToLanding,
+  onSwitchRole,
+  cafeName,
+  currentTime,
+  isCloudConnected,
   title = 'Akses Kasir (POS)',
   description = 'Masukkan PIN Kasir untuk membuka dasbor operasional kafe.',
   icon = '💵',
@@ -32,6 +41,17 @@ export const PosAuthGate: React.FC<PosAuthGateProps> = ({
   const [showPin, setShowPin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const lockoutKey = `cafeyou_lockout_${roleName.toLowerCase()}`;
+
+  // Keyboard shortcut: Escape untuk kembali ke beranda
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onBackToLanding) {
+        onBackToLanding();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBackToLanding]);
 
   // State Lockout Anti-Brute Force
   const [failedAttempts, setFailedAttempts] = useState<number>(() => {
@@ -97,7 +117,6 @@ export const PosAuthGate: React.FC<PosAuthGateProps> = ({
           localStorage.setItem(lockoutKey, JSON.stringify({ attempts: newAttempts, until: null }));
         } catch {}
       }
-      // Hapus PIN otomatis saat gagal agar kasir langsung bisa ketik ulang
       setAuthPin('');
     }
     prevErrorRef.current = authError;
@@ -135,6 +154,91 @@ export const PosAuthGate: React.FC<PosAuthGateProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-between items-center p-3 sm:p-4 font-sans text-slate-200 selection:bg-amber-500 selection:text-slate-950">
+      {/* 1. TOP STATUS & NAVIGATION BAR */}
+      <header className="w-full max-w-4xl flex items-center justify-between gap-3 px-2 py-1.5 z-10">
+        {/* Tombol Kembali ke Beranda */}
+        {onBackToLanding ? (
+          <button
+            type="button"
+            onClick={onBackToLanding}
+            className="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+            title="Kembali ke Beranda Utama (Esc)"
+          >
+            <span>←</span>
+            <span>Beranda</span>
+            <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">[Esc]</span>
+          </button>
+        ) : (
+          <div />
+        )}
+
+        {/* Info Konteks Kafe, Jam & Cloud */}
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 bg-slate-900/60 border border-slate-800/80 px-3 py-1 rounded-xl">
+          <span className="text-white font-black">{cafeName || 'CAFEYOU'}</span>
+          {currentTime && (
+            <>
+              <span className="text-slate-600">•</span>
+              <span className="font-mono text-amber-400 font-bold">{currentTime}</span>
+            </>
+          )}
+          {typeof isCloudConnected === 'boolean' && (
+            <>
+              <span className="text-slate-600 hidden sm:inline">•</span>
+              <span className="hidden sm:inline-flex items-center gap-1 text-[11px]">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isCloudConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                  }`}
+                />
+                <span className={isCloudConnected ? 'text-emerald-400' : 'text-amber-400 font-mono'}>
+                  {isCloudConnected ? 'Sync' : 'Lokal'}
+                </span>
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Quick Workstation Switcher Buttons */}
+        {onSwitchRole ? (
+          <div className="flex items-center gap-1.5">
+            {roleName !== 'Dapur' && (
+              <button
+                type="button"
+                onClick={() => onSwitchRole('kitchen')}
+                className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-amber-300 border border-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
+                title="Beralih langsung ke Layar Dapur (KDS)"
+              >
+                <span>🍳</span>
+                <span className="hidden sm:inline">Dapur</span>
+              </button>
+            )}
+            {roleName !== 'Kasir' && (
+              <button
+                type="button"
+                onClick={() => onSwitchRole('pos')}
+                className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-emerald-300 border border-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
+                title="Beralih langsung ke Kasir POS"
+              >
+                <span>💵</span>
+                <span className="hidden sm:inline">Kasir</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onSwitchRole('operator')}
+              className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-blue-300 border border-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
+              title="Beralih ke Dasbor Operator Karaoke"
+            >
+              <span>🎤</span>
+              <span className="hidden sm:inline">Operator</span>
+            </button>
+          </div>
+        ) : (
+          <div />
+        )}
+      </header>
+
+      {/* 2. CARD MODAL UTAMA */}
       <div className="max-w-sm w-full my-auto bg-slate-900/90 border border-slate-800 p-6 sm:p-7 rounded-3xl shadow-2xl backdrop-blur-xl text-center space-y-4 animate-scaleUp">
         {/* Header Icon & Title */}
         <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-amber-500/10">
@@ -237,19 +341,40 @@ export const PosAuthGate: React.FC<PosAuthGateProps> = ({
             {isLocked ? `🔒 Terkunci (${lockoutRemaining}s)` : submitLabel}
           </button>
 
-          {/* Navigasi Kembali */}
-          {onBackToLanding && (
-            <button
-              type="button"
-              onClick={onBackToLanding}
-              className="w-full py-2 text-xs text-slate-400 hover:text-white font-semibold transition-colors text-center"
-            >
-              ← Kembali ke Menu Awal
-            </button>
+          {/* Quick Workstation Switcher di Bagian Bawah Form */}
+          {onSwitchRole && (
+            <div className="pt-2 border-t border-slate-800/60 flex items-center justify-center gap-2 text-xs">
+              <span className="text-[11px] text-slate-500">Pindah:</span>
+              {roleName !== 'Dapur' && (
+                <button
+                  type="button"
+                  onClick={() => onSwitchRole('kitchen')}
+                  className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-amber-300 rounded-xl text-[11px] font-bold border border-slate-800 transition-colors"
+                >
+                  🍳 Dapur
+                </button>
+              )}
+              {roleName !== 'Kasir' && (
+                <button
+                  type="button"
+                  onClick={() => onSwitchRole('pos')}
+                  className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-emerald-300 rounded-xl text-[11px] font-bold border border-slate-800 transition-colors"
+                >
+                  💵 Kasir
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onSwitchRole('operator')}
+                className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-blue-300 rounded-xl text-[11px] font-bold border border-slate-800 transition-colors"
+              >
+                🎤 Operator
+              </button>
+            </div>
           )}
 
           {/* Catatan Bantuan Lupa PIN */}
-          <div className="pt-2 border-t border-slate-800/60 text-[10px] text-slate-500 leading-relaxed">
+          <div className="pt-1 text-[10px] text-slate-500 leading-relaxed">
             ℹ️ Lupa PIN {roleName}? Hubungi Pemilik / Operator Kafe untuk mereset PIN melalui Dasbor Operator.
           </div>
         </form>

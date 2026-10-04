@@ -221,6 +221,10 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
         authError={authError}
         onSubmitLogin={handleLoginSubmit}
         onBackToLanding={setRole ? () => setRole('landing') : undefined}
+        onSwitchRole={setRole}
+        cafeName={cafeSettings?.name}
+        currentTime={currentTime}
+        isCloudConnected={isCloudConnected}
         title="Akses Layar Dapur & Bar (KDS)"
         description="Masukkan PIN Dapur untuk membuka antrean pesanan koki & barista."
         icon="👨‍🍳"

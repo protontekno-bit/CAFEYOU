@@ -26,6 +26,7 @@ import {
   TicketIcon,
 } from '../icons/Icons';
 import { DeveloperFooter } from '../common/DeveloperFooter';
+import { sanitizeSettingsForGuest } from '../../utils/privacyFilter';
 
 interface GuestScreenProps {
   setRole?: (role: AppRole) => void;
@@ -50,6 +51,9 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
     tableOrders,
     createTableOrder,
   } = useKaraoke();
+
+  // Sanitasi pengaturan kafe agar rahasia kasir/operator tidak bocor ke browser tamu
+  const safeCafeSettings = useMemo(() => sanitizeSettingsForGuest(cafeSettings), [cafeSettings]);
 
   // 1. Deteksi Meja dari URL atau Session
   const urlTable = useMemo(() => {
@@ -158,7 +162,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
   // Re-sync voucher data dari state jika berubah (dengan case-insensitive lookup)
   const currentVoucherData = useMemo(() => {
     if (!activeVoucher) return null;
-    if (activeVoucher.code === state?.dailyPin?.code) {
+    if (activeVoucher.quotaTotal === 999 || (activeVoucher as any).isDailyPin) {
       return {
         ...activeVoucher,
         quotaTotal: 999,
@@ -181,7 +185,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
       } catch {}
     }
     return found || activeVoucher;
-  }, [activeVoucher, vouchers, state?.dailyPin, tableNumber]);
+  }, [activeVoucher, vouchers, tableNumber]);
 
   // Auto-sync jika kasir memindahkan pesanan meja dari POS
   useEffect(() => {
@@ -860,7 +864,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         isOpen={true}
         tables={tables}
         onSelectTable={handleSelectTable}
-        cafeName={cafeSettings?.name || 'CAFEYOU'}
+        cafeName={safeCafeSettings?.name || 'CAFEYOU'}
         canClose={false}
       />
     );
@@ -898,7 +902,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           onClose={() => setIsTableSelectorOpen(false)}
           currentTable={tableNumber}
           canClose={Boolean(tableNumber)}
-          cafeName={cafeSettings?.name || 'CAFEYOU'}
+          cafeName={safeCafeSettings?.name || 'CAFEYOU'}
         />
       </>
     );
@@ -914,7 +918,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
           </div>
           <div>
             <div className="font-extrabold text-sm bg-gradient-to-r from-purple-400 via-pink-300 to-amber-300 bg-clip-text text-transparent truncate max-w-[170px] sm:max-w-xs">
-              {cafeSettings?.name || 'CAFEYOU'} Portal
+              {safeCafeSettings?.name || 'CAFEYOU'} Portal
             </div>
             <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
               <button
@@ -934,9 +938,9 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
                 <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
                 <span>{isCloudConnected ? 'Tersambung' : 'Lokal'}</span>
               </span>
-              {cafeSettings?.wifiName && (
+              {safeCafeSettings?.wifiName && (
                 <span className="text-[9px] text-cyan-400/80 font-normal">
-                  • Wi-Fi: {cafeSettings.wifiName}
+                  • Wi-Fi: {safeCafeSettings.wifiName}
                 </span>
               )}
             </div>
@@ -1146,7 +1150,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
             searchSource={searchSource}
             setSearchSource={setSearchSource}
             filteredCatalog={filteredCatalog}
-            cafeSettings={cafeSettings}
+            cafeSettings={safeCafeSettings}
             performYouTubeSearch={performYouTubeSearch}
             isLoadingYtPreview={isLoadingYtPreview}
             detectedYtVideo={detectedYtVideo}
@@ -1194,7 +1198,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
             tablePaidTotal={tablePaidTotal}
             guestTaxRate={guestTaxRate}
             guestServiceRate={guestServiceRate}
-            cafeSettings={cafeSettings}
+            cafeSettings={safeCafeSettings}
             showGuestQris={showGuestQris}
             setShowGuestQris={setShowGuestQris}
             guestCopiedDana={guestCopiedDana}
@@ -1279,7 +1283,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         guestTaxRate={guestTaxRate}
         guestServiceRate={guestServiceRate}
         isTaxPlus={isTaxPlus}
-        cafeSettings={cafeSettings}
+        cafeSettings={safeCafeSettings}
         orderSubmitting={orderSubmitting}
         onSubmitOrder={handleCheckoutSubmit}
       />
@@ -1288,7 +1292,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
       <GuestReceiptModal
         order={selectedDigitalReceipt}
         onClose={() => setSelectedDigitalReceipt(null)}
-        cafeSettings={cafeSettings}
+        cafeSettings={safeCafeSettings}
       />
 
       {/* Modal E-Nota Konsolidasi Meja (Grouped Table Bill) */}
@@ -1306,7 +1310,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         tableAccumulatedBill={tableAccumulatedBill}
         guestTaxRate={guestTaxRate}
         guestServiceRate={guestServiceRate}
-        cafeSettings={cafeSettings}
+        cafeSettings={safeCafeSettings}
       />
 
       {/* Modal Opsi Menu (Modifiers / Addons) */}
@@ -1328,7 +1332,7 @@ export const GuestScreen: React.FC<GuestScreenProps> = ({ setRole, defaultTable 
         onClose={() => setIsTableSelectorOpen(false)}
         currentTable={tableNumber}
         canClose={Boolean(tableNumber)}
-        cafeName={cafeSettings?.name || 'CAFEYOU'}
+        cafeName={safeCafeSettings?.name || 'CAFEYOU'}
       />
     </div>
   );

@@ -6,6 +6,8 @@ import { KitchenOrderCard } from './KitchenOrderCard';
 import { isDrinkItem } from '../../utils/billing';
 import { PosDirectOrderModal } from '../pos/PosDirectOrderModal';
 import { KitchenStockModal } from './KitchenStockModal';
+import { PosAuthGate } from '../pos/PosAuthGate';
+import { createRoleSessionToken, verifyRoleSessionToken } from '../../utils/sessionToken';
 
 interface KitchenScreenProps {
   setRole?: (role: AppRole) => void;
@@ -29,6 +31,40 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
     toggleMenuItemAvailability,
     triggerSoundEffect,
   } = useKaraoke();
+
+  // Proteksi Gerbang Akses Layar Dapur (KDS Gate)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      const token = sessionStorage.getItem('cafeyou_kitchen_auth_token');
+      return (
+        verifyRoleSessionToken(token, 'kitchen') ||
+        Boolean(sessionStorage.getItem('cafeyou_pos_auth'))
+      );
+    } catch {
+      return false;
+    }
+  });
+  const [authPin, setAuthPin] = useState<string>('');
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const expectedPassword =
+      cafeSettings?.posPassword?.trim() ||
+      cafeSettings?.operatorPassword?.trim() ||
+      '1234';
+
+    if (authPin.trim() === expectedPassword) {
+      try {
+        const token = createRoleSessionToken('kitchen');
+        sessionStorage.setItem('cafeyou_kitchen_auth_token', token);
+      } catch {}
+      setIsAuthenticated(true);
+      setAuthError(null);
+    } else {
+      setAuthError('PIN/Password staf dapur salah. Silakan coba lagi.');
+    }
+  };
 
   const [isDirectOrderOpen, setIsDirectOrderOpen] = useState(false);
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
@@ -173,6 +209,23 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
       clearFinishedOrders();
     }
   };
+
+  // Tampilkan Gerbang Keamanan jika belum terautentikasi
+  if (!isAuthenticated) {
+    return (
+      <PosAuthGate
+        authPin={authPin}
+        setAuthPin={setAuthPin}
+        authError={authError}
+        onSubmitLogin={handleLoginSubmit}
+        onBackToLanding={setRole ? () => setRole('landing') : undefined}
+        title="Akses Layar Dapur & Barista (KDS)"
+        description="Masukkan PIN Kasir / Password Operator untuk membuka antrean pesanan dapur."
+        icon="👨‍🍳"
+        submitLabel="Buka Layar Dapur ➔"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none selection:bg-amber-500 selection:text-black">

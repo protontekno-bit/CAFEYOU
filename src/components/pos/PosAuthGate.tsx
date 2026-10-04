@@ -7,6 +7,10 @@ export interface PosAuthGateProps {
   authError: string | null;
   onSubmitLogin: (e: React.FormEvent) => void;
   onBackToLanding?: () => void;
+  title?: string;
+  description?: string;
+  icon?: string;
+  submitLabel?: string;
 }
 
 export const PosAuthGate: React.FC<PosAuthGateProps> = ({
@@ -15,19 +19,23 @@ export const PosAuthGate: React.FC<PosAuthGateProps> = ({
   authError,
   onSubmitLogin,
   onBackToLanding,
+  title = 'Akses Kasir & Dapur (POS)',
+  description = 'Masukkan PIN / Password Operator untuk membuka dashboard operasional kafe.',
+  icon = '🍽️',
+  submitLabel = 'Buka Dasbor Kasir ➔',
 }) => {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-between items-center p-4 font-sans text-slate-200 selection:bg-amber-500 selection:text-slate-950">
       <div className="max-w-md w-full my-auto bg-slate-900/90 border border-amber-500/30 p-8 rounded-3xl shadow-2xl backdrop-blur-xl text-center space-y-6">
         <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-amber-500/10">
-          🍽️
+          {icon}
         </div>
         <div>
           <h1 className="text-2xl font-black text-white tracking-tight">
-            Akses Kasir & Dapur (POS)
+            {title}
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Masukkan PIN / Password Operator untuk membuka dashboard operasional kafe.
+            {description}
           </p>
         </div>
 
@@ -55,7 +63,7 @@ export const PosAuthGate: React.FC<PosAuthGateProps> = ({
             type="submit"
             className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-amber-500/20 active:scale-98 transition-all"
           >
-            Buka Dasbor Kasir ➔
+            {submitLabel}
           </button>
 
           {onBackToLanding && (

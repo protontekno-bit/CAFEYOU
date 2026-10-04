@@ -6,6 +6,7 @@ import {
   verifyPassword,
   DEFAULT_PASSWORD_PLAIN,
 } from '../../utils/credentials';
+import { createRoleSessionToken } from '../../utils/sessionToken';
 
 interface OperatorLoginViewProps {
   onLoginSuccess: (user: { username: string }) => void;
@@ -14,6 +15,30 @@ interface OperatorLoginViewProps {
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 30;
+const LOCKOUT_STORAGE_KEY = 'cafeyou_op_lockout_info';
+
+function getStoredLockout(): { attempts: number; until: number | null } {
+  try {
+    const raw = localStorage.getItem(LOCKOUT_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.until && Date.now() < parsed.until) {
+        return { attempts: parsed.attempts || 0, until: parsed.until };
+      }
+    }
+  } catch {}
+  return { attempts: 0, until: null };
+}
+
+function saveStoredLockout(attempts: number, until: number | null) {
+  try {
+    if (!until && attempts === 0) {
+      localStorage.removeItem(LOCKOUT_STORAGE_KEY);
+    } else {
+      localStorage.setItem(LOCKOUT_STORAGE_KEY, JSON.stringify({ attempts, until }));
+    }
+  } catch {}
+}
 
 export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
   onLoginSuccess,
@@ -24,9 +49,12 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
-  const [countdown, setCountdown] = useState(0);
+  const [failedAttempts, setFailedAttempts] = useState(() => getStoredLockout().attempts);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(() => getStoredLockout().until);
+  const [countdown, setCountdown] = useState(() => {
+    const stored = getStoredLockout().until;
+    return stored ? Math.max(0, Math.ceil((stored - Date.now()) / 1000)) : 0;
+  });
   const [isFirstLogin, setIsFirstLogin] = useState(false);
 
   // Countdown timer untuk lockout
@@ -38,6 +66,7 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
         setLockoutUntil(null);
         setCountdown(0);
         setFailedAttempts(0);
+        saveStoredLockout(0, null);
         setErrorMsg(null);
         clearInterval(interval);
       } else {
@@ -72,7 +101,7 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
 
     try {
       const creds = await loadOperatorCredentials();
-      const isValid = verifyPassword(p, creds.passwordHash);
+      const isValid = await verifyPassword(p, creds.passwordHash);
 
       if (!isValid) {
         const newAttempts = failedAttempts + 1;
@@ -82,8 +111,10 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
           const until = Date.now() + LOCKOUT_SECONDS * 1000;
           setLockoutUntil(until);
           setCountdown(LOCKOUT_SECONDS);
+          saveStoredLockout(newAttempts, until);
           setErrorMsg(`Terlalu banyak percobaan gagal. Coba lagi dalam ${LOCKOUT_SECONDS} detik.`);
         } else {
+          saveStoredLockout(newAttempts, null);
           setErrorMsg(
             `Password salah. ${MAX_ATTEMPTS - newAttempts} percobaan tersisa sebelum terkunci.`
           );
@@ -93,12 +124,16 @@ export const OperatorLoginView: React.FC<OperatorLoginViewProps> = ({
       }
 
       // Login berhasil
+      saveStoredLockout(0, null);
       setIsSuccess(true);
       setErrorMsg(null);
       setFailedAttempts(0);
 
       const authData = { username: u, loggedAt: Date.now() };
       try {
+        const token = createRoleSessionToken('operator');
+        sessionStorage.setItem('cafeyou_operator_auth_token', token);
+        localStorage.setItem('cafeyou_operator_auth_token', token);
         sessionStorage.setItem('cafeyou_operator_auth', JSON.stringify(authData));
         localStorage.setItem('cafeyou_operator_auth', JSON.stringify(authData));
       } catch {}

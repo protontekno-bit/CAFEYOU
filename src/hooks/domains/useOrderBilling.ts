@@ -162,30 +162,78 @@ export function useOrderBilling(
     const orderPrefix = orderType === 'TAKEAWAY' ? 'TKW' : orderType === 'ONLINE_DELIVERY' ? 'ONL' : 'ORD';
     const orderNumber = `${orderPrefix}-${orderSeq}`;
 
-    const calculatedTotal = items.reduce((sum, item) => sum + item.price * (item.quantity ?? item.qty ?? 1), 0);
-    const finalAmount = financials?.finalTotal !== undefined ? financials.finalTotal : calculatedTotal;
+    // 1. Sanitasi & Verifikasi Integritas Item terhadap Master Menu (Anti-Price-Tampering)
+    const sanitizedItems: OrderItem[] = items.map((rawItem) => {
+      const menuKey = rawItem.menuId || rawItem.menuItemId;
+      const masterItem =
+        (menuKey && menuItems[menuKey]) ||
+        Object.values(menuItems).find((m) => m && m.name === rawItem.name) ||
+        null;
+      let authoritativeUnitPrice = masterItem ? masterItem.price : (Number(rawItem.price) || 0);
 
-    const isPaid = initialStatus === 'paid' || (initialStatus as string).toLowerCase() === 'paid';
+      // Hitung opsi tambahan resmi jika ada
+      if (masterItem && rawItem.selectedOptions && Array.isArray(rawItem.selectedOptions) && masterItem.optionGroups) {
+        let modifierExtra = 0;
+        masterItem.optionGroups.forEach((group) => {
+          group.options?.forEach((opt) => {
+            if (rawItem.selectedOptions?.some((sel) => sel.includes(opt.name))) {
+              modifierExtra += (opt.extraPrice || 0);
+            }
+          });
+        });
+        authoritativeUnitPrice += modifierExtra;
+      }
+
+      const validQty = Math.max(1, Math.min(99, Math.floor(Number(rawItem.quantity ?? rawItem.qty ?? 1)) || 1));
+
+      return {
+        ...rawItem,
+        price: authoritativeUnitPrice > 0 ? authoritativeUnitPrice : rawItem.price,
+        quantity: validQty,
+        qty: validQty,
+      };
+    });
+
+    const calculatedTotal = sanitizedItems.reduce(
+      (sum, item) => sum + item.price * (item.quantity ?? 1),
+      0
+    );
+    const finalAmount =
+      financials?.finalTotal !== undefined && financials.finalTotal >= calculatedTotal
+        ? financials.finalTotal
+        : calculatedTotal;
+
+    // 2. Proteksi Status Pembayaran: Hanya pesanan dengan metode pembayaran sah yang boleh ditandai lunas
+    const isPaid =
+      (initialStatus === 'paid' || (initialStatus as string).toLowerCase() === 'paid') &&
+      Boolean(paymentMethod);
+    const verifiedStatus: OrderStatus = isPaid
+      ? 'paid'
+      : initialStatus === 'paid'
+      ? 'pending'
+      : initialStatus;
 
     const newOrder: TableOrder = {
       id: `order-${timestamp}-${Math.random().toString(36).substring(2, 6)}`,
       orderNumber,
       tableNumber: effectiveTable,
       customerName: customerName.trim() || effectiveTable,
-      items,
+      items: sanitizedItems,
       totalAmount: finalAmount,
       subtotal: financials?.subtotal !== undefined ? financials.subtotal : calculatedTotal,
       taxAmount: financials?.taxAmount || 0,
       serviceAmount: financials?.serviceAmount || 0,
       roundingAmount: financials?.roundingAmount || 0,
-      status: initialStatus,
+      status: verifiedStatus,
       createdAt: timestamp,
       orderType,
       platform,
       ...(isPaid
         ? {
             paidAt: timestamp,
-            paymentMethod: paymentMethod || (orderType === 'ONLINE_DELIVERY' ? 'ONLINE_MERCHANT' : 'cash'),
+            paymentMethod:
+              paymentMethod ||
+              (orderType === 'ONLINE_DELIVERY' ? 'ONLINE_MERCHANT' : 'cash'),
           }
         : {}),
     };

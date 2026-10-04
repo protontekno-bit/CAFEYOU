@@ -1,0 +1,51 @@
+{
+  "rules": {
+    "system": {
+      "operatorCredentials": {
+        ".read": true,
+        ".write": "auth != null || !data.exists()"
+      }
+    },
+    "cafeyou": {
+      "$storageKey": {
+        ".read": true,
+        "tableOrders": {
+          "$orderId": {
+            // Tamu diizinkan membuat pesanan baru (insert)
+            // Kasir diizinkan mengubah status tiket pesanan
+            ".write": true,
+            ".validate": "newData.hasChildren(['id', 'tableNumber', 'items', 'totalAmount', 'status', 'createdAt'])"
+          }
+        },
+        "vouchers": {
+          "$voucherCode": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['code', 'tableNumber', 'quotaTotal', 'quotaUsed', 'status'])"
+          }
+        },
+        "queue": {
+          ".write": true
+        },
+        "history": {
+          ".write": true
+        },
+        "songLibrary": {
+          ".write": true
+        },
+        "dailyPin": {
+          ".write": true
+        },
+        "stage_cues": {
+          ".write": true
+        },
+        "expenses": {
+          ".write": true
+        }
+      },
+      "player_session_lock": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}

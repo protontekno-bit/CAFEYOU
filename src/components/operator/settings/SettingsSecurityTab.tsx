@@ -55,7 +55,7 @@ export const SettingsSecurityTab: React.FC<SettingsSecurityTabProps> = ({
     setIsPassLoading(true);
     try {
       const currentCreds = await loadOperatorCredentials();
-      const isValid = verifyPassword(oldP, currentCreds.passwordHash);
+      const isValid = await verifyPassword(oldP, currentCreds.passwordHash);
       if (!isValid) {
         setPassError('Password lama tidak sesuai.');
         setIsPassLoading(false);

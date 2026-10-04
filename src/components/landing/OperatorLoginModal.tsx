@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LockIcon, CheckIcon } from '../icons/Icons';
 import { loadOperatorCredentials, verifyPassword } from '../../utils/credentials';
+import { createRoleSessionToken } from '../../utils/sessionToken';
 
 interface OperatorLoginModalProps {
   isOpen: boolean;
@@ -10,6 +11,30 @@ interface OperatorLoginModalProps {
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 30;
+const LOCKOUT_STORAGE_KEY = 'cafeyou_op_lockout_info';
+
+function getStoredLockout(): { attempts: number; until: number | null } {
+  try {
+    const raw = localStorage.getItem(LOCKOUT_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.until && Date.now() < parsed.until) {
+        return { attempts: parsed.attempts || 0, until: parsed.until };
+      }
+    }
+  } catch {}
+  return { attempts: 0, until: null };
+}
+
+function saveStoredLockout(attempts: number, until: number | null) {
+  try {
+    if (!until && attempts === 0) {
+      localStorage.removeItem(LOCKOUT_STORAGE_KEY);
+    } else {
+      localStorage.setItem(LOCKOUT_STORAGE_KEY, JSON.stringify({ attempts, until }));
+    }
+  } catch {}
+}
 
 export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
   isOpen,
@@ -21,8 +46,8 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+  const [failedAttempts, setFailedAttempts] = useState(() => getStoredLockout().attempts);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(() => getStoredLockout().until);
 
   if (!isOpen) return null;
 
@@ -48,16 +73,19 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
 
     try {
       const creds = await loadOperatorCredentials();
-      const isValid = verifyPassword(p, creds.passwordHash);
+      const isValid = await verifyPassword(p, creds.passwordHash);
 
       if (!isValid) {
         const newAttempts = failedAttempts + 1;
         setFailedAttempts(newAttempts);
 
         if (newAttempts >= MAX_ATTEMPTS) {
-          setLockoutUntil(Date.now() + LOCKOUT_SECONDS * 1000);
+          const until = Date.now() + LOCKOUT_SECONDS * 1000;
+          setLockoutUntil(until);
+          saveStoredLockout(newAttempts, until);
           setErrorMsg(`Terlalu banyak percobaan. Coba lagi dalam ${LOCKOUT_SECONDS} detik.`);
         } else {
+          saveStoredLockout(newAttempts, null);
           setErrorMsg(
             `Password salah. ${MAX_ATTEMPTS - newAttempts} percobaan tersisa.`
           );
@@ -66,11 +94,14 @@ export const OperatorLoginModal: React.FC<OperatorLoginModalProps> = ({
         return;
       }
 
+      saveStoredLockout(0, null);
       setIsSuccess(true);
       setErrorMsg(null);
       setFailedAttempts(0);
 
       try {
+        const token = createRoleSessionToken('operator');
+        sessionStorage.setItem('cafeyou_operator_auth_token', token);
         sessionStorage.setItem(
           'cafeyou_operator_auth',
           JSON.stringify({ username: u, loggedAt: Date.now() })

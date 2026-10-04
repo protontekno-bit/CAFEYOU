@@ -21,6 +21,7 @@ import { DeveloperFooter } from '../common/DeveloperFooter';
 import { useKaraoke } from '../../hooks/useKaraoke';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { AppRole, PopularPresetSong } from '../../types';
+import { verifyRoleSessionToken } from '../../utils/sessionToken';
 
 interface OperatorScreenProps {
   setRole?: (role: AppRole) => void;
@@ -30,12 +31,22 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   // Mencegah layar tablet kasir redup/terkunci otomatis saat beroperasi
   useWakeLock(true);
 
-  // Cek autentikasi sesi operator
+  // Cek autentikasi sesi operator bertanda waktu dan token valid
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     try {
-      return !!(
+      const token = sessionStorage.getItem('cafeyou_operator_auth_token');
+      if (verifyRoleSessionToken(token, 'operator')) return true;
+
+      const raw =
         sessionStorage.getItem('cafeyou_operator_auth') ||
-        localStorage.getItem('cafeyou_operator_auth')
+        localStorage.getItem('cafeyou_operator_auth');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return Boolean(
+        parsed &&
+        parsed.username &&
+        parsed.loggedAt &&
+        Date.now() - parsed.loggedAt < 86400000
       );
     } catch {
       return false;
@@ -147,7 +158,9 @@ export const OperatorScreen: React.FC<OperatorScreenProps> = ({ setRole }) => {
   const handleLogout = () => {
     try {
       sessionStorage.removeItem('cafeyou_operator_auth');
+      sessionStorage.removeItem('cafeyou_operator_auth_token');
       localStorage.removeItem('cafeyou_operator_auth');
+      localStorage.removeItem('cafeyou_operator_auth_token');
     } catch {}
     setIsLoggedIn(false);
   };

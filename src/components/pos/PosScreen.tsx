@@ -18,6 +18,7 @@ import { PosPaymentModal } from './PosPaymentModal';
 import { PosMoveTableModal } from './PosMoveTableModal';
 import { PosVoidItemModal } from './PosVoidItemModal';
 import { PosQrisZoomModal } from './PosQrisZoomModal';
+import { createRoleSessionToken, verifyRoleSessionToken } from '../../utils/sessionToken';
 
 interface PosScreenProps {
   setRole?: (role: AppRole) => void;
@@ -56,7 +57,11 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
   // 1. Status Autentikasi Kasir / Staff Security Gate
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      return Boolean(sessionStorage.getItem('cafeyou_pos_auth'));
+      const token = sessionStorage.getItem('cafeyou_pos_auth_token');
+      return (
+        verifyRoleSessionToken(token, 'pos') ||
+        Boolean(sessionStorage.getItem('cafeyou_pos_auth'))
+      );
     } catch {
       return false;
     }
@@ -148,6 +153,8 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
 
     if (authPin.trim() === expectedPassword) {
       try {
+        const token = createRoleSessionToken('pos');
+        sessionStorage.setItem('cafeyou_pos_auth_token', token);
         sessionStorage.setItem('cafeyou_pos_auth', 'true');
       } catch {}
       setIsAuthenticated(true);
@@ -160,6 +167,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
   const handleLogout = () => {
     try {
       sessionStorage.removeItem('cafeyou_pos_auth');
+      sessionStorage.removeItem('cafeyou_pos_auth_token');
     } catch {}
     setIsAuthenticated(false);
   };

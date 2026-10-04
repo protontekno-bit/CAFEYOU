@@ -35,6 +35,29 @@ export const DEFAULT_FIREBASE_CONFIG: FirebaseCustomConfig = {
 };
 
 /**
+ * Memvalidasi apakah URL merupakan endpoint resmi Google Firebase Realtime Database
+ */
+export function isValidFirebaseDatabaseUrl(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    return host.endsWith('.firebaseio.com') || host.endsWith('.firebasedatabase.app');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Memvalidasi apakah Project ID Firebase aman dan berformat valid
+ */
+export function isValidFirebaseProjectId(id?: string | null): boolean {
+  if (!id || typeof id !== 'string') return false;
+  return /^[a-z0-9][a-z0-9-]{4,28}[a-z0-9]$/i.test(id.trim());
+}
+
+/**
  * Mendapatkan konfigurasi Firebase aktif (URL query params, LocalStorage, atau Default)
  */
 export function getStoredFirebaseConfig(): FirebaseCustomConfig {
@@ -54,11 +77,15 @@ export function getStoredFirebaseConfig(): FirebaseCustomConfig {
         }
       }
 
-      if (urlDb || urlProj) {
+      // Sanitasi & Whitelist: Hanya izinkan domain resmi Firebase
+      const safeDb = isValidFirebaseDatabaseUrl(urlDb) ? urlDb! : undefined;
+      const safeProj = isValidFirebaseProjectId(urlProj) ? urlProj! : undefined;
+
+      if (safeDb || safeProj) {
         const urlConfig: FirebaseCustomConfig = {
-          databaseURL: urlDb || undefined,
-          projectId: urlProj || undefined,
-          authDomain: urlProj ? `${urlProj}.firebaseapp.com` : undefined,
+          databaseURL: safeDb,
+          projectId: safeProj,
+          authDomain: safeProj ? `${safeProj}.firebaseapp.com` : undefined,
         };
         return urlConfig;
       }

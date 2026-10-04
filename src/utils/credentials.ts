@@ -1,34 +1,65 @@
 /**
  * Credentials Utility — Operator Login Security
- * Hash password (djb2) dan simpan/baca dari Firebase Cloud.
- * Tidak membutuhkan library tambahan.
+ * Hash password dengan Web Crypto API (SHA-256 + Salt) dan simpan/baca dari Firebase Cloud.
+ * Mendukung migrasi transparan dari hash djb2 lama.
  */
 
 import { initFirebaseDatabase, ref, get, set } from '../config/firebase';
 
 const CREDENTIALS_LOCAL_KEY = 'cafeyou_op_credentials';
 const FIREBASE_CREDENTIALS_PATH = 'system/operatorCredentials';
+const CRYPTO_SALT = 'CAFEYOU_SALT_V2026_SECURE_';
 
-/** Default password hash (KAFE1234) — hanya dipakai pertama kali jika belum ada kredensial */
+/** Default password (KAFE1234) — hanya dipakai pertama kali jika belum ada kredensial */
 const DEFAULT_PASSWORD_PLAIN = 'KAFE1234';
 
 /**
- * djb2 hash — simple, fast, no dependencies.
- * Mengembalikan string hex 8 karakter.
+ * djb2 hash legacy — untuk backward compatibility dengan hash lama di storage
  */
-export function hashPassword(plain: string): string {
+export function legacyDjb2Hash(plain: string): string {
   let hash = 5381;
   const str = plain.trim();
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
     hash = hash & hash; // Convert to 32bit integer
   }
-  // Convert to unsigned hex
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-export function verifyPassword(plain: string, storedHash: string): boolean {
-  return hashPassword(plain.trim()) === storedHash;
+/**
+ * Hash password modern menggunakan Web Crypto API (SHA-256 + Salt).
+ * Menghasilkan 64 karakter hex kriptografis yang aman dari rainbow table & brute force.
+ */
+export async function hashPassword(plain: string): Promise<string> {
+  const str = `${CRYPTO_SALT}${plain.trim()}`;
+  try {
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch {}
+  return legacyDjb2Hash(plain);
+}
+
+/**
+ * Verifikasi password dengan dukungan migrasi transparan:
+ * Jika storedHash memiliki panjang 64 (SHA-256), gunakan verifikasi SHA-256.
+ * Jika storedHash panjangnya 8 (djb2 legacy), verifikasi dengan legacyDjb2Hash.
+ */
+export async function verifyPassword(plain: string, storedHash: string): Promise<boolean> {
+  const trimmed = plain.trim();
+  if (!storedHash) return false;
+
+  if (storedHash.length === 64) {
+    const computed = await hashPassword(trimmed);
+    return computed === storedHash;
+  }
+
+  // Fallback hash djb2 lama
+  return legacyDjb2Hash(trimmed) === storedHash;
 }
 
 export interface OperatorCredentials {
@@ -69,22 +100,24 @@ export async function loadOperatorCredentials(): Promise<OperatorCredentials> {
   } catch {}
 
   // 3. Gunakan default pertama kali
+  const defaultHash = await hashPassword(DEFAULT_PASSWORD_PLAIN);
   const defaultCreds: OperatorCredentials = {
     username: 'operator',
-    passwordHash: hashPassword(DEFAULT_PASSWORD_PLAIN),
+    passwordHash: defaultHash,
     updatedAt: Date.now(),
   };
   return defaultCreds;
 }
 
-/** Menyimpan kredensial baru ke Firebase dan localStorage */
+/** Menyimpan kredensial baru ke Firebase dan localStorage dengan SHA-256 */
 export async function saveOperatorCredentials(
   username: string,
   newPasswordPlain: string
 ): Promise<void> {
+  const hash = await hashPassword(newPasswordPlain.trim());
   const creds: OperatorCredentials = {
     username: username.trim() || 'operator',
-    passwordHash: hashPassword(newPasswordPlain.trim()),
+    passwordHash: hash,
     updatedAt: Date.now(),
   };
 

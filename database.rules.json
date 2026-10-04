@@ -9,6 +9,9 @@
     "cafeyou": {
       "$storageKey": {
         ".read": true,
+        "cafeSettings": {
+          ".write": true
+        },
         "tableOrders": {
           ".write": true,
           "$orderId": {
@@ -24,6 +27,12 @@
             ".write": true,
             ".validate": "!newData.exists() || newData.hasChildren(['code', 'tableNumber', 'quotaTotal', 'quotaUsed', 'status'])"
           }
+        },
+        "tables": {
+          ".write": true
+        },
+        "menuItems": {
+          ".write": true
         },
         "queue": {
           ".write": true
@@ -42,9 +51,46 @@
         },
         "expenses": {
           ".write": true
+        },
+        "runningText": {
+          ".write": true
+        },
+        "playbackStatus": {
+          ".write": true
+        },
+        "volume": {
+          ".write": true
+        },
+        "isMuted": {
+          ".write": true
+        },
+        "forceSkip": {
+          ".write": true
+        },
+        "forceReplay": {
+          ".write": true
+        },
+        "soundEffect": {
+          ".write": true
+        },
+        "liveReaction": {
+          ".write": true
+        },
+        "playerHeartbeat": {
+          ".write": true
+        },
+        "fairRotationEnabled": {
+          ".write": true
+        },
+        "autoSaveLibrary": {
+          ".write": true
         }
       },
       "player_session_lock": {
+        ".read": true,
+        ".write": true
+      },
+      "assistance_requests": {
         ".read": true,
         ".write": true
       }

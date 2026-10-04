@@ -146,7 +146,14 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
   // Handle Login Sesi Kasir
   const handleLoginSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    let localRolePasswords: { posPassword?: string; kitchenPassword?: string } = {};
+    try {
+      const raw = localStorage.getItem('cafeyou_role_passwords');
+      if (raw) localRolePasswords = JSON.parse(raw);
+    } catch {}
+
     const expectedPassword =
+      localRolePasswords.posPassword?.trim() ||
       cafeSettings?.posPassword?.trim() ||
       cafeSettings?.operatorPassword?.trim() ||
       '1234';

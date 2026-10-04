@@ -109,6 +109,14 @@ export const SettingsSecurityTab: React.FC<SettingsSecurityTabProps> = ({
     e.preventDefault();
     if (!onUpdateCafeSettings) return;
     const cleanPin = posPin.trim() || '1234';
+    try {
+      const raw = localStorage.getItem('cafeyou_role_passwords');
+      const cur = raw ? JSON.parse(raw) : {};
+      cur.posPassword = cleanPin;
+      localStorage.setItem('cafeyou_role_passwords', JSON.stringify(cur));
+      sessionStorage.removeItem('cafeyou_pos_auth');
+      sessionStorage.removeItem('cafeyou_pos_auth_token');
+    } catch {}
     onUpdateCafeSettings({
       ...(cafeSettings || DEFAULT_CAFE_SETTINGS),
       posPassword: cleanPin,
@@ -122,6 +130,13 @@ export const SettingsSecurityTab: React.FC<SettingsSecurityTabProps> = ({
     e.preventDefault();
     if (!onUpdateCafeSettings) return;
     const cleanPin = kitchenPin.trim() || '1234';
+    try {
+      const raw = localStorage.getItem('cafeyou_role_passwords');
+      const cur = raw ? JSON.parse(raw) : {};
+      cur.kitchenPassword = cleanPin;
+      localStorage.setItem('cafeyou_role_passwords', JSON.stringify(cur));
+      sessionStorage.removeItem('cafeyou_kitchen_auth_token');
+    } catch {}
     onUpdateCafeSettings({
       ...(cafeSettings || DEFAULT_CAFE_SETTINGS),
       kitchenPassword: cleanPin,

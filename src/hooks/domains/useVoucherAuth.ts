@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { KaraokeState, Voucher, CafeSettings, AssistanceRequest } from '../../types';
 import { STORAGE_KEY, DEFAULT_CAFE_SETTINGS, DEFAULT_TABLES } from '../../constants/karaoke';
-import { initFirebaseDatabase, ref, set, get, onValue } from '../../config/firebase';
+import { initFirebaseDatabase, ref, set, get, onValue, update } from '../../config/firebase';
 
 import { normalizeTable, isSameTable } from '../../utils/table';
 export { normalizeTable, isSameTable };
@@ -404,6 +404,29 @@ export function useVoucherAuth(
   };
 
   const updateCafeSettings = (newSettings: Partial<CafeSettings>) => {
+    // 1. Simpan ke cache kredensial lokal instan jika ada update posPassword/kitchenPassword
+    if (newSettings.posPassword !== undefined || newSettings.kitchenPassword !== undefined) {
+      try {
+        const raw = window.localStorage.getItem('cafeyou_role_passwords');
+        const current = raw ? JSON.parse(raw) : {};
+        if (newSettings.posPassword !== undefined) current.posPassword = newSettings.posPassword.trim();
+        if (newSettings.kitchenPassword !== undefined) current.kitchenPassword = newSettings.kitchenPassword.trim();
+        window.localStorage.setItem('cafeyou_role_passwords', JSON.stringify(current));
+      } catch {}
+    }
+
+    // 2. Tulis langsung ke leaf node Firebase RTDB agar sinkronisasi cloud instan
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const settingsRef = ref(db, `cafeyou/${STORAGE_KEY}/cafeSettings`);
+        update(settingsRef, newSettings).catch((err) => {
+          console.warn('Gagal sinkronisasi cafeSettings ke Firebase Cloud:', err);
+        });
+      }
+    } catch {}
+
+    // 3. Perbarui state lokal dan LocalStorage
     updateAppState((prev) => {
       const current = prev?.cafeSettings || DEFAULT_CAFE_SETTINGS;
       const merged: CafeSettings = {
@@ -528,15 +551,39 @@ export function useVoucherAuth(
   };
 
   const updateRolePasswords = (operatorPass?: string, posPass?: string, kitchenPass?: string) => {
+    const payload: Partial<CafeSettings> = {};
+    if (operatorPass !== undefined) payload.operatorPassword = operatorPass.trim();
+    if (posPass !== undefined) payload.posPassword = posPass.trim();
+    if (kitchenPass !== undefined) payload.kitchenPassword = kitchenPass.trim();
+
+    // 1. Simpan ke cache kredensial lokal
+    try {
+      const raw = window.localStorage.getItem('cafeyou_role_passwords');
+      const current = raw ? JSON.parse(raw) : {};
+      if (posPass !== undefined) current.posPassword = posPass.trim();
+      if (kitchenPass !== undefined) current.kitchenPassword = kitchenPass.trim();
+      window.localStorage.setItem('cafeyou_role_passwords', JSON.stringify(current));
+    } catch {}
+
+    // 2. Tulis langsung ke leaf node Firebase RTDB
+    try {
+      const db = initFirebaseDatabase();
+      if (db) {
+        const settingsRef = ref(db, `cafeyou/${STORAGE_KEY}/cafeSettings`);
+        update(settingsRef, payload).catch((err) => {
+          console.warn('Gagal sinkronisasi password role ke Firebase:', err);
+        });
+      }
+    } catch {}
+
+    // 3. Perbarui state lokal
     updateAppState((prev) => {
       const current = prev?.cafeSettings || DEFAULT_CAFE_SETTINGS;
       return {
         ...prev,
         cafeSettings: {
           ...current,
-          ...(operatorPass !== undefined ? { operatorPassword: operatorPass.trim() } : {}),
-          ...(posPass !== undefined ? { posPassword: posPass.trim() } : {}),
-          ...(kitchenPass !== undefined ? { kitchenPassword: kitchenPass.trim() } : {}),
+          ...payload,
         },
       };
     });

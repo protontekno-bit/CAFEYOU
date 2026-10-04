@@ -49,8 +49,16 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
 
   const handleLoginSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    let localRolePasswords: { posPassword?: string; kitchenPassword?: string } = {};
+    try {
+      const raw = localStorage.getItem('cafeyou_role_passwords');
+      if (raw) localRolePasswords = JSON.parse(raw);
+    } catch {}
+
     const expectedPassword =
+      localRolePasswords.kitchenPassword?.trim() ||
       cafeSettings?.kitchenPassword?.trim() ||
+      localRolePasswords.posPassword?.trim() ||
       cafeSettings?.posPassword?.trim() ||
       cafeSettings?.operatorPassword?.trim() ||
       '1234';

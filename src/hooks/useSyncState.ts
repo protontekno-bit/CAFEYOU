@@ -63,10 +63,30 @@ function sanitizeState<T>(val: any, fallback: T, currentState?: any): T {
         : (fallback as any).fairRotationEnabled || false;
   }
   if ('cafeSettings' in (fallback as any)) {
+    let localRolePasswords: any = {};
+    try {
+      const raw =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('cafeyou_role_passwords')
+          : null;
+      if (raw) localRolePasswords = JSON.parse(raw);
+    } catch {}
+
     merged.cafeSettings =
       val.cafeSettings && typeof val.cafeSettings === 'object'
-        ? { ...(fallback as any).cafeSettings, ...val.cafeSettings }
-        : (fallback as any).cafeSettings;
+        ? {
+            ...(fallback as any).cafeSettings,
+            ...(currentState?.cafeSettings || {}),
+            ...val.cafeSettings,
+            ...(localRolePasswords.posPassword ? { posPassword: localRolePasswords.posPassword } : {}),
+            ...(localRolePasswords.kitchenPassword ? { kitchenPassword: localRolePasswords.kitchenPassword } : {}),
+          }
+        : {
+            ...(fallback as any).cafeSettings,
+            ...(currentState?.cafeSettings || {}),
+            ...(localRolePasswords.posPassword ? { posPassword: localRolePasswords.posPassword } : {}),
+            ...(localRolePasswords.kitchenPassword ? { kitchenPassword: localRolePasswords.kitchenPassword } : {}),
+          };
   }
   if ('tables' in (fallback as any)) {
     merged.tables =
@@ -221,7 +241,6 @@ export function useSyncState<T>(
       setIsCloudConnected(false);
     }
   }, [key]);
-
 
   // 2. BroadcastChannel Listener (untuk sinkronisasi multi-tab lokal pada perangkat yang sama)
   useEffect(() => {

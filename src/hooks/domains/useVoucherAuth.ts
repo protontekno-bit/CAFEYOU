@@ -117,6 +117,19 @@ export function useVoucherAuth(
           delete updated[k];
         }
       });
+
+      // Update LocalStorage langsung agar tidak tertinggal di cache browser
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            parsed.vouchers = updated;
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          }
+        }
+      } catch {}
+
       return {
         ...prev,
         vouchers: updated,
@@ -173,7 +186,19 @@ export function useVoucherAuth(
       }
     } catch (err) {}
 
-    // 2. Kosongkan state lokal secara instan
+    // 2. Kosongkan cache LocalStorage secara instan
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          parsed.vouchers = {};
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        }
+      }
+    } catch {}
+
+    // 3. Kosongkan state lokal secara instan
     updateAppState((prev) => ({
       ...prev,
       vouchers: {},

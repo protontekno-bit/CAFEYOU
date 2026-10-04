@@ -43,6 +43,10 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
   const [dailyPinCode, setDailyPinCode] = useState(dailyPin?.code || '1234');
   const [pinSavedMsg, setPinSavedMsg] = useState(false);
 
+  /* ── Inline Action Confirmations (bebas dari pemblokiran window.confirm browser) ── */
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
+  const [confirmRevokeCode, setConfirmRevokeCode] = useState<string | null>(null);
+
   /* Sync dailyPin dari Firebase ke local state */
   useEffect(() => {
     setDailyPinEnabled(dailyPin?.enabled || false);
@@ -55,6 +59,8 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
       setLastCreatedVoucher(null);
       setIsCopied(false);
       setPinSavedMsg(false);
+      setConfirmResetAll(false);
+      setConfirmRevokeCode(null);
     }
   }, [isOpen]);
 
@@ -309,18 +315,37 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                   </button>
                 )}
                 {onResetAllVouchers && voucherList.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm('PERINGATAN: Apakah Anda yakin ingin MENGHAPUS / MERESET SEMUA VOUCHER? Semua kode voucher yang aktif akan dicabut secara permanen!')) {
-                        onResetAllVouchers();
-                      }
-                    }}
-                    className="px-2.5 py-1 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
-                    title="Hapus seluruh voucher aktif dan selesai (Reset shift)"
-                  >
-                    <span>🗑️ Reset Semua Voucher</span>
-                  </button>
+                  confirmResetAll ? (
+                    <div className="flex items-center gap-1 animate-pulse">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onResetAllVouchers();
+                          setConfirmResetAll(false);
+                        }}
+                        className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-black shadow-lg shadow-red-600/30 transition-all active:scale-95 cursor-pointer"
+                        title="Klik untuk konfirmasi reset semua voucher"
+                      >
+                        ⚠️ Yakin Reset Semua?
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmResetAll(false)}
+                        className="px-2 py-1 bg-slate-800 text-slate-300 hover:text-white rounded-lg text-[10px] cursor-pointer"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmResetAll(true)}
+                      className="px-2.5 py-1 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                      title="Hapus seluruh voucher aktif dan selesai (Reset shift)"
+                    >
+                      <span>🗑️ Reset Semua Voucher</span>
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -386,18 +411,37 @@ export const VoucherManagerModal: React.FC<VoucherManagerModalProps> = ({
                           </div>
                         )}
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`Cabut voucher ${v.code} untuk ${v.tableNumber}?`)) {
-                              onRevokeVoucher(v.code);
-                            }
-                          }}
-                          className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
-                          title="Hapus / Cabut Voucher"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
+                        {confirmRevokeCode === v.code ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onRevokeVoucher(v.code);
+                                setConfirmRevokeCode(null);
+                              }}
+                              className="px-2 py-1 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] rounded-lg shadow-sm transition-all cursor-pointer"
+                              title="Konfirmasi hapus voucher ini"
+                            >
+                              Hapus?
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmRevokeCode(null)}
+                              className="p-1 text-slate-400 hover:text-white text-[10px] cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmRevokeCode(v.code)}
+                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+                            title="Hapus / Cabut Voucher"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );

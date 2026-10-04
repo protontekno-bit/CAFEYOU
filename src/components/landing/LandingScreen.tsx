@@ -31,15 +31,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ setRole }) => {
   };
 
   const handlePosClick = () => {
-    try {
-      const savedAuth = sessionStorage.getItem('cafeyou_operator_auth');
-      if (savedAuth) {
-        setRole('pos');
-        return;
-      }
-    } catch {}
-    setLoginTargetRole('pos');
-    setIsLoginModalOpen(true);
+    setRole('pos');
   };
 
   return (

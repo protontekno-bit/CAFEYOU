@@ -144,8 +144,8 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
   }, [pendingOrdersCount, isSoundAlertEnabled, triggerSoundEffect]);
 
   // Handle Login Sesi Kasir
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLoginSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const expectedPassword =
       cafeSettings?.posPassword?.trim() ||
       cafeSettings?.operatorPassword?.trim() ||
@@ -156,11 +156,12 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         const token = createRoleSessionToken('pos');
         sessionStorage.setItem('cafeyou_pos_auth_token', token);
         sessionStorage.setItem('cafeyou_pos_auth', 'true');
+        localStorage.removeItem('cafeyou_lockout_kasir');
       } catch {}
       setIsAuthenticated(true);
-      setAuthError('');
+      setAuthError(null);
     } else {
-      setAuthError('PIN/Password kasir salah. Coba lagi.');
+      setAuthError('PIN kasir salah. Coba lagi.');
     }
   };
 
@@ -387,6 +388,11 @@ export const PosScreen: React.FC<PosScreenProps> = ({ setRole }) => {
         authError={authError}
         onSubmitLogin={handleLoginSubmit}
         onBackToLanding={setRole ? () => setRole('landing') : undefined}
+        title="Akses Kasir (POS)"
+        description="Masukkan PIN Kasir untuk membuka dasbor operasional dan billing kasir."
+        icon="💵"
+        submitLabel="Buka Dasbor Kasir ➔"
+        roleName="Kasir"
       />
     );
   }

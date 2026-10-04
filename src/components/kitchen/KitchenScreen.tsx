@@ -47,8 +47,8 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
   const [authPin, setAuthPin] = useState<string>('');
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLoginSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const expectedPassword =
       cafeSettings?.kitchenPassword?.trim() ||
       cafeSettings?.posPassword?.trim() ||
@@ -59,11 +59,12 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
       try {
         const token = createRoleSessionToken('kitchen');
         sessionStorage.setItem('cafeyou_kitchen_auth_token', token);
+        localStorage.removeItem('cafeyou_lockout_dapur');
       } catch {}
       setIsAuthenticated(true);
       setAuthError(null);
     } else {
-      setAuthError('PIN/Password staf dapur salah. Silakan coba lagi.');
+      setAuthError('PIN dapur salah. Silakan coba lagi.');
     }
   };
 
@@ -220,10 +221,11 @@ export const KitchenScreen: React.FC<KitchenScreenProps> = ({ setRole }) => {
         authError={authError}
         onSubmitLogin={handleLoginSubmit}
         onBackToLanding={setRole ? () => setRole('landing') : undefined}
-        title="Akses Layar Dapur & Barista (KDS)"
-        description="Masukkan PIN Kasir / Password Operator untuk membuka antrean pesanan dapur."
+        title="Akses Layar Dapur & Bar (KDS)"
+        description="Masukkan PIN Dapur untuk membuka antrean pesanan koki & barista."
         icon="👨‍🍳"
         submitLabel="Buka Layar Dapur ➔"
+        roleName="Dapur"
       />
     );
   }
